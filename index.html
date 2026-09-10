@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Information</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{color-scheme:light}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Montserrat',Arial,sans-serif;background:#f5f7fa;color:#211E1E}
+  .bh-topbar{height:4px;background:#ED2B30;width:100%}
+  .bh-banner{background:#fff;border-bottom:1px solid #E8E6E7;width:100%}
+  .bh-banner-inner{max-width:1300px;margin:0 auto;padding:12px 20px 14px;display:flex;align-items:center;gap:18px}
+  .bh-logo{height:54px;width:auto;flex:none}
+  .bh-title{color:#211E1E;font-size:22px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  .bh-sub{color:#5b6472;font-size:12.5px;margin-top:3px}
+  .bh-badge{margin-left:auto;border:1px solid #1a7f37;color:#1a7f37;background:#fff;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:bold;letter-spacing:.05em;white-space:nowrap}
+  .wrap{max-width:1300px;margin:0 auto;padding:20px}
+  .banner{background:#fff7e6;border:1px solid #f0d089;color:#7a5a12;padding:9px 13px;border-radius:8px;font-size:13px;margin-bottom:14px}
+  .err{background:#FFC7CE;border-color:#e6a3a3;color:#9C0006}
+  #map{height:380px;border-radius:12px;border:1px solid #e3e8f0;margin-bottom:18px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .controls label{font-size:13px;color:#40485a;font-weight:bold}
+  select,input[type=text]{padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px;background:#fff}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .card{background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:13px 15px;cursor:pointer}
+  .card .n{font-size:24px;font-weight:bold}.card .l{font-size:11px;color:#5b6472;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
+  .card.total .n{color:#7F1B29}.card.soon .n{color:#9a6a00}.card.ok .n{color:#1a7f37}.card.rfi .n{color:#1a4fb0}.card.co .n{color:#484B4D}
+  .pcard{background:#fff;border:1px solid #e3e8f0;border-left:6px solid #484B4D;border-radius:10px;padding:12px 16px;margin-bottom:11px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .pcard.g{border-left-color:#1a7f37}.pcard.y{border-left-color:#c99a00}.pcard.r{border-left-color:#b3261e}
+  .phead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .pname{font-weight:bold;font-size:15px;color:#211E1E}
+  .pname a{color:inherit;text-decoration:none}.pname a:hover{color:#ED2B30;text-decoration:underline}
+  .pnum{font-size:12px;color:#5b6472}
+  .chip{padding:1px 8px;border-radius:999px;font-size:10px;font-weight:bold;white-space:nowrap}
+  .chip.stage{background:#eef2f8;color:#1F3864;border:1px solid #cfe0f3}
+  .chip.sect{background:#f1efe9;color:#6a5a3a;border:1px solid #e2d9c7}
+  .chip.close{background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e}
+  .chip.sp{background:#ECE7F5;color:#4a2f7a;border:1px solid #d6c8ee}
+  .pright{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .pill{padding:2px 9px;border-radius:999px;font-size:11px;font-weight:bold}
+  .pill.g{background:#C6EFCE;color:#006100}.pill.y{background:#FFEB9C;color:#9C6500}.pill.r{background:#FFC7CE;color:#9C0006}.pill.n{background:#eef1f6;color:#8a92a1}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px 18px;margin-top:9px;font-size:12.5px}
+  .pgrid .k{color:#7a828f;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;font-weight:700}
+  .pgrid .v{color:#2b3240}
+  .team{margin-top:8px;font-size:12px;color:#40485a;border-top:1px solid #f0f2f6;padding-top:7px}
+  .team b{color:#211E1E}
+  .money{font-variant-numeric:tabular-nums}
+  .over{color:#b3261e;font-weight:bold}.under{color:#1a7f37;font-weight:bold}
+  .srclinks{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  .srclinks a{font-size:11px;color:#484B4D;border:1px solid #cfd6e0;border-radius:6px;padding:2px 8px;text-decoration:none;background:#fff}
+  .srclinks a:hover{background:#484B4D;color:#fff}
+  .empty{color:#5b6472;font-style:italic;padding:16px 0}
+  .loading{padding:40px;text-align:center;color:#5b6472}
+  footer{margin-top:26px;font-size:11.5px;color:#8a92a1;border-top:1px solid #e3e8f0;padding-top:12px;line-height:1.5}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+<div class="bh-topbar"></div>
+<header class="bh-banner"><div class="bh-banner-inner"><img class="bh-logo" src="data:image/png;base64,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" alt="Bailey-Harris Construction">
+<div class="bh-titles"><div class="bh-title">Project Information</div><div class="bh-sub">Active projects &middot; Procore + Billy + Alabama &middot; <span id="asof">loading…</span></div></div><span class="bh-badge">&#9679; LIVE</span></div></header>
+<div class="wrap">
+  <div id="banner" class="banner" style="display:none"></div>
+  <div id="content"><div class="loading">Loading project data from SharePoint…</div></div>
+  <footer id="foot"></footer>
+</div>
+<script>
+const MSAL_CLIENT_ID='4bb1f92c-c0a9-4dd6-97a3-2d8c8c9fe27a';
+const TENANT='848aa890-7982-4028-befa-3323d82583ce';
+const SCOPES=['Files.Read.All','User.Read'];
+const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
+const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
+const CID=15326;
+const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
+const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
+let ROWS=[], GENERATED='', MAP=null, MARKERS=null;
+const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
+async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function load(){
+  try{
+    const token=await getToken(); if(!token) return;
+    const res=await fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
+    const data=await res.json(); ROWS=data.projects||[]; GENERATED=data.generated_at||'';
+    document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()):'';
+    buildUI();
+  }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
+}
+function compClass(r){ const c=r.compliance; if(!c) return 'n'; if(c.noncompliant>0) return 'r'; if(c.expiring>0) return 'y'; if(c.fully_compliant) return 'g'; return 'n'; }
+function buildUI(){
+  const sectors=[...new Set(ROWS.map(r=>r.sector).filter(Boolean))].sort();
+  const stages=[...new Set(ROWS.map(r=>r.stage).filter(Boolean))].sort();
+  const offices=[...new Set(ROWS.map(r=>r.office).filter(Boolean))].sort();
+  document.getElementById('content').innerHTML=
+    '<div id="map"></div>'
+   +'<div class="controls">'
+   +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Stage:</label><select id="fStage"><option value="">All</option>'+stages.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Show:</label><select id="fFlag"><option value="">All active</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option></select>'
+   +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
+   +'</div>'
+   +'<div class="cards" id="cards"></div>'
+   +'<div id="list"></div>';
+  ['fSector','fStage','fOffice','fFlag','q'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  document.getElementById('foot').innerHTML='Active projects (Construction / Pre-Con / Post-Con) from Procore. Sectors: 00 Institutional · 01 Industrial · 02 Healthcare · 03 Commercial · 05 Self-Perform. Compliance rollup from Billy + Alabama (see Compliance Dashboard). Owner &amp; architect from the Procore prime contract. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
+  MARKERS=L.layerGroup().addTo(MAP);
+  render();
+}
+function pinColor(cls){ return cls==='g'?'#1a7f37':cls==='y'?'#c99a00':cls==='r'?'#b3261e':'#5b6472'; }
+function render(){
+  const fS=fSector.value,fT=fStage.value,fO=fOffice.value,fF=fFlag.value,q=(document.getElementById('q').value||'').toLowerCase().trim();
+  let view=ROWS.filter(r=>(!fS||r.sector===fS)&&(!fT||r.stage===fT)&&(!fO||r.office===fO));
+  if(fF==='close') view=view.filter(r=>r.closing_this_month);
+  else if(fF==='fc') view=view.filter(r=>r.compliance&&r.compliance.fully_compliant);
+  else if(fF==='nc') view=view.filter(r=>r.compliance&&r.compliance.noncompliant>0);
+  else if(fF==='rfi') view=view.filter(r=>r.rfis_open>0);
+  if(q) view=view.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q));
+  // cards
+  const closing=view.filter(r=>r.closing_this_month).length, fc=view.filter(r=>r.compliance&&r.compliance.fully_compliant).length;
+  const rfis=view.reduce((a,r)=>a+(r.rfis_open||0),0), cosm=view.reduce((a,r)=>a+(r.cos_approved_this_month||0),0);
+  document.getElementById('cards').innerHTML=
+    card('total',view.length,'Active Projects')+card('soon',closing,'Closing This Month')+card('ok',fc,'Fully Compliant')+card('rfi',rfis,'Open RFIs')+card('co',cosm,'COs Approved / Mo');
+  // map pins
+  MARKERS.clearLayers(); const pts=[];
+  view.forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
+    const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:1.5,fillColor:pinColor(cls),fillOpacity:.95});
+    m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
+    m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
+  if(pts.length){ try{ MAP.fitBounds(pts,{padding:[30,30],maxZoom:11}); }catch(e){} }
+  // list
+  document.getElementById('list').innerHTML = view.length ? view.map(pcard).join('') : '<div class="empty">No projects match.</div>';
+}
+function card(cls,n,label){ return '<div class="card '+cls+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>'; }
+function pcard(r){
+  const cls=compClass(r); const c=r.compliance;
+  const compPill = c? (cls==='g'?'<span class="pill g">Compliant</span>':cls==='y'?'<span class="pill y">Expiring</span>':cls==='r'?'<span class="pill r">'+c.noncompliant+' non-compliant</span>':'<span class="pill n">—</span>') : '<span class="pill n">no compliance data</span>';
+  const team=(r.team||[]).filter(t=>t.name).slice(0,8).map(t=>'<b>'+esc(t.name)+'</b>'+(t.role?' ('+esc(t.role)+')':'')).join(' &middot; ');
+  const bud = r.budget_forecast ? '<span class="'+(r.budget_variance<0?'over':'under')+'">'+(r.budget_variance<0?'Over ':'Under ')+money(Math.abs(r.budget_variance))+'</span>' : '—';
+  const pid=r.procore_id; const s={project:pcOverview(pid),rfis:pcBase(pid)+'/tools/rfis',change_orders:pcBase(pid)+'/tools/prime-contracts',budget:pcBase(pid)+'/tools/budgeting'};
+  return '<div class="pcard '+cls+'">'
+    +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
+    +'<span class="chip stage">'+esc(r.stage)+'</span>'+(r.sector?'<span class="chip '+(r.sector_code==='05'?'sp':'sect')+'">'+esc(r.sector)+'</span>':'')
+    +(r.closing_this_month?'<span class="chip close">Closing this month</span>':'')
+    +'<span class="pright">'+compPill+'</span></div>'
+    +'<div class="pgrid">'
+    +kv('Owner',esc(r.owner||'—'))+kv('Architect',esc(r.architect||'—'))
+    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>')+kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>')
+    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>')+kv('Completion',esc(r.completion_date||'—'))
+    +kv('Open RFIs',(r.rfis_open||0)+(r.rfis_open&&r.rfis_open_list&&r.rfis_open_list[0]&&r.rfis_open_list[0].link?' <a href="'+esc(r.rfis_open_list[0].link)+'" target="_blank" style="font-size:11px">view</a>':''))
+    +kv('Budget',bud)
+    +kv('COs approved this mo', (r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''))
+    +kv('Address',esc(r.address||'—'))
+    +'</div>'
+    +(team?'<div class="team"><span class="pgrid"></span>Team: '+team+'</div>':'')
+    +'<div class="srclinks"><a href="'+esc(s.project)+'" target="_blank">Procore project</a><a href="'+esc(s.rfis)+'" target="_blank">RFIs</a><a href="'+esc(s.change_orders)+'" target="_blank">Change orders</a><a href="'+esc(s.budget)+'" target="_blank">Budget</a>'
+    +(c?'<a href="https://compliance.baileyharris.com" target="_blank">Compliance ('+c.compliant+'/'+c.vendors+' ok)</a>':'')+'</div>'
+    +'</div>';
+}
+function kv(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+load();
+</script>
+</body>
+</html>
