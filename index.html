@@ -72,9 +72,10 @@
 <script>
 const MSAL_CLIENT_ID='1825a1c0-1ce3-4078-aeb7-a4714562c422';   // BH Dashboards app (hosts the desks)
 const TENANT='848aa890-7982-4028-befa-3323d82583ce';
-const SCOPES=['Files.Read.All','User.Read'];
+const SCOPES=['Sites.Selected','User.Read'];   // least-privilege: app granted to the Resources site only
 const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
 const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
+const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
@@ -83,10 +84,18 @@ const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,au
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function fetchProjectsFile(token){
+  const H={Authorization:'Bearer '+token};
+  try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
+    if(s.ok){ const sid=(await s.json()).id;
+      const r=await fetch('https://graph.microsoft.com/v1.0/sites/'+sid+'/drive/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:H});
+      if(r.ok) return r; } }catch(e){}
+  return fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:H});
+}
 async function load(){
   try{
     const token=await getToken(); if(!token) return;
-    const res=await fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:{Authorization:'Bearer '+token}});
+    const res=await fetchProjectsFile(token);
     if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
     const data=await res.json(); ROWS=data.projects||[]; GENERATED=data.generated_at||'';
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()):'';
