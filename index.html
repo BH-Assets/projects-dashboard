@@ -28,7 +28,8 @@
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
   .card{background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:13px 15px;cursor:pointer}
   .card .n{font-size:24px;font-weight:bold}.card .l{font-size:11px;color:#5b6472;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
-  .card.total .n{color:#7F1B29}.card.soon .n{color:#9a6a00}.card.ok .n{color:#1a7f37}.card.rfi .n{color:#1a4fb0}.card.co .n{color:#484B4D}
+  .card.total .n{color:#7F1B29}.card.soon .n{color:#9a6a00}.card.ok .n{color:#1a7f37}.card.rfi .n{color:#1a4fb0}.card.co .n{color:#484B4D}.card.nc .n{color:#b3261e}
+  .card.sel{outline:2px solid #ED2B30;outline-offset:-2px}.card.clk{cursor:pointer}.card.noclk{cursor:default}
   .pcard{background:#fff;border:1px solid #e3e8f0;border-left:6px solid #484B4D;border-radius:10px;padding:12px 16px;margin-bottom:11px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
   .pcard.g{border-left-color:#1a7f37}.pcard.y{border-left-color:#c99a00}.pcard.r{border-left-color:#b3261e}
   .phead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
@@ -134,14 +135,16 @@ function buildUI(){
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Over budget</option></select>'
-   +'<label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
-     +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
-     +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
    +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button></div>'
    +'<div id="panSum" class="panel active"><div id="map"></div><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
-   +'<div id="panFin" class="panel"><div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>';
+   +'<div id="panFin" class="panel">'
+     +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
+       +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
+       +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
+       +'<span style="font-size:12px;color:#7a828f">Filter these financials to one or more jobs (defaults to all).</span></div>'
+     +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>';
   ['fStage','fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
@@ -153,7 +156,7 @@ function buildUI(){
   document.getElementById('msSearch').addEventListener('input',msRebuild);
   document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
   document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
-  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding, and the <b>Projects</b> picker to focus on one or more jobs (defaults to all). <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers contract, change orders, budget &amp; variances. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the list; the map reflects the Stage / Sector / Office / Projects filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers contract, change orders, budget &amp; variances, with a <b>Projects</b> picker (defaults to all) to focus on one or more jobs. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
@@ -179,10 +182,10 @@ function structFiltered(){
   return v;
 }
 function candIds(){ return new Set(structFiltered().map(r=>r.procore_id)); }
-function selFiltered(){ const b=structFiltered(); return SELECTED?b.filter(r=>SELECTED.has(r.procore_id)):b; }
-function listFiltered(){ const s=selFiltered(); const q=(document.getElementById('q').value||'').toLowerCase().trim();
-  if(!q) return s;
-  return s.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q)); }
+function searchOf(arr){ const q=(document.getElementById('q').value||'').toLowerCase().trim(); if(!q) return arr;
+  return arr.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q)); }
+function sumView(){ return searchOf(structFiltered()); }                                  // Summary tab + map: no project picker
+function finView(){ let b=structFiltered(); if(SELECTED) b=b.filter(r=>SELECTED.has(r.procore_id)); return searchOf(b); }  // Financials tab: honors picker
 function onStruct(){ SELECTED=null; msRebuild(); updateMsBtn(); render(); }
 /* ---------- multiselect ---------- */
 function msRebuild(){
@@ -212,24 +215,37 @@ function updateMsBtn(){
 }
 /* ---------- render ---------- */
 function render(){
-  const sel=selFiltered(), list=listFiltered();
-  // ---- Summary tab ----
-  const closing=list.filter(r=>r.closing_this_month).length, fc=list.filter(r=>r.compliance&&r.compliance.fully_compliant).length;
-  const rfis=list.reduce((a,r)=>a+(r.rfis_open||0),0), cosm=list.reduce((a,r)=>a+(r.cos_approved_this_month||0),0);
+  // ---- Summary tab (no project picker) ----
+  const list=sumView();
+  const closing=list.filter(r=>r.closing_this_month).length;
+  const ncp=list.filter(r=>r.compliance&&r.compliance.noncompliant>0).length;
+  const rfip=list.filter(r=>r.rfis_open>0).length;
+  const cosm=list.reduce((a,r)=>a+(r.cos_approved_this_month||0),0);
   document.getElementById('sumCards').innerHTML=
-    card('total',list.length,'Projects')+card('soon',closing,'Closing This Month')+card('ok',fc,'Fully Compliant')+card('rfi',rfis,'Open RFIs')+card('co',cosm,'COs Approved / Mo');
+    card('total',list.length,'Projects','')
+   +card('soon',closing,'Closing This Month','close')
+   +card('nc',ncp,'Non-Compliant','nc')
+   +card('rfi',rfip,'Open RFIs','rfi')
+   +card('co',cosm,'COs Approved / Mo');
   document.getElementById('sumList').innerHTML = list.length ? list.map(pcardSummary).join('') : '<div class="empty">No projects match.</div>';
-  // map pins (reflect selection — not the text search)
+  // map pins (Stage/Sector/Office/Show only — not search, not the picker)
   MARKERS.clearLayers(); const pts=[];
-  sel.forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
+  structFiltered().forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
     const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:1.5,fillColor:pinColor(cls),fillOpacity:.95});
     m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
     m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
   if(pts.length){ try{ MAP.fitBounds(pts,{padding:[30,30],maxZoom:11}); }catch(e){} }
-  // ---- Financials tab ----
-  renderFin(list);
+  // ---- Financials tab (honors project picker) ----
+  renderFin(finView());
+  updateMsBtn();
 }
-function card(cls,n,label){ return '<div class="card '+cls+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>'; }
+function card(cls,n,label,flag){
+  if(flag==null) return '<div class="card noclk '+cls+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+  const cur=(document.getElementById('fFlag')||{}).value;
+  const sel=(cur===flag)?' sel':'';
+  return '<div class="card clk '+cls+sel+'" onclick="setFlag(\''+flag+'\')"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+}
+function setFlag(f){ const el=document.getElementById('fFlag'); const cur=el.value; el.value=(cur===f)?'':f; onStruct(); }
 function kv(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
 /* Summary card — team / owner / schedule / compliance (no financials) */
 function pcardSummary(r){
