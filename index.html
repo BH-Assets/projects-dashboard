@@ -119,7 +119,9 @@ async function load(){
     const token=await getToken(); if(!token) return;
     const res=await fetchProjectsFile(token);
     if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
-    const data=await res.json(); ROWS=data.projects||[]; GENERATED=data.generated_at||'';
+    const data=await res.json();
+    ROWS=(data.projects||[]).filter(r=>!/\bFY\s?\d{2,4}\b/i.test((r.project||'')+' '+(r.project_number||'')));  // drop internal FY-tracking projects
+    GENERATED=data.generated_at||'';
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()):'';
     buildUI();
   }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
@@ -130,7 +132,8 @@ function buildUI(){
   const stages=[...new Set(ROWS.map(r=>r.stage).filter(Boolean))].sort();
   const offices=[...new Set(ROWS.map(r=>r.office).filter(Boolean))].sort();
   document.getElementById('content').innerHTML=
-    '<div class="controls">'
+    '<div id="map"></div>'
+   +'<div class="controls">'
    +'<label>Stage:</label><select id="fStage"><option value="">All</option>'+stages.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
@@ -138,7 +141,7 @@ function buildUI(){
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
    +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button></div>'
-   +'<div id="panSum" class="panel active"><div id="map"></div><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
+   +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
        +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
