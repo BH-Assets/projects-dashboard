@@ -76,6 +76,9 @@
   .varbox{background:#fff;border:1px solid #e3e8f0;border-left:5px solid #b3261e;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px}
   .varbox.clean{border-left-color:#1a7f37}
   .varbox b{color:#211E1E}
+  .pgrid .k.tip{border-bottom:1px dotted #aab2be;cursor:help}
+  .card[title]{cursor:help}
+  .fnote{font-size:12.5px;color:#40485a;background:#f0f4fa;border:1px solid #d5e0f0;border-radius:8px;padding:9px 13px;margin-bottom:14px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -100,7 +103,7 @@ const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selec
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
-let ROWS=[], GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null; /* SELECTED null = all projects */
+let ROWS=[], GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null; /* SELECTED/STAGES_SEL null = all */
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
@@ -134,7 +137,8 @@ function buildUI(){
   document.getElementById('content').innerHTML=
     '<div id="map"></div>'
    +'<div class="controls">'
-   +'<label>Stage:</label><select id="fStage"><option value="">All</option>'+stages.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Stage:</label><span class="ms"><button type="button" id="stBtn" class="ms-btn">All stages</button>'
+     +'<div id="stPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="stAll">Select all</button><button type="button" id="stNone">Clear</button></div><div id="stList"></div></div></span>'
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Over budget</option></select>'
@@ -147,15 +151,21 @@ function buildUI(){
        +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
        +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
        +'<span style="font-size:12px;color:#7a828f">Filter these financials to one or more jobs (defaults to all).</span></div>'
+     +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
      +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>';
-  ['fStage','fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
+  ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
   document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
-  // multiselect wiring
-  document.getElementById('msBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.toggle('open');});
+  // stage multiselect wiring
+  document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.toggle('open');});
+  document.getElementById('stPanel').addEventListener('click',e=>e.stopPropagation());
+  document.getElementById('stAll').addEventListener('click',()=>{STAGES_SEL=null;stRebuild();updateStBtn();onStruct();});
+  document.getElementById('stNone').addEventListener('click',()=>{STAGES_SEL=new Set();stRebuild();updateStBtn();onStruct();});
+  // project multiselect wiring
+  document.getElementById('msBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('stPanel').classList.remove('open');document.getElementById('msPanel').classList.toggle('open');});
   document.getElementById('msPanel').addEventListener('click',e=>e.stopPropagation());
-  document.addEventListener('click',()=>document.getElementById('msPanel').classList.remove('open'));
+  document.addEventListener('click',()=>{document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.remove('open');});
   document.getElementById('msSearch').addEventListener('input',msRebuild);
   document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
   document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
@@ -163,7 +173,27 @@ function buildUI(){
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
-  msRebuild(); updateMsBtn(); render();
+  stRebuild(); updateStBtn(); msRebuild(); updateMsBtn(); render();
+}
+/* ---------- stage multiselect ---------- */
+function allStages(){ return [...new Set(ROWS.map(r=>r.stage).filter(Boolean))].sort(); }
+function stRebuild(){
+  document.getElementById('stList').innerHTML = allStages().map(s=>{
+    const on=STAGES_SEL?STAGES_SEL.has(s):true;
+    return '<label class="ms-item"><input type="checkbox" data-stage="'+esc(s)+'"'+(on?' checked':'')+'><span>'+esc(s)+'</span></label>'; }).join('');
+  document.querySelectorAll('#stList input[type=checkbox]').forEach(cb=>cb.addEventListener('change',stToggle));
+}
+function stToggle(e){
+  const s=e.target.getAttribute('data-stage'); const all=allStages();
+  if(STAGES_SEL===null) STAGES_SEL=new Set(all);
+  if(e.target.checked) STAGES_SEL.add(s); else STAGES_SEL.delete(s);
+  if(all.every(x=>STAGES_SEL.has(x))) STAGES_SEL=null;
+  updateStBtn(); onStruct();
+}
+function updateStBtn(){
+  const all=allStages(), n=all.length;
+  const sel=STAGES_SEL?[...STAGES_SEL].filter(s=>all.includes(s)).length:n;
+  document.getElementById('stBtn').textContent=(STAGES_SEL===null||sel===n)?'All stages ('+n+')':(sel+' of '+n+' stages');
 }
 function pinColor(cls){ return cls==='g'?'#1a7f37':cls==='y'?'#c99a00':cls==='r'?'#b3261e':'#5b6472'; }
 function setTab(t){ TAB=t;
@@ -175,8 +205,8 @@ function setTab(t){ TAB=t;
 }
 /* ---------- filtering ---------- */
 function structFiltered(){
-  const fS=fSector.value,fT=fStage.value,fO=fOffice.value,fF=fFlag.value;
-  let v=ROWS.filter(r=>(!fS||r.sector===fS)&&(!fT||r.stage===fT)&&(!fO||r.office===fO));
+  const fS=fSector.value,fO=fOffice.value,fF=fFlag.value;
+  let v=ROWS.filter(r=>(!fS||r.sector===fS)&&(STAGES_SEL?STAGES_SEL.has(r.stage):true)&&(!fO||r.office===fO));
   if(fF==='close') v=v.filter(r=>r.closing_this_month);
   else if(fF==='fc') v=v.filter(r=>r.compliance&&r.compliance.fully_compliant);
   else if(fF==='nc') v=v.filter(r=>r.compliance&&r.compliance.noncompliant>0);
@@ -242,14 +272,15 @@ function render(){
   renderFin(finView());
   updateMsBtn();
 }
-function card(cls,n,label,flag){
-  if(flag==null) return '<div class="card noclk '+cls+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+function card(cls,n,label,flag,tip){
+  const t=tip?' title="'+esc(tip)+'"':'';
+  if(flag==null) return '<div class="card noclk '+cls+'"'+t+'><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
   const cur=(document.getElementById('fFlag')||{}).value;
   const sel=(cur===flag)?' sel':'';
-  return '<div class="card clk '+cls+sel+'" onclick="setFlag(\''+flag+'\')"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+  return '<div class="card clk '+cls+sel+'" onclick="setFlag(\''+flag+'\')"'+t+'><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
 }
 function setFlag(f){ const el=document.getElementById('fFlag'); const cur=el.value; el.value=(cur===f)?'':f; onStruct(); }
-function kv(k,v){ return '<div><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+function kv(k,v,tip){ const t=tip?' title="'+esc(tip)+'"':''; const kc=tip?'k tip':'k'; return '<div'+t+'><div class="'+kc+'">'+k+'</div><div class="v">'+v+'</div></div>'; }
 /* Summary card — team / owner / schedule / compliance (no financials) */
 function pcardSummary(r){
   const cls=compClass(r); const c=r.compliance;
@@ -281,11 +312,11 @@ function renderFin(list){
   const over=list.filter(r=>r.budget_forecast&&r.budget_variance<0);
   const netVar=list.reduce((a,r)=>a+(r.budget_forecast?num(r.budget_variance):0),0);
   document.getElementById('finCards').innerHTML=
-    card('total',money(totContract),'Total Contract (rev.)')
-   +card('co',money(totAppr),'Approved Change Orders')
-   +card('ok',money(totBudget),'Total Budget (rev.)')
-   +card('soon',over.length,'Projects Over Budget')
-   +card(netVar<0?'total':'ok',(netVar<0?'Over ':'Under ')+money(Math.abs(netVar)),'Net Budget Variance');
+    card('total',money(totContract),'Total Contract (rev.)',null,'Sum of each shown project’s Revised Contract (or original Contract where no revision), from the Procore prime contracts.')
+   +card('co',money(totAppr),'Approved Change Orders',null,'Sum of each shown project’s Approved COs (prime contract approved_change_orders).')
+   +card('ok',money(totBudget),'Total Budget (rev.)',null,'Sum of each shown project’s Revised Budget (or Original Budget where no revision), from the Procore budget views.')
+   +card('soon',over.length,'Projects Over Budget',null,'Count of shown active projects where Forecast exceeds Revised Budget (Variance is negative).')
+   +card(netVar<0?'total':'ok',(netVar<0?'Over ':'Under ')+money(Math.abs(netVar)),'Net Budget Variance',null,'Sum of Budget Variance (Revised Budget − Forecast) across shown active projects. Shown as Over when the total is negative.');
   document.getElementById('finVar').innerHTML = over.length
     ? '<div class="varbox"><b>&#9888; Over budget ('+over.length+')</b><div style="margin-top:7px;line-height:1.7">'
         +over.map(r=>'<a href="'+pcBase(r.procore_id)+'/tools/budgeting" target="_blank" style="color:#211E1E;text-decoration:none;font-weight:600">'+esc(r.project)+'</a> — <span class="fover">Over '+money(Math.abs(r.budget_variance))+'</span> <span style="color:#7a828f">(forecast '+money(r.budget_forecast)+' vs budget '+money(r.budget_revised||r.budget_original)+')</span>').join('<br>')
@@ -308,16 +339,16 @@ function fcard(r){
     +'<span class="chip stage">'+esc(r.stage)+'</span>'
     +(hasBud?'<span class="pright"><span class="pill '+(r.budget_variance<0?'r':'g')+'">'+(r.budget_variance<0?'Over budget':'Under budget')+'</span></span>':'')+'</div>'
     +'<div class="pgrid">'
-    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>')
-    +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>')
-    +kv('Pending COs','<span class="money">'+money(r.pending_cos)+'</span>')
-    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>')
-    +kv('Original Budget','<span class="money">'+money(r.budget_original)+'</span>')
-    +kv('Revised Budget','<span class="money">'+money(r.budget_revised)+'</span>')
-    +kv('Forecast','<span class="money">'+(hasBud?money(r.budget_forecast):'—')+'</span>')
-    +kv('Budget Variance',varCell)
-    +kv('Contract − Budget',marginCell)
-    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''))
+    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>','Procore → Prime Contract → grand_total (original contract value, before change orders).')
+    +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>','Procore → Prime Contract → approved_change_orders (sum of executed/approved change orders).')
+    +kv('Pending COs','<span class="money">'+money(r.pending_cos)+'</span>','Procore → Prime Contract → pending_change_orders_amount (change orders not yet approved).')
+    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>','Procore → Prime Contract → revised_contract_amount = Contract ('+money(r.contract_amount)+') + Approved COs ('+money(r.approved_cos)+').')
+    +kv('Original Budget','<span class="money">'+money(r.budget_original)+'</span>','Procore → Budget view → sum of Original Budget Amount across all detail rows.')
+    +kv('Revised Budget','<span class="money">'+money(r.budget_revised)+'</span>','Procore → Budget view → sum of Revised Budget across all detail rows (falls back to Original Budget if no revisions).')
+    +kv('Forecast','<span class="money">'+(hasBud?money(r.budget_forecast):'—')+'</span>','Procore → Budget view → sum of Budget Forecast (projected final cost). Blank when the budget has no forecast column populated.')
+    +kv('Budget Variance',varCell,'Revised Budget ('+money(r.budget_revised)+') − Forecast ('+(hasBud?money(r.budget_forecast):'—')+'). Positive = under budget, negative = over budget. Active jobs only.')
+    +kv('Contract − Budget',marginCell,'Revised Contract ('+money(r.revised_contract||r.contract_amount)+') − Revised Budget ('+money(r.budget_revised||r.budget_original)+') = projected gross margin.')
+    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Procore → Change Order Packages marked approved/executed with a review date in the current calendar month. Count · total grand_total.')
     +'</div>'
     +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
     +'</div>';
