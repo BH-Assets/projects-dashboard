@@ -110,38 +110,45 @@ function buildUI(){
   document.getElementById('content').innerHTML=
     '<div id="map"></div>'
    +'<div class="controls">'
+   +'<label>View:</label><select id="fView"><option value="active">Active</option><option value="warranty">Warranty</option><option value="all">All current</option></select>'
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Stage:</label><select id="fStage"><option value="">All</option>'+stages.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
-   +'<label>Show:</label><select id="fFlag"><option value="">All active</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option></select>'
+   +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option></select>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
    +'<div class="cards" id="cards"></div>'
    +'<div id="list"></div>';
-  ['fSector','fStage','fOffice','fFlag','q'].forEach(id=>document.getElementById(id).addEventListener('input',render));
-  document.getElementById('foot').innerHTML='Active projects (Construction / Pre-Con / Post-Con) from Procore. Sectors: 00 Institutional · 01 Industrial · 02 Healthcare · 03 Commercial · 05 Self-Perform. Compliance rollup from Billy + Alabama (see Compliance Dashboard). Owner &amp; architect from the Procore prime contract. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  ['fView','fSector','fStage','fOffice','fFlag','q'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  document.getElementById('foot').innerHTML='Projects from Procore — Active view = Construction / Pre-Con / Post-Con; Warranty view = Warranty / Post-Warranty. Sectors: 00 Institutional · 01 Industrial · 02 Healthcare · 03 Commercial · 05 Self-Perform. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama (see Compliance Dashboard). Owner &amp; architect from the Procore prime contract. The text search filters the list; the map reflects the View / Sector / Stage / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
   render();
 }
 function pinColor(cls){ return cls==='g'?'#1a7f37':cls==='y'?'#c99a00':cls==='r'?'#b3261e':'#5b6472'; }
+function inView(r,v){ const g=r.group||''; if(v==='active') return g==='active'; if(v==='warranty') return g==='warranty'; return g==='active'||g==='warranty'; }
 function render(){
+  const fV=document.getElementById('fView').value||'active';
   const fS=fSector.value,fT=fStage.value,fO=fOffice.value,fF=fFlag.value,q=(document.getElementById('q').value||'').toLowerCase().trim();
-  let view=ROWS.filter(r=>(!fS||r.sector===fS)&&(!fT||r.stage===fT)&&(!fO||r.office===fO));
-  if(fF==='close') view=view.filter(r=>r.closing_this_month);
-  else if(fF==='fc') view=view.filter(r=>r.compliance&&r.compliance.fully_compliant);
-  else if(fF==='nc') view=view.filter(r=>r.compliance&&r.compliance.noncompliant>0);
-  else if(fF==='rfi') view=view.filter(r=>r.rfis_open>0);
-  if(q) view=view.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q));
-  // cards
+  // base = View + dropdowns + flag (drives the MAP); does NOT include the text search
+  let base=ROWS.filter(r=>inView(r,fV)&&(!fS||r.sector===fS)&&(!fT||r.stage===fT)&&(!fO||r.office===fO));
+  if(fF==='close') base=base.filter(r=>r.closing_this_month);
+  else if(fF==='fc') base=base.filter(r=>r.compliance&&r.compliance.fully_compliant);
+  else if(fF==='nc') base=base.filter(r=>r.compliance&&r.compliance.noncompliant>0);
+  else if(fF==='rfi') base=base.filter(r=>r.rfis_open>0);
+  // table view = base + text search (drives the CARDS + LIST)
+  let view=base;
+  if(q) view=base.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q));
+  // cards (reflect the list)
   const closing=view.filter(r=>r.closing_this_month).length, fc=view.filter(r=>r.compliance&&r.compliance.fully_compliant).length;
   const rfis=view.reduce((a,r)=>a+(r.rfis_open||0),0), cosm=view.reduce((a,r)=>a+(r.cos_approved_this_month||0),0);
+  const lbl=fV==='warranty'?'Warranty Projects':fV==='all'?'Projects':'Active Projects';
   document.getElementById('cards').innerHTML=
-    card('total',view.length,'Active Projects')+card('soon',closing,'Closing This Month')+card('ok',fc,'Fully Compliant')+card('rfi',rfis,'Open RFIs')+card('co',cosm,'COs Approved / Mo');
-  // map pins
+    card('total',view.length,lbl)+card('soon',closing,'Closing This Month')+card('ok',fc,'Fully Compliant')+card('rfi',rfis,'Open RFIs')+card('co',cosm,'COs Approved / Mo');
+  // map pins (reflect BASE — not the text search)
   MARKERS.clearLayers(); const pts=[];
-  view.forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
+  base.forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
     const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:1.5,fillColor:pinColor(cls),fillOpacity:.95});
     m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
     m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
@@ -154,7 +161,10 @@ function pcard(r){
   const cls=compClass(r); const c=r.compliance;
   const compPill = c? (cls==='g'?'<span class="pill g">Compliant</span>':cls==='y'?'<span class="pill y">Expiring</span>':cls==='r'?'<span class="pill r">'+c.noncompliant+' non-compliant</span>':'<span class="pill n">—</span>') : '<span class="pill n">no compliance data</span>';
   const team=(r.team||[]).filter(t=>t.name).slice(0,8).map(t=>'<b>'+esc(t.name)+'</b>'+(t.role?' ('+esc(t.role)+')':'')).join(' &middot; ');
-  const bud = r.budget_forecast ? '<span class="'+(r.budget_variance<0?'over':'under')+'">'+(r.budget_variance<0?'Over ':'Under ')+money(Math.abs(r.budget_variance))+'</span>' : '—';
+  const budAmt = r.budget_revised||r.budget_original||0;
+  const bud = r.budget_forecast
+      ? money(budAmt)+' · <span class="'+(r.budget_variance<0?'over':'under')+'">'+(r.budget_variance<0?'Over ':'Under ')+money(Math.abs(r.budget_variance))+'</span>'
+      : (budAmt? money(budAmt) : '—');
   const pid=r.procore_id; const s={project:pcOverview(pid),rfis:pcBase(pid)+'/tools/rfis',change_orders:pcBase(pid)+'/tools/prime-contracts',budget:pcBase(pid)+'/tools/budgeting'};
   return '<div class="pcard '+cls+'">'
     +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
