@@ -199,15 +199,14 @@ function buildUI(){
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
+   +'<label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
+     +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
+     +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
    +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
-     +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
-       +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
-       +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
-       +'<span style="font-size:12px;color:#7a828f">Filter these financials to one or more jobs (defaults to all).</span></div>'
      +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
      +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
    +'<div id="panProf" class="panel">'
@@ -227,18 +226,28 @@ function buildUI(){
   document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
   document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
-  document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.toggle('open');});
+  document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();['msPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('stPanel').classList.toggle('open');});
   document.getElementById('stPanel').addEventListener('click',e=>e.stopPropagation());
   document.getElementById('stAll').addEventListener('click',()=>{STAGES_SEL=null;stRebuild();updateStBtn();onStruct();});
   document.getElementById('stNone').addEventListener('click',()=>{STAGES_SEL=new Set();stRebuild();updateStBtn();onStruct();});
   // project multiselect wiring
-  document.getElementById('msBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('stPanel').classList.remove('open');document.getElementById('msPanel').classList.toggle('open');});
+  const closeAllPanels=()=>['msPanel','stPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.remove('open');});
+  document.getElementById('msBtn').addEventListener('click',e=>{e.stopPropagation();['stPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('msPanel').classList.toggle('open');});
   document.getElementById('msPanel').addEventListener('click',e=>e.stopPropagation());
-  document.addEventListener('click',()=>{document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.remove('open');});
+  document.addEventListener('click',closeAllPanels);
   document.getElementById('msSearch').addEventListener('input',msRebuild);
   document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
   document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
-  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, with a <b>Projects</b> picker. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected fee/margin, revenue recognized &amp; over/under billed per job. <b>Projections</b> spreads remaining revenue (backlog) straight‑line over the months to completion for a monthly revenue forecast. <b>Sync Reconciliation</b> compares Procore vs CE (contract, cost, committed, EAC) to surface Spark sync gaps. Fee = margin = profit = Contract − Projected Cost. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  // Projections-tab project picker (synced to the same SELECTED)
+  const pjBtn=document.getElementById('pjBtn');
+  if(pjBtn){
+    pjBtn.addEventListener('click',e=>{e.stopPropagation();['stPanel','msPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('pjPanel').classList.toggle('open');});
+    document.getElementById('pjPanel').addEventListener('click',e=>e.stopPropagation());
+    document.getElementById('pjSearch').addEventListener('input',msRebuild);
+    document.getElementById('pjAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
+    document.getElementById('pjNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
+  }
+  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, The <b>Projects</b> picker (top bar, defaults to all) and Stage / Sector / Office filters apply to every tab and the map. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected fee/margin, revenue recognized &amp; over/under billed per job. <b>Projections</b> spreads remaining revenue (backlog) straight‑line over the months to completion for a monthly revenue forecast. <b>Sync Reconciliation</b> compares Procore vs CE (contract, cost, committed, EAC) to surface Spark sync gaps. Fee = margin = profit = Contract − Projected Cost. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
@@ -293,20 +302,23 @@ function structFiltered(){
 function candIds(){ return new Set(structFiltered().map(r=>r.procore_id)); }
 function searchOf(arr){ const q=(document.getElementById('q').value||'').toLowerCase().trim(); if(!q) return arr;
   return arr.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q)); }
-function sumView(){ return searchOf(structFiltered()); }                                  // Summary tab + map: no project picker
-function finView(){ let b=structFiltered(); if(SELECTED) b=b.filter(r=>SELECTED.has(r.procore_id)); return searchOf(b); }  // Financials tab: honors picker
+function selFiltered(){ const b=structFiltered(); return SELECTED?b.filter(r=>SELECTED.has(r.procore_id)):b; }  // picker applies (no text search) — used by the map
+function sumView(){ return searchOf(selFiltered()); }   // all list tabs: picker + text search
+function finView(){ return searchOf(selFiltered()); }   // (kept as an alias; same as sumView now)
 function onStruct(){ SELECTED=null; msRebuild(); updateMsBtn(); render(); }
 /* ---------- multiselect ---------- */
-function msRebuild(){
-  const term=(document.getElementById('msSearch').value||'').toLowerCase();
+function msListHtml(term){
   const cand=structFiltered().slice().sort((a,b)=>String(a.project).localeCompare(String(b.project)));
-  document.getElementById('msList').innerHTML = cand
-    .filter(r=>!term||String(r.project).toLowerCase().includes(term)||String(r.project_number).toLowerCase().includes(term))
+  return cand.filter(r=>!term||String(r.project).toLowerCase().includes(term)||String(r.project_number).toLowerCase().includes(term))
     .map(r=>{ const on=SELECTED?SELECTED.has(r.procore_id):true;
       return '<label class="ms-item"><input type="checkbox" data-id="'+r.procore_id+'"'+(on?' checked':'')+'>'
         +'<span>'+esc(r.project)+' <span style="color:#8a92a1">'+esc(r.project_number)+'</span></span></label>'; })
     .join('') || '<div class="empty" style="padding:8px">No projects</div>';
-  document.querySelectorAll('#msList input[type=checkbox]').forEach(cb=>cb.addEventListener('change',msToggle));
+}
+function msRebuild(){   // drives BOTH the Financials (#ms) and Projections (#pj) pickers
+  const ms=document.getElementById('msList'); if(ms) ms.innerHTML=msListHtml(((document.getElementById('msSearch')||{}).value||'').toLowerCase());
+  const pj=document.getElementById('pjList'); if(pj) pj.innerHTML=msListHtml(((document.getElementById('pjSearch')||{}).value||'').toLowerCase());
+  document.querySelectorAll('#msList input[type=checkbox], #pjList input[type=checkbox]').forEach(cb=>cb.addEventListener('change',msToggle));
 }
 function msToggle(e){
   const id=Number(e.target.getAttribute('data-id'));
@@ -315,12 +327,13 @@ function msToggle(e){
   if(e.target.checked) SELECTED.add(id); else SELECTED.delete(id);
   let all=true; ids.forEach(i=>{ if(!SELECTED.has(i)) all=false; });
   if(all) SELECTED=null;
-  updateMsBtn(); render();
+  updateMsBtn(); msRebuild(); render();
 }
 function updateMsBtn(){
   const ids=candIds(), n=ids.size;
   const sel=SELECTED?[...SELECTED].filter(i=>ids.has(i)).length:n;
-  document.getElementById('msBtn').textContent=(SELECTED===null||sel===n)?('All projects ('+n+')'):(sel+' of '+n+' selected');
+  const label=(SELECTED===null||sel===n)?('All projects ('+n+')'):(sel+' of '+n+' selected');
+  ['msBtn','pjBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=label; });
 }
 /* ---------- render ---------- */
 function render(){
@@ -339,7 +352,7 @@ function render(){
   document.getElementById('sumList').innerHTML = list.length ? list.map(pcardSummary).join('') : '<div class="empty">No projects match.</div>';
   // map pins (Stage/Sector/Office/Show only — not search, not the picker)
   MARKERS.clearLayers(); const pts=[];
-  structFiltered().forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
+  selFiltered().forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
     const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:1.5,fillColor:pinColor(cls),fillOpacity:.95});
     m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
     m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
@@ -348,8 +361,8 @@ function render(){
   renderFin(finView());
   // ---- Profitability / WIP tab (CE data) ----
   renderProf(list);
-  // ---- Projections tab (monthly revenue forecast) ----
-  renderProj(list);
+  // ---- Projections tab (monthly revenue forecast, honors project picker) ----
+  renderProj(finView());
   // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
   renderRec(list);
   updateMsBtn();
