@@ -138,7 +138,8 @@ const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selec
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
-let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, SECTChart=null; /* SELECTED/STAGES_SEL null = all */
+let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, CCCChart=null, MARGINChart=null; /* SELECTED/STAGES_SEL null = all */
+const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
@@ -218,7 +219,12 @@ function buildUI(){
      +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
    +'<div id="panProf" class="panel">'
      +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128202; <b>Live from ComputerEase</b> — actual cost, committed, billed, projected cost &amp; margin per job (accounting system of record). Matched to Procore by job number; bids / jobs not yet in CE won\'t appear. Hover any figure for its calculation.</div>'
-     +'<div class="cards" id="profCards"></div><div id="profList"></div></div>'
+     +'<div class="cards" id="profCards"></div>'
+     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:16px">'
+       +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Contract vs Cost vs Committed</div><div style="height:250px"><canvas id="cccChart"></canvas></div></div>'
+       +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Projected Margin % by Project (target '+TARGET_MARGIN+'%)</div><div style="height:250px"><canvas id="marginChart"></canvas></div></div>'
+     +'</div>'
+     +'<div id="profList"></div></div>'
    +'<div id="panRec" class="panel">'
      +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
      +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
@@ -296,6 +302,7 @@ function setTab(t){ TAB=t;
   document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
   const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
+  render();   // re-render so charts on the now-visible tab size correctly (Chart.js needs a visible canvas)
 }
 /* ---------- filtering ---------- */
 function structFiltered(){
@@ -461,6 +468,26 @@ function renderProf(list){
    +card('total',money(totRemain),'Remaining Revenue',null,'Contract − Revenue Recognized — backlog left to earn/bill.')
    +card('soon',money(totBilled),'Billed to Date',null,'CE amount billed to the owner to date.')
    +card(totOU<0?'total':'ok',(totOU<0?'Under ':'Over ')+money(Math.abs(totOU)),'Net Over/Under Billed',null,'Billed − earned (cost-based). Under = billing behind cost progress.');
+  if(typeof Chart!=='undefined'){
+    const j1=withCe.slice().sort((a,b)=>num(b.ce.ce_contract)-num(a.ce.ce_contract)).slice(0,15);
+    const c1=document.getElementById('cccChart');
+    if(c1){ if(CCCChart)CCCChart.destroy();
+      CCCChart=new Chart(c1,{type:'bar',data:{labels:j1.map(r=>r.project_number),datasets:[
+        {label:'Contract',data:j1.map(r=>num(r.ce.ce_contract)),backgroundColor:'#1F3864'},
+        {label:'Cost to Date',data:j1.map(r=>num(r.ce.ce_actual_cost)),backgroundColor:'#ED2B30'},
+        {label:'Committed',data:j1.map(r=>num(r.ce.ce_committed)),backgroundColor:'#c99a00'}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}},scales:{y:{ticks:{callback:v=>'$'+(v/1e6).toFixed(1)+'M'}},x:{ticks:{maxRotation:60,minRotation:45,font:{size:9}}}}}});
+    }
+    const j2=withCe.slice().filter(r=>r.ce.ce_projected_margin_pct!=null).sort((a,b)=>num(b.ce.ce_projected_margin_pct)-num(a.ce.ce_projected_margin_pct));
+    const c2=document.getElementById('marginChart');
+    if(c2){ if(MARGINChart)MARGINChart.destroy();
+      const mp=j2.map(r=>num(r.ce.ce_projected_margin_pct));
+      MARGINChart=new Chart(c2,{type:'bar',data:{labels:j2.map(r=>r.project_number),datasets:[
+        {label:'Margin %',data:mp,backgroundColor:mp.map(v=>v<0?'#b3261e':(v<TARGET_MARGIN?'#c99a00':'#1a7f37'))},
+        {type:'line',label:'Target',data:j2.map(()=>TARGET_MARGIN),borderColor:'#5b6472',borderDash:[6,4],borderWidth:1.5,pointRadius:0}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.datasetIndex===0?'Margin ':'Target ')+Number(c.parsed.y).toFixed(1)+'%'}}},scales:{y:{ticks:{callback:v=>v+'%'}},x:{ticks:{maxRotation:60,minRotation:45,font:{size:9}}}}}});
+    }
+  }
   document.getElementById('profList').innerHTML = withCe.length ? withCe.map(pcardProf).join('')
     : '<div class="empty">No CE job data for the current filter. (Matched by job number — bids and jobs not yet in ComputerEase won\'t appear.)</div>';
 }
