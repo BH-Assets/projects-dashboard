@@ -144,6 +144,23 @@ const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
 const smoney=n=>{ n=num(n); return (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString(); };  // signed (deductive COs can be negative)
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+/* ---------- projection model (percent-complete, live/current) ----------
+   Fee = Margin = Profit = Contract − Projected Cost (EAC).
+   % complete = Cost-to-Date ÷ EAC ; Revenue Recognized = %×Contract ;
+   Remaining Revenue (backlog) = Contract − Recognized ; spread straight-line
+   over Months-to-Complete (now → projected completion). */
+function projOf(r){
+  const c=r.ce; if(!c) return null;
+  const contract=num(c.ce_contract)||num(r.revised_contract)||num(r.contract_amount);
+  const eac=num(c.ce_projected_cost), cost=num(c.ce_actual_cost);
+  const margin=contract-eac, pct=eac?cost/eac:0;
+  const revRec=contract*pct, remaining=contract-revRec;
+  let months=null; const compl=r.completion_date?new Date(r.completion_date):null; const now=new Date();
+  if(compl&&!isNaN(compl.getTime())) months=Math.max(0,(compl.getFullYear()-now.getFullYear())*12+(compl.getMonth()-now.getMonth()));
+  const monthly=(months!=null)?remaining/(months+1):null;
+  return {contract,eac,cost,margin,marginPct:contract?margin/contract*100:null,pct:pct*100,revRec,remaining,months,monthly,compl};
+}
+function monthLabels(n){ const out=[]; const t=new Date(); for(let i=0;i<n;i++){ const d=new Date(t.getFullYear(),t.getMonth()+i,1); out.push(d.toLocaleString(undefined,{month:'short',year:'2-digit'})); } return out; }
 async function fetchFile(token, path){
   const H={Authorization:'Bearer '+token};
   try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
@@ -184,7 +201,7 @@ function buildUI(){
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
-   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
@@ -198,12 +215,16 @@ function buildUI(){
      +'<div class="cards" id="profCards"></div><div id="profList"></div></div>'
    +'<div id="panRec" class="panel">'
      +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
-     +'<div class="cards" id="recCards"></div><div id="recList"></div></div>';
+     +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
+   +'<div id="panProj" class="panel">'
+     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
+     +'<div class="cards" id="projCards"></div><div id="projList"></div></div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
   document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
   document.getElementById('tabProf').addEventListener('click',()=>setTab('profitability'));
+  document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
   document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.toggle('open');});
@@ -217,7 +238,7 @@ function buildUI(){
   document.getElementById('msSearch').addEventListener('input',msRebuild);
   document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
   document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
-  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, with a <b>Projects</b> picker. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected margin &amp; over/under billed per job, matched to Procore by job number. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, with a <b>Projects</b> picker. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected fee/margin, revenue recognized &amp; over/under billed per job. <b>Projections</b> spreads remaining revenue (backlog) straight‑line over the months to completion for a monthly revenue forecast. <b>Sync Reconciliation</b> compares Procore vs CE (contract, cost, committed, EAC) to surface Spark sync gaps. Fee = margin = profit = Contract − Projected Cost. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
@@ -248,10 +269,12 @@ function setTab(t){ TAB=t;
   document.getElementById('tabSum').classList.toggle('active',t==='summary');
   document.getElementById('tabFin').classList.toggle('active',t==='financials');
   document.getElementById('tabProf').classList.toggle('active',t==='profitability');
+  document.getElementById('tabProj').classList.toggle('active',t==='projections');
   document.getElementById('tabRec').classList.toggle('active',t==='reconciliation');
   document.getElementById('panSum').classList.toggle('active',t==='summary');
   document.getElementById('panFin').classList.toggle('active',t==='financials');
   document.getElementById('panProf').classList.toggle('active',t==='profitability');
+  document.getElementById('panProj').classList.toggle('active',t==='projections');
   document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
   const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
@@ -325,23 +348,49 @@ function render(){
   renderFin(finView());
   // ---- Profitability / WIP tab (CE data) ----
   renderProf(list);
+  // ---- Projections tab (monthly revenue forecast) ----
+  renderProj(list);
   // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
   renderRec(list);
   updateMsBtn();
+}
+function renderProj(list){
+  const rows=list.map(r=>({r,p:projOf(r)})).filter(x=>x.p && x.p.months!=null && x.p.remaining>1);
+  let maxM=1; rows.forEach(x=>maxM=Math.max(maxM,x.p.months+1));
+  const H=Math.min(maxM,24); const months=monthLabels(H);
+  const S=f=>rows.reduce((a,x)=>a+num(x.p[f]),0);
+  const totContract=S('contract'), totRev=S('revRec'), totRemain=S('remaining'), totFee=S('margin');
+  const monthTotals=months.map((m,i)=>rows.reduce((a,x)=>a+((i<=x.p.months)?x.p.monthly:0),0));
+  document.getElementById('projCards').innerHTML=
+    card('total',money(totContract),'Contract (backlog jobs)',null,'Sum of contract for shown jobs that have a CE match and a completion date.')
+   +card('ok',money(totRev),'Revenue Recognized',null,'% Complete × Contract, summed — revenue earned to date.')
+   +card('rfi',money(totRemain),'Remaining Revenue (Backlog)',null,'Contract − Revenue Recognized — revenue left to earn/bill.')
+   +card(totFee<0?'nc':'ok',smoney(totFee),'Projected Fee / Margin',null,'Contract − Projected Cost (EAC). Fee = margin = profit.')
+   +card('co',money(monthTotals[0]||0),(months[0]||'')+' Projected Rev',null,'Projected revenue across shown jobs for the current month.');
+  const head='<tr><th class="l">Job</th><th>Remaining</th><th>Mo Left</th>'+months.map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr>';
+  const body=rows.sort((a,b)=>b.p.remaining-a.p.remaining).map(x=>{
+    const cells=months.map((m,i)=>'<td>'+((i<=x.p.months)?money(x.p.monthly):'')+'</td>').join('');
+    return '<tr><td class="l"><b>'+esc(x.r.project_number)+'</b> '+esc(x.r.project)+'</td><td>'+money(x.p.remaining)+'</td><td>'+x.p.months+'</td>'+cells+'</tr>';
+  }).join('');
+  const totRow='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totRemain)+'</td><td></td>'+monthTotals.map(t=>'<td>'+money(t)+'</td>').join('')+'</tr>';
+  document.getElementById('projList').innerHTML = rows.length
+    ? '<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+totRow+'</tbody></table></div>'
+    : '<div class="empty">No jobs to project — needs a CE match, a Procore completion date, and remaining revenue.</div>';
 }
 function renderRec(list){
   const TOL=1;   // dollars
   let inSync=0, mism=0, notCe=0, netDelta=0;
   const trs=list.map(r=>{
     const pC=num(r.revised_contract||r.contract_amount);
-    if(!r.ce){ notCe++; return recRow(r,pC,null,null,null,null,null,null,'nce','Not in CE'); }
+    if(!r.ce){ notCe++; return recRow(r,pC,null,null,num(r.cost_to_date)||null,null,num(r.committed)||null,null,num(r.projected_cost)||null,null,'nce','Not in CE'); }
     const cC=num(r.ce.ce_contract), dC=pC-cC;
+    const pCost=num(r.cost_to_date), cCost=num(r.ce.ce_actual_cost);
     const pCom=num(r.committed), cCom=num(r.ce.ce_committed);
     const pE=num(r.projected_cost), cE=num(r.ce.ce_projected_cost);
     let cls,status;
     if(Math.abs(dC)>TOL){ mism++; netDelta+=dC; cls='miss'; status='Contract Δ '+smoney(dC)+' (Spark)'; }
     else { inSync++; cls=''; status='In sync'; }
-    return recRow(r,pC,cC,dC,pCom,cCom,pE,cE,cls,status);
+    return recRow(r,pC,cC,dC,pCost,cCost,pCom,cCom,pE,cE,cls,status);
   }).join('');
   document.getElementById('recCards').innerHTML=
     card('ok',inSync,'In Sync',null,'Procore revised contract matches CE contract (within $1).')
@@ -349,16 +398,17 @@ function renderRec(list){
    +card('soon',notCe,'Not in CE',null,'Procore jobs with no matching CE job (bids, or not yet synced through Spark).')
    +card(netDelta?'nc':'ok',smoney(netDelta),'Net Contract Δ',null,'Sum of Procore − CE contract differences across mismatched jobs (total amount Spark hasn’t carried).');
   document.getElementById('recList').innerHTML='<div class="rwrap"><table class="rtable">'
-    +'<thead><tr><th class="l">Job</th><th>Contract · Procore</th><th>Contract · CE</th><th>Δ</th><th>Committed · PC</th><th>Committed · CE</th><th>EAC · PC</th><th>EAC · CE</th><th class="l">Status</th></tr></thead><tbody>'
-    +(trs||'<tr><td colspan="9" class="l" style="color:#5b6472;font-style:italic;padding:14px">No projects match.</td></tr>')
+    +'<thead><tr><th class="l">Job</th><th>Contract · Procore</th><th>Contract · CE</th><th>Δ</th><th>Cost·Date · PC</th><th>Cost·Date · CE</th><th>Committed · PC</th><th>Committed · CE</th><th>EAC · PC</th><th>EAC · CE</th><th class="l">Status</th></tr></thead><tbody>'
+    +(trs||'<tr><td colspan="11" class="l" style="color:#5b6472;font-style:italic;padding:14px">No projects match.</td></tr>')
     +'</tbody></table></div>';
 }
-function recRow(r,pC,cC,dC,pCom,cCom,pE,cE,cls,status){
+function recRow(r,pC,cC,dC,pCost,cCost,pCom,cCom,pE,cE,cls,status){
   const m=v=>v==null?'—':money(v);
   const dCell = (dC==null)?'—':'<span class="rdelta '+(Math.abs(dC)>1?'d':'z')+'">'+(Math.abs(dC)>1?smoney(dC):'&#10003;')+'</span>';
   const sc = cls==='miss'?'bad':(cls==='nce'?'warn':'ok');
   return '<tr class="'+cls+'"><td class="l"><b>'+esc(r.project_number)+'</b> '+esc(r.project)+'</td>'
     +'<td>'+m(pC)+'</td><td>'+m(cC)+'</td><td>'+dCell+'</td>'
+    +'<td>'+m(pCost)+'</td><td>'+m(cCost)+'</td>'
     +'<td>'+m(pCom)+'</td><td>'+m(cCom)+'</td>'
     +'<td>'+m(pE)+'</td><td>'+m(cE)+'</td>'
     +'<td class="l rstat '+sc+'">'+esc(status)+'</td></tr>';
@@ -368,12 +418,16 @@ function renderProf(list){
   const S=f=>withCe.reduce((a,r)=>a+num(r.ce[f]),0);
   const totContract=S('ce_contract'), totCost=S('ce_actual_cost'), totCommitted=S('ce_committed'), totEac=S('ce_projected_cost'), totBilled=S('ce_billed'), totMargin=S('ce_projected_margin'), totOU=S('ce_over_under_billed');
   const marginPct=totContract?(totMargin/totContract*100):null;
+  const totRev=withCe.reduce((a,r)=>{const p=projOf(r);return a+(p?p.revRec:0);},0);
+  const totRemain=withCe.reduce((a,r)=>{const p=projOf(r);return a+(p?p.remaining:0);},0);
   document.getElementById('profCards').innerHTML=
     card('total',money(totContract),'Contract',null,'CE current contract (incl. approved changes), summed across shown jobs with a CE match.')
    +card('co',money(totCost),'Cost to Date',null,'CE actual incurred cost (excludes committed).')
    +card('rfi',money(totCommitted),'Committed',null,'CE committed — executed subs/POs not yet incurred.')
    +card('nc',money(totEac),'Projected Cost (EAC)',null,'CE projected final cost at completion.')
-   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Margin',null,'Contract − Projected Cost across shown jobs.')
+   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Fee / Margin',null,'Contract − Projected Cost (EAC). Fee = margin = profit.')
+   +card('ok',money(totRev),'Revenue Recognized',null,'% Complete × Contract, summed — revenue earned to date.')
+   +card('total',money(totRemain),'Remaining Revenue',null,'Contract − Revenue Recognized — backlog left to earn/bill.')
    +card('soon',money(totBilled),'Billed to Date',null,'CE amount billed to the owner to date.')
    +card(totOU<0?'total':'ok',(totOU<0?'Under ':'Over ')+money(Math.abs(totOU)),'Net Over/Under Billed',null,'Billed − earned (cost-based). Under = billing behind cost progress.');
   document.getElementById('profList').innerHTML = withCe.length ? withCe.map(pcardProf).join('')
@@ -390,8 +444,10 @@ function pcardProf(r){
     +kv('Cost to Date','<span class="money">'+money(c.ce_actual_cost)+'</span>','CE actual incurred cost (excludes committed).')
     +kv('Committed','<span class="money">'+money(c.ce_committed)+'</span>','CE committed — executed subs/POs not yet incurred.')
     +kv('Projected Cost (EAC)','<span class="money">'+money(c.ce_projected_cost)+'</span>','CE projected final cost at completion.')
-    +kv('Projected Margin','<span class="'+(mNeg?'fover':'funder')+'">'+smoney(c.ce_projected_margin)+(c.ce_projected_margin_pct!=null?' · '+Number(c.ce_projected_margin_pct).toFixed(1)+'%':'')+'</span>','Contract ('+money(c.ce_contract)+') − Projected Cost ('+money(c.ce_projected_cost)+').')
+    +kv('Projected Fee / Margin','<span class="'+(mNeg?'fover':'funder')+'">'+smoney(c.ce_projected_margin)+(c.ce_projected_margin_pct!=null?' · '+Number(c.ce_projected_margin_pct).toFixed(1)+'%':'')+'</span>','Contract ('+money(c.ce_contract)+') − Projected Cost ('+money(c.ce_projected_cost)+'). Fee = margin = profit.')
     +kv('% Complete',(c.ce_pct_complete!=null?Math.round(c.ce_pct_complete)+'%':'—'),'Cost-based: Cost to Date ('+money(c.ce_actual_cost)+') ÷ Projected Cost ('+money(c.ce_projected_cost)+').')
+    +kv('Revenue Recognized','<span class="money">'+money((projOf(r)||{}).revRec)+'</span>','% Complete × Contract — revenue earned to date.')
+    +kv('Remaining Revenue','<span class="money">'+money((projOf(r)||{}).remaining)+'</span>','Contract − Revenue Recognized — backlog left to earn/bill.')
     +kv('Over/Under Billed','<span class="'+(ouNeg?'fover':'funder')+'">'+(ouNeg?'Under ':'Over ')+money(Math.abs(num(c.ce_over_under_billed)))+'</span>','Billed ('+money(c.ce_billed)+') − earned (Contract × % complete). Under = billing behind cost progress.')
     +'</div>'
     +'<div class="srclinks"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">Procore budget</a></div>'
