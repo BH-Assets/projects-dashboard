@@ -99,34 +99,40 @@ const TENANT='848aa890-7982-4028-befa-3323d82583ce';
 const SCOPES=['Sites.Selected','User.Read'];   // least-privilege: app granted to the Resources site only
 const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
 const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
+const CE_PATH='Compliance Dashboard/ce_data.json';
 const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
-let ROWS=[], GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null; /* SELECTED/STAGES_SEL null = all */
+let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null; /* SELECTED/STAGES_SEL null = all */
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
 const smoney=n=>{ n=num(n); return (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString(); };  // signed (deductive COs can be negative)
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-async function fetchProjectsFile(token){
+async function fetchFile(token, path){
   const H={Authorization:'Bearer '+token};
   try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
     if(s.ok){ const sid=(await s.json()).id;
-      const r=await fetch('https://graph.microsoft.com/v1.0/sites/'+sid+'/drive/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:H});
+      const r=await fetch('https://graph.microsoft.com/v1.0/sites/'+sid+'/drive/root:/'+encodeURI(path)+':/content',{headers:H});
       if(r.ok) return r; } }catch(e){}
-  return fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(PROJECTS_PATH)+':/content',{headers:H});
+  return fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(path)+':/content',{headers:H});
 }
 async function load(){
   try{
     const token=await getToken(); if(!token) return;
-    const res=await fetchProjectsFile(token);
+    const res=await fetchFile(token, PROJECTS_PATH);
     if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
     const data=await res.json();
     ROWS=(data.projects||[]).filter(r=>!/\bFY\s?\d{2,4}\b/i.test((r.project||'')+' '+(r.project_number||'')));  // drop internal FY-tracking projects
     GENERATED=data.generated_at||'';
-    document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()):'';
+    // CE WIP data (best-effort) — merge by job_code = project_number
+    try{ const cr=await fetchFile(token, CE_PATH);
+      if(cr.ok){ const cd=await cr.json(); const cem={}; for(const j of (cd.jobs||[])) cem[String(j.job_code)]=j;
+        for(const r of ROWS) r.ce=cem[String(r.project_number)]||null; CE_GENERATED=cd.generated_at||''; }
+    }catch(e){}
+    document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
   }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
 }
@@ -145,7 +151,7 @@ function buildUI(){
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
-   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button></div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
@@ -153,11 +159,15 @@ function buildUI(){
        +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
        +'<span style="font-size:12px;color:#7a828f">Filter these financials to one or more jobs (defaults to all).</span></div>'
      +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
-     +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>';
+     +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
+   +'<div id="panProf" class="panel">'
+     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128202; <b>Live from ComputerEase</b> — actual cost, committed, billed, projected cost &amp; margin per job (accounting system of record). Matched to Procore by job number; bids / jobs not yet in CE won\'t appear. Hover any figure for its calculation.</div>'
+     +'<div class="cards" id="profCards"></div><div id="profList"></div></div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
   document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
+  document.getElementById('tabProf').addEventListener('click',()=>setTab('profitability'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.toggle('open');});
   document.getElementById('stPanel').addEventListener('click',e=>e.stopPropagation());
@@ -170,7 +180,7 @@ function buildUI(){
   document.getElementById('msSearch').addEventListener('input',msRebuild);
   document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
   document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
-  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers contract, change orders, budget &amp; variances, with a <b>Projects</b> picker (defaults to all) to focus on one or more jobs. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, with a <b>Projects</b> picker. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected margin &amp; over/under billed per job, matched to Procore by job number. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
   MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
   MARKERS=L.layerGroup().addTo(MAP);
@@ -200,8 +210,10 @@ function pinColor(cls){ return cls==='g'?'#1a7f37':cls==='y'?'#c99a00':cls==='r'
 function setTab(t){ TAB=t;
   document.getElementById('tabSum').classList.toggle('active',t==='summary');
   document.getElementById('tabFin').classList.toggle('active',t==='financials');
+  document.getElementById('tabProf').classList.toggle('active',t==='profitability');
   document.getElementById('panSum').classList.toggle('active',t==='summary');
   document.getElementById('panFin').classList.toggle('active',t==='financials');
+  document.getElementById('panProf').classList.toggle('active',t==='profitability');
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
 }
 /* ---------- filtering ---------- */
@@ -271,7 +283,43 @@ function render(){
   if(pts.length){ try{ MAP.fitBounds(pts,{padding:[30,30],maxZoom:11}); }catch(e){} }
   // ---- Financials tab (honors project picker) ----
   renderFin(finView());
+  // ---- Profitability / WIP tab (CE data) ----
+  renderProf(list);
   updateMsBtn();
+}
+function renderProf(list){
+  const withCe=list.filter(r=>r.ce);
+  const S=f=>withCe.reduce((a,r)=>a+num(r.ce[f]),0);
+  const totContract=S('ce_contract'), totCost=S('ce_actual_cost'), totCommitted=S('ce_committed'), totEac=S('ce_projected_cost'), totBilled=S('ce_billed'), totMargin=S('ce_projected_margin'), totOU=S('ce_over_under_billed');
+  const marginPct=totContract?(totMargin/totContract*100):null;
+  document.getElementById('profCards').innerHTML=
+    card('total',money(totContract),'Contract',null,'CE current contract (incl. approved changes), summed across shown jobs with a CE match.')
+   +card('co',money(totCost),'Cost to Date',null,'CE actual incurred cost (excludes committed).')
+   +card('rfi',money(totCommitted),'Committed',null,'CE committed — executed subs/POs not yet incurred.')
+   +card('nc',money(totEac),'Projected Cost (EAC)',null,'CE projected final cost at completion.')
+   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Margin',null,'Contract − Projected Cost across shown jobs.')
+   +card('soon',money(totBilled),'Billed to Date',null,'CE amount billed to the owner to date.')
+   +card(totOU<0?'total':'ok',(totOU<0?'Under ':'Over ')+money(Math.abs(totOU)),'Net Over/Under Billed',null,'Billed − earned (cost-based). Under = billing behind cost progress.');
+  document.getElementById('profList').innerHTML = withCe.length ? withCe.map(pcardProf).join('')
+    : '<div class="empty">No CE job data for the current filter. (Matched by job number — bids and jobs not yet in ComputerEase won\'t appear.)</div>';
+}
+function pcardProf(r){
+  const c=r.ce; const mNeg=num(c.ce_projected_margin)<0; const ouNeg=num(c.ce_over_under_billed)<0; const pid=r.procore_id;
+  const pill='<span class="pright"><span class="pill '+(mNeg?'r':'g')+'">'+(mNeg?'Projected loss':'Margin '+(c.ce_projected_margin_pct!=null?Number(c.ce_projected_margin_pct).toFixed(1)+'%':''))+'</span></span>';
+  return '<div class="pcard fin '+(mNeg?'o':'u')+'">'
+    +'<div class="phead"><span class="pname"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'+pill+'</div>'
+    +'<div class="pgrid">'
+    +kv('Contract','<span class="money">'+money(c.ce_contract)+'</span>','CE current contract incl. approved changes.')
+    +kv('Billed to Date','<span class="money">'+money(c.ce_billed)+'</span>','CE amount billed to the owner to date.')
+    +kv('Cost to Date','<span class="money">'+money(c.ce_actual_cost)+'</span>','CE actual incurred cost (excludes committed).')
+    +kv('Committed','<span class="money">'+money(c.ce_committed)+'</span>','CE committed — executed subs/POs not yet incurred.')
+    +kv('Projected Cost (EAC)','<span class="money">'+money(c.ce_projected_cost)+'</span>','CE projected final cost at completion.')
+    +kv('Projected Margin','<span class="'+(mNeg?'fover':'funder')+'">'+smoney(c.ce_projected_margin)+(c.ce_projected_margin_pct!=null?' · '+Number(c.ce_projected_margin_pct).toFixed(1)+'%':'')+'</span>','Contract ('+money(c.ce_contract)+') − Projected Cost ('+money(c.ce_projected_cost)+').')
+    +kv('% Complete',(c.ce_pct_complete!=null?Math.round(c.ce_pct_complete)+'%':'—'),'Cost-based: Cost to Date ('+money(c.ce_actual_cost)+') ÷ Projected Cost ('+money(c.ce_projected_cost)+').')
+    +kv('Over/Under Billed','<span class="'+(ouNeg?'fover':'funder')+'">'+(ouNeg?'Under ':'Over ')+money(Math.abs(num(c.ce_over_under_billed)))+'</span>','Billed ('+money(c.ce_billed)+') − earned (Contract × % complete). Under = billing behind cost progress.')
+    +'</div>'
+    +'<div class="srclinks"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">Procore budget</a></div>'
+    +'</div>';
 }
 function card(cls,n,label,flag,tip){
   const t=tip?' title="'+esc(tip)+'"':'';
