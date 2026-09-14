@@ -79,6 +79,39 @@
   .pgrid .k.tip{border-bottom:1px dotted #aab2be;cursor:help}
   .card[title]{cursor:help}
   .fnote{font-size:12.5px;color:#40485a;background:#f0f4fa;border:1px solid #d5e0f0;border-radius:8px;padding:9px 13px;margin-bottom:14px}
+  .rwrap{overflow-x:auto;border:1px solid #e3e8f0;border-radius:10px;background:#fff}
+  .rtable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rtable th,.rtable td{padding:7px 10px;border-bottom:1px solid #eef1f6;text-align:right;white-space:nowrap}
+  .rtable th{position:sticky;top:0;background:#f7f9fc;color:#7a828f;font-size:10px;text-transform:uppercase;letter-spacing:.02em}
+  .rtable td.l,.rtable th.l{text-align:left}
+  .rtable tr.miss td{background:#fff5f5}.rtable tr.nce td{background:#fffaf0}
+  .rdelta.d{color:#b3261e;font-weight:bold}.rdelta.z{color:#1a7f37}
+  .rstat.ok{color:#1a7f37;font-weight:bold}.rstat.bad{color:#b3261e;font-weight:bold}.rstat.warn{color:#9a6a00;font-weight:bold}
+  /* keep pills/chips/number tiles from overflowing */
+  .pill,.chip{white-space:nowrap;flex:none}
+  .pright{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+  .card{overflow:hidden}
+  .card .n{line-height:1.12}
+  /* ---------------- mobile ---------------- */
+  @media (max-width:680px){
+    .wrap{padding:12px}
+    .bh-banner-inner{gap:10px;padding:10px 12px 12px}
+    .bh-logo{height:40px}.bh-title{font-size:18px}.bh-sub{font-size:11px}
+    #map{height:260px;margin-bottom:14px}
+    .controls{gap:8px}.controls label{font-size:12px}
+    select,input[type=text]{font-size:13px;padding:7px 9px}
+    #q{min-width:0;flex:1 1 100%;width:100%}
+    .cards{grid-template-columns:1fr 1fr;gap:8px}
+    .card{padding:10px 11px}.card .n{font-size:16px}
+    .pcard{padding:11px 13px}
+    .pgrid{grid-template-columns:1fr 1fr;gap:6px 14px}
+    .phead{gap:6px}
+    .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
+    .tab{padding:8px 13px;font-size:13px;white-space:nowrap;flex:none}
+    .ms-panel{width:min(300px,86vw)}
+    .banner,.fnote{font-size:12px}
+  }
+  @media (max-width:420px){ .cards{grid-template-columns:1fr 1fr}.pgrid{grid-template-columns:1fr} }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -151,7 +184,7 @@ function buildUI(){
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
-   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button></div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="controls"><label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
@@ -162,12 +195,16 @@ function buildUI(){
      +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
    +'<div id="panProf" class="panel">'
      +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128202; <b>Live from ComputerEase</b> — actual cost, committed, billed, projected cost &amp; margin per job (accounting system of record). Matched to Procore by job number; bids / jobs not yet in CE won\'t appear. Hover any figure for its calculation.</div>'
-     +'<div class="cards" id="profCards"></div><div id="profList"></div></div>';
+     +'<div class="cards" id="profCards"></div><div id="profList"></div></div>'
+   +'<div id="panRec" class="panel">'
+     +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
+     +'<div class="cards" id="recCards"></div><div id="recList"></div></div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
   document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
   document.getElementById('tabProf').addEventListener('click',()=>setTab('profitability'));
+  document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('msPanel').classList.remove('open');document.getElementById('stPanel').classList.toggle('open');});
   document.getElementById('stPanel').addEventListener('click',e=>e.stopPropagation());
@@ -211,9 +248,12 @@ function setTab(t){ TAB=t;
   document.getElementById('tabSum').classList.toggle('active',t==='summary');
   document.getElementById('tabFin').classList.toggle('active',t==='financials');
   document.getElementById('tabProf').classList.toggle('active',t==='profitability');
+  document.getElementById('tabRec').classList.toggle('active',t==='reconciliation');
   document.getElementById('panSum').classList.toggle('active',t==='summary');
   document.getElementById('panFin').classList.toggle('active',t==='financials');
   document.getElementById('panProf').classList.toggle('active',t==='profitability');
+  document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
+  const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
 }
 /* ---------- filtering ---------- */
@@ -285,7 +325,43 @@ function render(){
   renderFin(finView());
   // ---- Profitability / WIP tab (CE data) ----
   renderProf(list);
+  // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
+  renderRec(list);
   updateMsBtn();
+}
+function renderRec(list){
+  const TOL=1;   // dollars
+  let inSync=0, mism=0, notCe=0, netDelta=0;
+  const trs=list.map(r=>{
+    const pC=num(r.revised_contract||r.contract_amount);
+    if(!r.ce){ notCe++; return recRow(r,pC,null,null,null,null,null,null,'nce','Not in CE'); }
+    const cC=num(r.ce.ce_contract), dC=pC-cC;
+    const pCom=num(r.committed), cCom=num(r.ce.ce_committed);
+    const pE=num(r.projected_cost), cE=num(r.ce.ce_projected_cost);
+    let cls,status;
+    if(Math.abs(dC)>TOL){ mism++; netDelta+=dC; cls='miss'; status='Contract Δ '+smoney(dC)+' (Spark)'; }
+    else { inSync++; cls=''; status='In sync'; }
+    return recRow(r,pC,cC,dC,pCom,cCom,pE,cE,cls,status);
+  }).join('');
+  document.getElementById('recCards').innerHTML=
+    card('ok',inSync,'In Sync',null,'Procore revised contract matches CE contract (within $1).')
+   +card('nc',mism,'Contract Mismatch',null,'Procore contract ≠ CE contract — a Spark sync gap (e.g. CO markup not exported).')
+   +card('soon',notCe,'Not in CE',null,'Procore jobs with no matching CE job (bids, or not yet synced through Spark).')
+   +card(netDelta?'nc':'ok',smoney(netDelta),'Net Contract Δ',null,'Sum of Procore − CE contract differences across mismatched jobs (total amount Spark hasn’t carried).');
+  document.getElementById('recList').innerHTML='<div class="rwrap"><table class="rtable">'
+    +'<thead><tr><th class="l">Job</th><th>Contract · Procore</th><th>Contract · CE</th><th>Δ</th><th>Committed · PC</th><th>Committed · CE</th><th>EAC · PC</th><th>EAC · CE</th><th class="l">Status</th></tr></thead><tbody>'
+    +(trs||'<tr><td colspan="9" class="l" style="color:#5b6472;font-style:italic;padding:14px">No projects match.</td></tr>')
+    +'</tbody></table></div>';
+}
+function recRow(r,pC,cC,dC,pCom,cCom,pE,cE,cls,status){
+  const m=v=>v==null?'—':money(v);
+  const dCell = (dC==null)?'—':'<span class="rdelta '+(Math.abs(dC)>1?'d':'z')+'">'+(Math.abs(dC)>1?smoney(dC):'&#10003;')+'</span>';
+  const sc = cls==='miss'?'bad':(cls==='nce'?'warn':'ok');
+  return '<tr class="'+cls+'"><td class="l"><b>'+esc(r.project_number)+'</b> '+esc(r.project)+'</td>'
+    +'<td>'+m(pC)+'</td><td>'+m(cC)+'</td><td>'+dCell+'</td>'
+    +'<td>'+m(pCom)+'</td><td>'+m(cCom)+'</td>'
+    +'<td>'+m(pE)+'</td><td>'+m(cE)+'</td>'
+    +'<td class="l rstat '+sc+'">'+esc(status)+'</td></tr>';
 }
 function renderProf(list){
   const withCe=list.filter(r=>r.ce);
