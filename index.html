@@ -108,6 +108,7 @@ const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,au
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const smoney=n=>{ n=num(n); return (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString(); };  // signed (deductive COs can be negative)
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 async function fetchProjectsFile(token){
   const H={Authorization:'Bearer '+token};
@@ -308,12 +309,14 @@ function pcardSummary(r){
 function renderFin(list){
   const totContract=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
   const totAppr=list.reduce((a,r)=>a+num(r.approved_cos),0);
+  const totCCO=list.reduce((a,r)=>a+num(r.commitment_cos),0);
   const totBudget=list.reduce((a,r)=>a+num(r.budget_revised||r.budget_original),0);
   const over=list.filter(r=>r.budget_forecast&&r.budget_variance<0);
   const netVar=list.reduce((a,r)=>a+(r.budget_forecast?num(r.budget_variance):0),0);
   document.getElementById('finCards').innerHTML=
     card('total',money(totContract),'Total Contract (rev.)',null,'Sum of each shown project’s Revised Contract (or original Contract where no revision), from the Procore prime contracts.')
-   +card('co',money(totAppr),'Approved Change Orders',null,'Sum of each shown project’s Approved COs (prime contract approved_change_orders).')
+   +card('co',money(totAppr),'Approved Change Orders',null,'Revenue side — sum of each shown project’s Approved COs (prime contract approved_change_orders).')
+   +card('co',smoney(totCCO),'Commitment COs (cost)',null,'Cost side — sum of approved commitment (subcontract/PO) change orders across shown projects. Can be negative when deductive.')
    +card('ok',money(totBudget),'Total Budget (rev.)',null,'Sum of each shown project’s Revised Budget (or Original Budget where no revision), from the Procore budget views.')
    +card('soon',over.length,'Projects Over Budget',null,'Count of shown active projects where Forecast exceeds Revised Budget (Variance is negative).')
    +card(netVar<0?'total':'ok',(netVar<0?'Over ':'Under ')+money(Math.abs(netVar)),'Net Budget Variance',null,'Sum of Budget Variance (Revised Budget − Forecast) across shown active projects. Shown as Over when the total is negative.');
@@ -348,7 +351,9 @@ function fcard(r){
     +kv('Forecast','<span class="money">'+(hasBud?money(r.budget_forecast):'—')+'</span>','Procore → Budget view → sum of Budget Forecast (projected final cost). Blank when the budget has no forecast column populated.')
     +kv('Budget Variance',varCell,'Revised Budget ('+money(r.budget_revised)+') − Forecast ('+(hasBud?money(r.budget_forecast):'—')+'). Positive = under budget, negative = over budget. Active jobs only.')
     +kv('Contract − Budget',marginCell,'Revised Contract ('+money(r.revised_contract||r.contract_amount)+') − Revised Budget ('+money(r.budget_revised||r.budget_original)+') = projected gross margin.')
-    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Procore → Change Order Packages marked approved/executed with a review date in the current calendar month. Count · total grand_total.')
+    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Prime (owner-side) change-order packages marked approved/executed with a review date in the current calendar month. Count · total grand_total.')
+    +kv('Commitment COs (cost)','<span class="money">'+smoney(r.commitment_cos)+'</span>','COST side — Procore → Commitment Change Orders (approved subcontract/PO changes). Sum of grand_total for approved CCOs; can be negative when deductive.')
+    +kv('Commitment COs this mo',(r.commitment_cos_this_month||0)+(r.commitment_cos_this_month_amt?' · '+smoney(r.commitment_cos_this_month_amt):''),'Approved commitment (cost-side) change orders with a review date in the current calendar month. Count · total grand_total.')
     +'</div>'
     +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
     +'</div>';
