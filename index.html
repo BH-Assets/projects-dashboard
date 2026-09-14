@@ -142,7 +142,7 @@ function buildUI(){
      +'<div id="stPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="stAll">Select all</button><button type="button" id="stNone">Clear</button></div><div id="stList"></div></div></span>'
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
-   +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Over budget</option></select>'
+   +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
    +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button></div>'
@@ -212,7 +212,7 @@ function structFiltered(){
   else if(fF==='fc') v=v.filter(r=>r.compliance&&r.compliance.fully_compliant);
   else if(fF==='nc') v=v.filter(r=>r.compliance&&r.compliance.noncompliant>0);
   else if(fF==='rfi') v=v.filter(r=>r.rfis_open>0);
-  else if(fF==='over') v=v.filter(r=>r.budget_forecast&&r.budget_variance<0);
+  else if(fF==='over') v=v.filter(r=>r.projected_cost&&r.projected_margin<0);
   return v;
 }
 function candIds(){ return new Set(structFiltered().map(r=>r.procore_id)); }
@@ -308,54 +308,56 @@ function pcardSummary(r){
 /* Financials tab */
 function renderFin(list){
   const totContract=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
-  const totAppr=list.reduce((a,r)=>a+num(r.approved_cos),0);
-  const totCCO=list.reduce((a,r)=>a+num(r.commitment_cos),0);
-  const totBudget=list.reduce((a,r)=>a+num(r.budget_revised||r.budget_original),0);
-  const over=list.filter(r=>r.budget_forecast&&r.budget_variance<0);
-  const netVar=list.reduce((a,r)=>a+(r.budget_forecast?num(r.budget_variance):0),0);
+  const totEac=list.reduce((a,r)=>a+num(r.projected_cost),0);
+  const totMargin=list.reduce((a,r)=>a+num(r.projected_margin),0);
+  const totCommitted=list.reduce((a,r)=>a+num(r.committed),0);
+  const totJtd=list.reduce((a,r)=>a+num(r.cost_to_date),0);
+  const loss=list.filter(r=>r.projected_cost&&r.projected_margin<0);
+  const marginPct=totContract?(totMargin/totContract*100):null;
   document.getElementById('finCards').innerHTML=
-    card('total',money(totContract),'Total Contract (rev.)',null,'Sum of each shown project’s Revised Contract (or original Contract where no revision), from the Procore prime contracts.')
-   +card('co',money(totAppr),'Approved Change Orders',null,'Revenue side — sum of each shown project’s Approved COs (prime contract approved_change_orders).')
-   +card('co',smoney(totCCO),'Commitment COs (cost)',null,'Cost side — sum of approved commitment (subcontract/PO) change orders across shown projects. Can be negative when deductive.')
-   +card('ok',money(totBudget),'Total Budget (rev.)',null,'Sum of each shown project’s Revised Budget (or Original Budget where no revision), from the Procore budget views.')
-   +card('soon',over.length,'Projects Over Budget',null,'Count of shown active projects where Forecast exceeds Revised Budget (Variance is negative).')
-   +card(netVar<0?'total':'ok',(netVar<0?'Over ':'Under ')+money(Math.abs(netVar)),'Net Budget Variance',null,'Sum of Budget Variance (Revised Budget − Forecast) across shown active projects. Shown as Over when the total is negative.');
-  document.getElementById('finVar').innerHTML = over.length
-    ? '<div class="varbox"><b>&#9888; Over budget ('+over.length+')</b><div style="margin-top:7px;line-height:1.7">'
-        +over.map(r=>'<a href="'+pcBase(r.procore_id)+'/tools/budgeting" target="_blank" style="color:#211E1E;text-decoration:none;font-weight:600">'+esc(r.project)+'</a> — <span class="fover">Over '+money(Math.abs(r.budget_variance))+'</span> <span style="color:#7a828f">(forecast '+money(r.budget_forecast)+' vs budget '+money(r.budget_revised||r.budget_original)+')</span>').join('<br>')
+    card('total',money(totContract),'Total Contract (rev.)',null,'REVENUE — sum of each shown project’s Revised Contract, from the Procore prime contracts.')
+   +card('co',money(totEac),'Projected Cost (EAC)',null,'COST — sum of Estimate at Completion from the Cost Projections budget view (projected total cost to build).')
+   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Margin',null,'Revised Contract − Projected Cost (EAC) across shown projects. Negative = projected loss.')
+   +card('soon',loss.length,'Projects at Loss','over','Shown active projects where Projected Cost exceeds Revised Contract (projected margin negative). Click to filter.')
+   +card('rfi',money(totCommitted),'Committed',null,'COST — sum of Commitments (SUB/PO/PSA): executed subcontract & PO value.')
+   +card('co',money(totJtd),'Cost to Date',null,'COST — sum of Job to Date Costs (actual cost incurred so far).');
+  document.getElementById('finVar').innerHTML = loss.length
+    ? '<div class="varbox"><b>&#9888; Projected loss ('+loss.length+')</b><div style="margin-top:7px;line-height:1.7">'
+        +loss.map(r=>'<a href="'+pcBase(r.procore_id)+'/tools/budgeting" target="_blank" style="color:#211E1E;text-decoration:none;font-weight:600">'+esc(r.project)+'</a> — <span class="fover">'+smoney(r.projected_margin)+'</span> <span style="color:#7a828f">(projected cost '+money(r.projected_cost)+' vs contract '+money(r.revised_contract||r.contract_amount)+')</span>').join('<br>')
         +'</div></div>'
-    : '<div class="varbox clean"><b>&#10003; No projects currently over budget</b> <span style="color:#7a828f">— based on forecast vs. revised budget on active jobs.</span></div>';
+    : '<div class="varbox clean"><b>&#10003; No projects projected to lose money</b> <span style="color:#7a828f">— Projected Cost (EAC) is within contract on all shown active jobs.</span></div>';
   document.getElementById('finList').innerHTML = list.length ? list.map(fcard).join('') : '<div class="empty">No projects match.</div>';
 }
 function fcard(r){
-  const hasBud=!!r.budget_forecast;
-  const overCls = hasBud ? (r.budget_variance<0?'o':'u') : '';
-  const varCell = hasBud
-    ? '<span class="'+(r.budget_variance<0?'fover':'funder')+'">'+(r.budget_variance<0?'Over ':'Under ')+money(Math.abs(r.budget_variance))+'</span>'
-    : '—';
-  const contract=num(r.revised_contract||r.contract_amount), budget=num(r.budget_revised||r.budget_original);
-  const margin=(contract&&budget)?contract-budget:null;
-  const marginCell = margin==null?'—':'<span class="'+(margin<0?'fover':'funder')+'">'+(margin<0?'-':'')+money(Math.abs(margin))+'</span>';
+  const hasCost=!!r.projected_cost;
+  const marginNeg = r.projected_margin<0;
+  const overCls = hasCost ? (marginNeg?'o':'u') : '';
+  const pill = hasCost
+    ? '<span class="pright"><span class="pill '+(marginNeg?'r':'g')+'">'+(marginNeg?'Projected loss':'Margin '+(r.projected_margin_pct!=null?r.projected_margin_pct.toFixed(1)+'%':''))+'</span></span>'
+    : '';
+  const marginCell = hasCost ? '<span class="'+(marginNeg?'fover':'funder')+'">'+smoney(r.projected_margin)+(r.projected_margin_pct!=null?' · '+r.projected_margin_pct.toFixed(1)+'%':'')+'</span>' : '—';
+  const pctCell = (r.pct_complete!=null)? Math.round(r.pct_complete)+'%' : '—';
+  const ouCell = hasCost ? '<span class="'+(r.over_under_budget<0?'fover':'funder')+'">'+(r.over_under_budget<0?'Over ':'Under ')+money(Math.abs(r.over_under_budget))+'</span>' : '—';
   const pid=r.procore_id; const s={contract:pcBase(pid)+'/tools/prime-contracts',budget:pcBase(pid)+'/tools/budgeting',project:pcOverview(pid)};
   return '<div class="pcard fin '+overCls+'">'
     +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
-    +'<span class="chip stage">'+esc(r.stage)+'</span>'
-    +(hasBud?'<span class="pright"><span class="pill '+(r.budget_variance<0?'r':'g')+'">'+(r.budget_variance<0?'Over budget':'Under budget')+'</span></span>':'')+'</div>'
+    +'<span class="chip stage">'+esc(r.stage)+'</span>'+pill+'</div>'
     +'<div class="pgrid">'
-    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>','Procore → Prime Contract → grand_total (original contract value, before change orders).')
-    +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>','Procore → Prime Contract → approved_change_orders (sum of executed/approved change orders).')
-    +kv('Pending COs','<span class="money">'+money(r.pending_cos)+'</span>','Procore → Prime Contract → pending_change_orders_amount (change orders not yet approved).')
-    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>','Procore → Prime Contract → revised_contract_amount = Contract ('+money(r.contract_amount)+') + Approved COs ('+money(r.approved_cos)+').')
-    +kv('Original Budget','<span class="money">'+money(r.budget_original)+'</span>','Procore → Budget view → sum of Original Budget Amount across all detail rows.')
-    +kv('Revised Budget','<span class="money">'+money(r.budget_revised)+'</span>','Procore → Budget view → sum of Revised Budget across all detail rows (falls back to Original Budget if no revisions).')
-    +kv('Forecast','<span class="money">'+(hasBud?money(r.budget_forecast):'—')+'</span>','Procore → Budget view → sum of Budget Forecast (projected final cost). Blank when the budget has no forecast column populated.')
-    +kv('Budget Variance',varCell,'Revised Budget ('+money(r.budget_revised)+') − Forecast ('+(hasBud?money(r.budget_forecast):'—')+'). Positive = under budget, negative = over budget. Active jobs only.')
-    +kv('Contract − Budget',marginCell,'Revised Contract ('+money(r.revised_contract||r.contract_amount)+') − Revised Budget ('+money(r.budget_revised||r.budget_original)+') = projected gross margin.')
-    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Prime (owner-side) change-order packages marked approved/executed with a review date in the current calendar month. Count · total grand_total.')
-    +kv('Commitment COs (cost)','<span class="money">'+smoney(r.commitment_cos)+'</span>','COST side — Procore → Commitment Change Orders (approved subcontract/PO changes). Sum of grand_total for approved CCOs; can be negative when deductive.')
-    +kv('Commitment COs this mo',(r.commitment_cos_this_month||0)+(r.commitment_cos_this_month_amt?' · '+smoney(r.commitment_cos_this_month_amt):''),'Approved commitment (cost-side) change orders with a review date in the current calendar month. Count · total grand_total.')
+    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>','REVENUE — Procore prime contract grand_total (original contract, before COs).')
+    +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>','REVENUE — prime contract approved_change_orders.')
+    +kv('Pending COs','<span class="money">'+money(r.pending_cos)+'</span>','REVENUE — prime contract pending_change_orders_amount (not yet approved).')
+    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>','REVENUE — revised_contract_amount = Contract ('+money(r.contract_amount)+') + Approved COs ('+money(r.approved_cos)+').')
+    +kv('Committed','<span class="money">'+money(r.committed)+'</span>','COST — Commitments (SUB/PO/PSA): executed subcontract & PO value (Cost Projections view).')
+    +kv('Cost to Date','<span class="money">'+money(r.cost_to_date)+'</span>','COST — Job to Date Costs: actual cost incurred so far (matches CE actual cost).')
+    +kv('Projected Cost (EAC)','<span class="money">'+money(r.projected_cost)+'</span>','COST — Estimate at Completion: projected total cost to finish the job.')
+    +kv('Projected Margin',marginCell,'Revised Contract ('+money(r.revised_contract||r.contract_amount)+') − Projected Cost ('+money(r.projected_cost)+'). Negative = projected loss.')
+    +kv('% Complete',pctCell,'Cost-based: Cost to Date ('+money(r.cost_to_date)+') ÷ Projected Cost ('+money(r.projected_cost)+').')
+    +kv('Over/Under Budget',ouCell,'Revised Budget ('+money(r.budget_revised)+') − Projected Cost ('+money(r.projected_cost)+'). Note: on this view the budget mirrors the contract.')
+    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Prime (owner-side) change-order packages approved/executed this calendar month. Count · total.')
+    +kv('Commitment COs (cost)','<span class="money">'+smoney(r.commitment_cos)+'</span>','COST — approved commitment (subcontract/PO) change orders. Can be negative when deductive.')
+    +kv('Commitment COs this mo',(r.commitment_cos_this_month||0)+(r.commitment_cos_this_month_amt?' · '+smoney(r.commitment_cos_this_month_amt):''),'Approved commitment change orders this calendar month. Count · total.')
     +'</div>'
-    +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
+    +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget (Cost Projections)</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
     +'</div>';
 }
 load();
