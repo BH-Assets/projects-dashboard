@@ -115,6 +115,7 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="bh-topbar"></div>
@@ -137,7 +138,7 @@ const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selec
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
-let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null; /* SELECTED/STAGES_SEL null = all */
+let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, SECTChart=null; /* SELECTED/STAGES_SEL null = all */
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
@@ -180,7 +181,11 @@ async function load(){
     // CE WIP data (best-effort) — merge by job_code = project_number
     try{ const cr=await fetchFile(token, CE_PATH);
       if(cr.ok){ const cd=await cr.json(); const cem={}; for(const j of (cd.jobs||[])) cem[String(j.job_code)]=j;
-        for(const r of ROWS) r.ce=cem[String(r.project_number)]||null; CE_GENERATED=cd.generated_at||''; }
+        for(const r of ROWS){ r.ce=cem[String(r.project_number)]||null;
+          const pc=num(r.revised_contract||r.contract_amount), cc=r.ce?num(r.ce.ce_contract):0;
+          r.markup_gap=(r.ce && (pc-cc)>1000)?(pc-cc):0;   // Procore contract > CE = fee/markup not synced (Spark) -> CE margin/projection understated
+        }
+        CE_GENERATED=cd.generated_at||''; }
     }catch(e){}
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
@@ -199,6 +204,8 @@ function buildUI(){
    +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
    +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
+   +'</div>'
+   +'<div class="controls">'
    +'<label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
      +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
      +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
@@ -217,7 +224,9 @@ function buildUI(){
      +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
    +'<div id="panProj" class="panel">'
      +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
-     +'<div class="cards" id="projCards"></div><div id="projList"></div></div>';
+     +'<div class="cards" id="projCards"></div>'
+     +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Company Projected Revenue by Month</div><div style="height:220px"><canvas id="projChart"></canvas></div></div>'
+     +'<div id="projList"></div></div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
@@ -380,10 +389,17 @@ function renderProj(list){
    +card('rfi',money(totRemain),'Remaining Revenue (Backlog)',null,'Contract − Revenue Recognized — revenue left to earn/bill.')
    +card(totFee<0?'nc':'ok',smoney(totFee),'Projected Fee / Margin',null,'Contract − Projected Cost (EAC). Fee = margin = profit.')
    +card('co',money(monthTotals[0]||0),(months[0]||'')+' Projected Rev',null,'Projected revenue across shown jobs for the current month.');
+  if(typeof Chart!=='undefined'){ const cv=document.getElementById('projChart');
+    if(cv){ if(PROJCHART) PROJCHART.destroy();
+      PROJCHART=new Chart(cv,{type:'bar',data:{labels:months,datasets:[{data:monthTotals,backgroundColor:'#ED2B30',borderRadius:4,maxBarThickness:44}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+Math.round(c.parsed.y).toLocaleString()}}},scales:{y:{ticks:{callback:v=>'$'+(v/1e6).toFixed(1)+'M'}},x:{ticks:{maxRotation:0,autoSkip:true}}}}});
+    }
+  }
   const head='<tr><th class="l">Job</th><th>Remaining</th><th>Mo Left</th>'+months.map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr>';
   const body=rows.sort((a,b)=>b.p.remaining-a.p.remaining).map(x=>{
     const cells=months.map((m,i)=>'<td>'+((i<=x.p.months)?money(x.p.monthly):'')+'</td>').join('');
-    return '<tr><td class="l"><b>'+esc(x.r.project_number)+'</b> '+esc(x.r.project)+'</td><td>'+money(x.p.remaining)+'</td><td>'+x.p.months+'</td>'+cells+'</tr>';
+    const warn=x.r.markup_gap?' <span title="CE contract short '+money(x.r.markup_gap)+' (markup not synced) — this projection is understated." style="color:#b3261e;cursor:help">&#9888;</span>':'';
+    return '<tr><td class="l"><b>'+esc(x.r.project_number)+'</b> '+esc(x.r.project)+warn+'</td><td>'+money(x.p.remaining)+'</td><td>'+x.p.months+'</td>'+cells+'</tr>';
   }).join('');
   const totRow='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totRemain)+'</td><td></td>'+monthTotals.map(t=>'<td>'+money(t)+'</td>').join('')+'</tr>';
   document.getElementById('projList').innerHTML = rows.length
@@ -405,11 +421,13 @@ function renderRec(list){
     else { inSync++; cls=''; status='In sync'; }
     return recRow(r,pC,cC,dC,pCost,cCost,pCom,cCom,pE,cE,cls,status);
   }).join('');
+  const mkJobs=list.filter(r=>r.markup_gap>0); const mkTot=mkJobs.reduce((a,r)=>a+num(r.markup_gap),0);
   document.getElementById('recCards').innerHTML=
     card('ok',inSync,'In Sync',null,'Procore revised contract matches CE contract (within $1).')
-   +card('nc',mism,'Contract Mismatch',null,'Procore contract ≠ CE contract — a Spark sync gap (e.g. CO markup not exported).')
+   +card('nc',mkJobs.length,'Missing Markup',null,'Jobs where the fee/CO markup is handled in Procore in a way Spark isn’t exporting — Procore contract is higher than CE by >$1k. Their WIP/margin/projection are understated.')
+   +card('nc',mism,'Contract Mismatch',null,'Procore contract ≠ CE contract (any diff >$1) — a Spark sync gap.')
    +card('soon',notCe,'Not in CE',null,'Procore jobs with no matching CE job (bids, or not yet synced through Spark).')
-   +card(netDelta?'nc':'ok',smoney(netDelta),'Net Contract Δ',null,'Sum of Procore − CE contract differences across mismatched jobs (total amount Spark hasn’t carried).');
+   +card(mkTot?'nc':'ok',smoney(mkTot),'Markup Not in CE',null,'Total markup Procore has that CE is missing — the amount Spark hasn’t carried. This is how much WIP margin is understated across shown jobs.');
   document.getElementById('recList').innerHTML='<div class="rwrap"><table class="rtable">'
     +'<thead><tr><th class="l">Job</th><th>Contract · Procore</th><th>Contract · CE</th><th>Δ</th><th>Cost·Date · PC</th><th>Cost·Date · CE</th><th>Committed · PC</th><th>Committed · CE</th><th>EAC · PC</th><th>EAC · CE</th><th class="l">Status</th></tr></thead><tbody>'
     +(trs||'<tr><td colspan="11" class="l" style="color:#5b6472;font-style:italic;padding:14px">No projects match.</td></tr>')
@@ -450,7 +468,9 @@ function pcardProf(r){
   const c=r.ce; const mNeg=num(c.ce_projected_margin)<0; const ouNeg=num(c.ce_over_under_billed)<0; const pid=r.procore_id;
   const pill='<span class="pright"><span class="pill '+(mNeg?'r':'g')+'">'+(mNeg?'Projected loss':'Margin '+(c.ce_projected_margin_pct!=null?Number(c.ce_projected_margin_pct).toFixed(1)+'%':''))+'</span></span>';
   return '<div class="pcard fin '+(mNeg?'o':'u')+'">'
-    +'<div class="phead"><span class="pname"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'+pill+'</div>'
+    +'<div class="phead"><span class="pname"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'
+    +(r.markup_gap?'<span class="chip" style="background:#FFC7CE;color:#9C0006;border:1px solid #e6a3a3" title="Procore contract exceeds CE by '+money(r.markup_gap)+' — fee/CO markup is handled in Procore in a way Spark isn\'t exporting, so CE is short. Margin, revenue recognized &amp; projection below are understated by up to this amount until it syncs.">&#9888; CE missing markup '+smoney(r.markup_gap)+'</span>':'')
+    +pill+'</div>'
     +'<div class="pgrid">'
     +kv('Contract','<span class="money">'+money(c.ce_contract)+'</span>','CE current contract incl. approved changes.')
     +kv('Billed to Date','<span class="money">'+money(c.ce_billed)+'</span>','CE amount billed to the owner to date.')
