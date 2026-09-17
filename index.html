@@ -616,9 +616,14 @@ function fcard(r){
   const pctCell = (r.pct_complete!=null)? Math.round(r.pct_complete)+'%' : '—';
   const ouCell = hasCost ? '<span class="'+(r.over_under_budget<0?'fover':'funder')+'">'+(r.over_under_budget<0?'Over ':'Under ')+money(Math.abs(r.over_under_budget))+'</span>' : '—';
   const pid=r.procore_id; const s={contract:pcBase(pid)+'/tools/prime-contracts',budget:pcBase(pid)+'/tools/budgeting',project:pcOverview(pid)};
+  const src=r.cost_source||'';
+  const srcShort=/subcontractor/i.test(src)?'Cost Projections view':(/ce.?import/i.test(src)?'CE Import (contract mirror)':(src||'—'));
+  const srcChip = hasCost
+    ? '<span class="chip" style="background:#eef2f8;color:#5b6472;border:1px solid #d6deea" title="Procore cost figures pulled from budget view: '+esc(src)+'">src: '+esc(srcShort)+'</span>'
+    : '<span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="No cost found in a Procore budget view'+(src?(' (view read: '+esc(src)+')'):'')+' — this job may track cost only in Direct Costs / ComputerEase.">&#9888; no Procore cost</span>';
   return '<div class="pcard fin '+overCls+'">'
     +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
-    +'<span class="chip stage">'+esc(r.stage)+'</span>'+pill+'</div>'
+    +'<span class="chip stage">'+esc(r.stage)+'</span>'+srcChip+pill+'</div>'
     +'<div class="pgrid">'
     +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>','REVENUE — Procore prime contract grand_total (original contract, before COs).')
     +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>','REVENUE — prime contract approved_change_orders.')
