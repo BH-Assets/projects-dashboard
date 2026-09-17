@@ -1247,6 +1247,14 @@ function applySite(site){
   const hols   = pipelinePeople ? (pipelinePeople.holidays || []) : ((site && site.holidays) || []);
   renderTeam(people, out, hols, site && site.peopleUrl);
 
+  /* the rail floats, so an empty one would hold open a 322px gutter */
+  const rail = $("#rail");
+  if (rail){
+    const anyPanel = Array.from(rail.children).some(el => !el.hidden);
+    rail.hidden = !anyPanel;
+    log("rail", anyPanel ? "shown" : "empty, hidden");
+  }
+
   const list = wxLocations(site && site.weather);
   if (!list.length) return;
   wxAll = list;
