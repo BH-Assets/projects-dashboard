@@ -1,1310 +1,643 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow">
-<title>Bailey-Harris</title>
-<link rel="icon" href="data:image/png;base64,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">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Information</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-/* ===== Bailey-Harris brand — red, cream, charcoal and black are chrome and
-   identity; green / amber / red are reserved for status in the data. ===== */
-:root{
-  color-scheme: light;
-  --paper:#f5f7fa; --surface:#ffffff; --surface-2:#faf9f7;
-  --ink:#211E1E; --muted:#5b6472; --faint:#8a919b;
-  --line:#E8E6E7; --line-soft:#F1EFF0;
-  --brand-red:#ED2B30; --maroon:#7F1B29; --charcoal:#484B4D; --cream:#F2ECE1;
-  --ok:#006100;   --ok-soft:#C6EFCE;
-  --warn:#9C6500; --warn-soft:#FFEB9C;
-  --crit:#9C0006; --crit-soft:#FFC7CE;
-  --shadow:0 1px 2px rgba(33,30,30,.06),0 8px 24px -16px rgba(33,30,30,.22);
-  --shadow-lift:0 2px 4px rgba(33,30,30,.07),0 14px 30px -18px rgba(33,30,30,.3);
-}
-*{box-sizing:border-box}
-[hidden]:not([hidden="until-found"]){display:none!important}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;
-  -webkit-font-smoothing:antialiased}
-h1,h2,h3{margin:0;font-family:'Montserrat',Arial,Helvetica,sans-serif}
-.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
-a{color:var(--maroon)}
-:focus-visible{outline:2px solid var(--maroon);outline-offset:2px}
-.wrap{max-width:1280px;margin:0 auto;padding:0 22px}
-/* The rail floats rather than sitting in a grid column: the link sections keep
-   clear of it while it lasts and then run the full width, so the page does not
-   end with a tall empty gutter. */
-/* The rail floats rather than sitting in a grid column, and comes first in the
-   source so the sections after it keep clear while it lasts and then run the
-   full width — the page does not end with a tall empty gutter. */
-.cols{display:flow-root}
-.rail{float:right;width:322px;margin:0 0 22px 30px;display:flex;flex-direction:column;gap:16px}
-@media (max-width:1040px){
-  .cols{display:flex;flex-direction:column}
-  .cols > .main{order:1}
-  .rail{order:2;float:none;width:auto;margin:4px 0 22px;flex-direction:row;flex-wrap:wrap}
-  .rail > *{flex:1 1 300px}
-}
-
-/* ---- masthead ---- */
-.bh-topbar{height:6px;background:var(--brand-red);width:100%}
-header.bh-header{background:#fff;border-bottom:1px solid var(--line);
-  position:sticky;top:0;z-index:20}
-.masthead{display:flex;align-items:center;gap:18px;padding:11px 0 12px;flex-wrap:wrap}
-.bh-logo{height:56px;width:auto;flex:none}
-.bh-titles{min-width:0}
-.bh-title{color:var(--ink);font-size:20px;font-weight:800;letter-spacing:.045em;
-  text-transform:uppercase;line-height:1.15}
-.bh-sub{color:var(--muted);font-size:12.5px;margin-top:2px}
-.acct{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--muted)}
-.acct .who{font-weight:600;color:var(--ink)}
-
-/* ---- buttons: black and charcoal only ---- */
-.btn{appearance:none;font-family:inherit;font-size:12.5px;font-weight:700;letter-spacing:.01em;
-  background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:8px;
-  padding:10px 20px;cursor:pointer;text-decoration:none;display:inline-block}
-.btn:hover{background:var(--charcoal);border-color:var(--charcoal)}
-.btn.ghost{background:#fff;color:var(--charcoal);border:1px solid var(--charcoal)}
-.btn.ghost:hover{background:var(--charcoal);color:#fff}
-.btn.sm{padding:7px 14px;font-size:11.5px}
-
-main{padding:0 0 76px}
-
-/* ---- hero: photo band, date, clock, weather ---- */
-.hero{position:relative;overflow:hidden;background:var(--ink);margin-bottom:34px;
-  border-bottom:4px solid var(--brand-red)}
-.hero-bg{position:absolute;inset:0;background:url("hero.jpg") center 62% / cover no-repeat;
-  filter:saturate(.82)}
-.hero-scrim{position:absolute;inset:0;background:
-  linear-gradient(97deg,rgba(23,21,21,.95) 0%,rgba(23,21,21,.88) 38%,rgba(23,21,21,.52) 72%,rgba(23,21,21,.42) 100%)}
-.hero-dots{position:absolute;right:28px;bottom:26px;width:96px;height:44px;opacity:.38;
-  fill:#fff;pointer-events:none}
-.hero-inner{position:relative;padding:34px 22px 0;display:flex;gap:30px;
-  align-items:flex-start;flex-wrap:wrap}
-.hero-left{min-width:0;flex:1 1 380px}
-.eyebrow{display:inline-flex;align-items:center;gap:9px;
-  font-size:10.5px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;
-  color:#fff;background:var(--brand-red);padding:5px 11px 5px 9px;border-radius:3px}
-.eyebrow svg{width:11px;height:11px;fill:#fff;opacity:.85}
-.hero-greet{color:#fff;font-size:33px;font-weight:800;letter-spacing:.005em;
-  line-height:1.1;margin:15px 0 0}
-.hero-tag{color:rgba(255,255,255,.62);font-size:13.5px;margin-top:9px;max-width:46ch}
-.clock{display:flex;align-items:baseline;gap:9px;margin-top:17px}
-.clock .t{font:700 30px/1 "JetBrains Mono",monospace;color:#fff;font-variant-numeric:tabular-nums;
-  letter-spacing:-.01em}
-.clock .z{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(255,255,255,.55)}
-
-/* weather */
-.wx{flex:0 1 330px;min-width:270px;border:1px solid rgba(255,255,255,.17);border-radius:9px;
-  background:rgba(255,255,255,.07);backdrop-filter:blur(3px);padding:15px 17px 13px;color:#fff}
-.wx-top{display:flex;align-items:center;gap:14px}
-.wx-icon{width:48px;height:48px;flex:none;stroke:#fff;fill:none;stroke-width:1.7;
-  stroke-linecap:round;stroke-linejoin:round}
-.wx-icon .sun{fill:var(--brand-red);stroke:none}
-.wx-icon .drop{fill:rgba(255,255,255,.85);stroke:none}
-.wx-temp{font:700 34px/1 'Montserrat',sans-serif;letter-spacing:-.02em}
-.wx-body{min-width:0}
-.wx-cond{font-size:13.5px;font-weight:700;letter-spacing:.01em}
-.wx-sub{font-size:11.5px;color:rgba(255,255,255,.66);margin-top:2px;
-  font-variant-numeric:tabular-nums}
-.wx-days{display:flex;gap:2px;margin-top:13px;padding-top:11px;
-  border-top:1px solid rgba(255,255,255,.14)}
-.wx-day{flex:1;text-align:center;min-width:0}
-.wx-day .d{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:rgba(255,255,255,.55);display:block}
-.wx-day svg{width:25px;height:25px;margin:5px auto 3px;display:block;stroke:#fff;fill:none;
-  stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.wx-day svg .sun{fill:var(--brand-red);stroke:none}
-.wx-day svg .drop{fill:rgba(255,255,255,.85);stroke:none}
-.wx-day .hi{font:600 12px/1 "JetBrains Mono",monospace;font-variant-numeric:tabular-nums}
-.wx-day .lo{font:400 12px/1 "JetBrains Mono",monospace;color:rgba(255,255,255,.5);
-  font-variant-numeric:tabular-nums;margin-left:4px}
-.wx-place{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  color:rgba(255,255,255,.42);margin-top:11px}
-
-/* search sits on the hero's bottom edge */
-.searchrow{position:relative;padding:26px 22px 26px;display:flex;gap:10px;
-  align-items:center;flex-wrap:wrap}
-.search{position:relative;flex:1 1 340px;max-width:460px}
-.search input{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
-  background:#fff;border:1px solid transparent;border-radius:8px;
-  padding:12px 14px 12px 40px;box-shadow:0 10px 30px -14px rgba(0,0,0,.65)}
-.search input::placeholder{color:var(--faint)}
-.search input:focus{outline:2px solid var(--brand-red);outline-offset:1px}
-.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);
-  width:16px;height:16px;stroke:var(--faint);fill:none;stroke-width:2}
-.search kbd{position:absolute;right:11px;top:50%;transform:translateY(-50%);
-  font:600 10px/1 "JetBrains Mono",monospace;color:var(--faint);
-  border:1px solid var(--line);border-radius:4px;padding:4px 6px;background:var(--surface-2)}
-.search input:not(:placeholder-shown) ~ kbd{display:none}
-
-/* ---- quick actions: a pill row on the hero, no section of its own ---- */
-.acts{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
-a.act{display:inline-flex;align-items:center;gap:7px;text-decoration:none;
-  font-size:12px;font-weight:700;letter-spacing:.01em;color:#fff;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);
-  border-radius:999px;padding:9px 15px;white-space:nowrap;
-  transition:background .14s ease,border-color .14s ease}
-a.act:hover{background:var(--brand-red);border-color:var(--brand-red)}
-a.act svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
-
-/* ---- safety strip ---- */
-.safety{background:var(--cream);border-bottom:1px solid #e4dcc9;margin:-34px 0 30px}
-.safety .wrap{display:flex;align-items:center;gap:20px;padding:13px 22px;flex-wrap:wrap}
-.safety .big{font:800 27px/1 'Montserrat',sans-serif;color:var(--maroon);
-  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.safety .lbl{font-size:10.5px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--charcoal);line-height:1.35;max-width:14ch}
-.safety .sep{width:1px;align-self:stretch;background:#e0d7c2;margin:0 4px}
-.safety .talk{font-size:13px;color:var(--ink)}
-.safety .talk b{display:block;font-size:10px;font-weight:800;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--charcoal);margin-bottom:2px}
-.safety a{color:var(--maroon);font-weight:700;text-decoration:none}
-.safety a:hover{text-decoration:underline}
-.safety .stamp{margin-left:auto;font-size:11px;color:#9b917e}
-
-/* ---- rail panels ---- */
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;
-  box-shadow:var(--shadow);overflow:hidden}
-.panel > h2{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;
-  letter-spacing:.15em;text-transform:uppercase;color:var(--charcoal);
-  padding:13px 16px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
-.panel > h2::before{content:"";width:9px;height:9px;flex:none;background:var(--brand-red);
-  clip-path:polygon(0 0,42% 0,100% 50%,42% 100%,0 100%,58% 50%)}
-.panel > h2 .n{margin-left:auto;font:600 10px/1 "JetBrains Mono",monospace;color:var(--faint)}
-.panel .all{display:block;padding:10px 16px;border-top:1px solid var(--line-soft);
-  font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--charcoal);text-decoration:none;background:var(--surface-2)}
-.panel .all:hover{color:var(--maroon)}
-
-/* newsletter: one issue, its sections underneath */
-.issue{display:block;padding:15px 16px 14px;text-decoration:none;color:inherit;
-  border-bottom:1px solid var(--line);background:var(--cream)}
-.issue:hover{background:#efe7d8}
-.issue .when{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--brand-red)}
-.issue .h{font-size:16px;font-weight:800;line-height:1.25;margin-top:4px;letter-spacing:.005em}
-.issue .x{color:var(--muted);font-size:12px;line-height:1.4;margin-top:4px}
-a.part{display:flex;align-items:center;gap:10px;padding:11px 16px;text-decoration:none;
-  color:inherit;border-bottom:1px solid var(--line-soft)}
-a.part:last-of-type{border-bottom:0}
-a.part:hover{background:var(--surface-2)}
-a.part .n{font-size:13px;font-weight:700;flex:1;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-a.part .go{flex:none;width:14px;height:14px;stroke:var(--faint);fill:none;stroke-width:2.2}
-a.part:hover .go{stroke:var(--maroon)}
-
-.panel .sub{font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--faint);padding:9px 16px 7px;background:var(--surface-2);
-  border-bottom:1px solid var(--line-soft);border-top:1px solid var(--line-soft)}
-.panel .sub:first-of-type{border-top:0}
-.hol{display:flex;align-items:baseline;gap:8px;padding:9px 16px;background:var(--cream);
-  border-bottom:1px solid var(--line-soft);font-size:12px}
-.hol b{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--maroon);flex:none}
-.hol .d{margin-left:auto;font-size:11px;color:var(--charcoal);flex:none}
-.person{display:flex;align-items:center;gap:11px;padding:10px 16px;
-  border-bottom:1px solid var(--line-soft)}
-.person:last-of-type{border-bottom:0}
-.person .av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  font:800 10.5px/1 'Montserrat',sans-serif;color:#fff;background:var(--charcoal)}
-.person.m0 .av{background:var(--maroon)} .person.m2 .av{background:var(--ink)}
-.person .who{min-width:0;flex:1}
-.person .who{display:block}
-.person .nm{display:block;font-size:13px;font-weight:700;line-height:1.25;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.person .rl{display:block;font-size:11px;color:var(--muted);line-height:1.3;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.person .kind{flex:none;text-align:right}
-.person .kind .k{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--charcoal);background:var(--cream);border:1px solid var(--line);
-  border-radius:3px;padding:1px 4px;display:inline-block}
-.person .kind .k.now{background:var(--brand-red);border-color:var(--brand-red);color:#fff}
-.person.away .av{background:var(--faint)}
-.person .kind .dt{display:block;font-size:10px;color:var(--faint);margin-top:3px}
-
-/* ---- weather: location picker + site rows ---- */
-.wx-head{display:flex;align-items:center;gap:8px;margin-bottom:11px}
-.wx-head .lbl{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
-  color:rgba(255,255,255,.5)}
-.wx-head select{margin-left:auto;font-family:inherit;font-size:11px;font-weight:700;color:#fff;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:5px;
-  padding:4px 7px;cursor:pointer;max-width:170px}
-.wx-head select option{color:var(--ink);background:#fff}
-
-/* ---- section headings ---- */
-.sec{margin:0 0 26px;display:flow-root}
-.sechead{display:flex;align-items:center;gap:14px;margin-bottom:16px}
-.sechead h2{font-size:11.5px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--charcoal);white-space:nowrap;display:flex;align-items:center;gap:9px}
-.sechead h2::before{content:"";width:11px;height:11px;flex:none;
-  background:var(--brand-red);
-  clip-path:polygon(0 0,42% 0,100% 50%,42% 100%,0 100%,58% 50%)}
-.sechead .rule{flex:1;height:1px;background:var(--line)}
-.sechead .count{font:600 11px/1 "JetBrains Mono",monospace;color:var(--faint)}
-
-/* ---- desk tiles ---- */
-.tiles{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:stretch}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);
-  padding:17px;display:flex;flex-direction:column;min-width:0}
-.tile.locked{background:var(--surface-2)}
-.tilehead{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
-.tile h3{font-size:15.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
-.tile.locked h3{color:var(--muted)}
-.tilehead .tag{margin-left:auto;flex:none}
-.tile p{color:var(--muted);font-size:13.5px;margin:0 0 16px;flex:1}
-.tile .msg{font-size:12.5px;margin:0 0 16px}
-.stats{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:6px;
-  overflow:hidden;margin-bottom:16px}
-.stat{flex:1 1 100px;padding:10px 13px;border-right:1px solid var(--line);background:var(--surface-2)}
-.stat:last-child{border-right:0}
-.stat .k{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--muted);display:block;margin-bottom:5px}
-.stat .v{font:600 17px/1.1 "JetBrains Mono",monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
-
-/* ---- app cards ---- */
-.apps{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(202px,1fr))}
-a.app{display:flex;align-items:flex-start;gap:11px;text-decoration:none;color:inherit;
-  background:var(--surface);border:1px solid var(--line);border-radius:7px;
-  padding:11px 12px;box-shadow:var(--shadow);min-width:0;min-height:62px;
-  transition:box-shadow .14s ease,transform .14s ease,border-color .14s ease}
-a.app:hover{box-shadow:var(--shadow-lift);transform:translateY(-1px);border-color:#dcd9da}
-a.app:active{transform:translateY(0)}
-.mono-badge{flex:none;width:32px;height:32px;border-radius:6px;display:grid;place-items:center;
-  font:800 11.5px/1 'Montserrat',sans-serif;letter-spacing:.02em;color:#fff}
-.mono-badge.m0{background:var(--maroon)}
-.mono-badge.m1{background:var(--charcoal)}
-.mono-badge.m2{background:var(--ink)}
-.appbody{min-width:0;flex:1}
-.appname{font-size:13px;font-weight:700;letter-spacing:.005em;line-height:1.25;
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.appdesc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  color:var(--muted);font-size:11.5px;line-height:1.35;margin-top:2px}
-.pill{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  border-radius:3px;padding:1px 4px;background:var(--cream);color:var(--charcoal);
-  border:1px solid var(--line);flex:none}
-
-.tag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  border-radius:4px;padding:3px 7px;display:inline-block}
-.tag.neutral{background:var(--cream);color:var(--charcoal);border:1px solid var(--line)}
-.tag.ok{background:var(--ok-soft);color:var(--ok)}
-.tag.warn{background:var(--warn-soft);color:var(--warn)}
-.tag.crit{background:var(--crit-soft);color:var(--crit)}
-
-/* ---- gate ---- */
-.gatewrap{position:relative;min-height:calc(100vh - 88px);display:grid;place-items:center;
-  padding:40px 22px;overflow:hidden}
-.gatewrap .hero-bg,.gatewrap .hero-scrim{position:absolute;inset:0}
-.gatewrap .hero-scrim{background:linear-gradient(180deg,rgba(23,21,21,.88),rgba(23,21,21,.78))}
-.gate{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:8px;
-  box-shadow:0 24px 60px -24px rgba(0,0,0,.7);
-  padding:40px 30px;text-align:center;max-width:430px;width:100%}
-.gate .rule{width:44px;height:4px;background:var(--brand-red);margin:0 auto 20px;border-radius:2px}
-.gate img{height:72px;width:auto;margin-bottom:22px}
-.gate h2{font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
-.gate p{color:var(--muted);font-size:14px;margin:0 0 22px}
-
-.banner{border:1px solid var(--line);border-left:4px solid var(--charcoal);background:var(--cream);
-  color:var(--ink);border-radius:6px;padding:12px 15px;font-size:13.5px;margin-bottom:22px}
-.banner b{display:block;margin-bottom:3px}
-.empty{color:var(--faint);font-size:13.5px;padding:18px 0}
-
-details.diag{margin-top:38px;border-top:1px solid var(--line);padding-top:14px}
-details.diag summary{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--muted);cursor:pointer}
-details.diag summary:hover{color:var(--ink)}
-pre{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:12px;
-  overflow-x:auto;font:400 12px/1.55 "JetBrains Mono",monospace;margin:12px 0 10px;
-  white-space:pre-wrap;word-break:break-word}
-.foot{color:var(--faint);font-size:12px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
-.endband{margin-top:46px;background:var(--ink);color:#fff;padding:26px 0 24px}
-.endband .wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.endband img{height:40px;width:auto;flex:none}
-.endband .legacy{font-size:12.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;
-  color:rgba(255,255,255,.85)}
-.endband .since{font-size:11.5px;color:rgba(255,255,255,.42);margin-left:auto}
-@media (max-width:860px){
-  .acts{margin-left:0;width:100%}
-  a.act{font-size:11.5px;padding:8px 13px}
-}
-@media (max-width:760px){
-  .hero-dots{display:none}
-  .safety .stamp{display:none}
-  .safety .big{font-size:23px}
-  .hero-inner{padding:26px 22px 0;gap:20px}
-  .hero-greet{font-size:25px}
-  .clock .t{font-size:25px}
-  .wx{flex:1 1 100%}
-}
-/* ---- phones ---- */
-@media (max-width:600px){
-  /* two links per row instead of one: the list is the page's length problem,
-     and on a phone nobody needs to be told what Procore is */
-  .apps{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:8px}
-  a.app{min-height:54px;padding:9px 10px;gap:9px;align-items:center}
-  .mono-badge{width:28px;height:28px;font-size:10.5px;border-radius:5px}
-  .appname{font-size:12px;line-height:1.2}
-  .appdesc{display:none}
-  .pill{font-size:8px}
-  .sec{margin-bottom:20px}
-  .tiles{gap:11px}
-  .tile{padding:15px}
-  .wrap{padding:0 16px}
-  .safety .wrap,.hero-inner,.searchrow{padding-left:16px;padding-right:16px}
-  .hero-greet{font-size:22px}
-  .hero-tag{display:none}
-  .clock{margin-top:13px}
-  .clock .t{font-size:22px}
-  .acts{gap:6px}
-  a.act{font-size:11px;padding:7px 11px}
-  a.act svg{display:none}
-  .searchrow{padding-top:20px;padding-bottom:20px}
-  .panel > h2{padding:11px 14px}
-  a.news{padding:11px 14px}
-  .person{padding:9px 14px}
-  .endband .wrap{gap:12px}
-  .endband img{height:32px}
-  .endband .legacy{font-size:11px}
-}
-@media (max-width:640px){
-  header.bh-header{position:static}
-  .bh-logo{height:44px}
-  .bh-title{font-size:17px}
-  .acct{margin-left:0;flex:1 1 100%}
-  .search kbd{display:none}
-  .endband .since{margin-left:0;flex:1 1 100%}
-}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  :root{color-scheme:light}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Montserrat',Arial,sans-serif;background:#f5f7fa;color:#211E1E}
+  .bh-topbar{height:4px;background:#ED2B30;width:100%}
+  .bh-banner{background:#fff;border-bottom:1px solid #E8E6E7;width:100%}
+  .bh-banner-inner{max-width:1300px;margin:0 auto;padding:12px 20px 14px;display:flex;align-items:center;gap:18px}
+  .bh-logo{height:54px;width:auto;flex:none}
+  .bh-title{color:#211E1E;font-size:22px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}
+  .bh-sub{color:#5b6472;font-size:12.5px;margin-top:3px}
+  .bh-badge{margin-left:auto;border:1px solid #1a7f37;color:#1a7f37;background:#fff;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:bold;letter-spacing:.05em;white-space:nowrap}
+  .wrap{max-width:1300px;margin:0 auto;padding:20px}
+  .banner{background:#fff7e6;border:1px solid #f0d089;color:#7a5a12;padding:9px 13px;border-radius:8px;font-size:13px;margin-bottom:14px}
+  .err{background:#FFC7CE;border-color:#e6a3a3;color:#9C0006}
+  #map{height:380px;border-radius:12px;border:1px solid #e3e8f0;margin-bottom:18px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .controls label{font-size:13px;color:#40485a;font-weight:bold}
+  select,input[type=text]{padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px;background:#fff}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .card{background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:13px 15px;cursor:pointer}
+  .card .n{font-size:24px;font-weight:bold}.card .l{font-size:11px;color:#5b6472;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
+  .card.total .n{color:#7F1B29}.card.soon .n{color:#9a6a00}.card.ok .n{color:#1a7f37}.card.rfi .n{color:#1a4fb0}.card.co .n{color:#484B4D}.card.nc .n{color:#b3261e}
+  .card.sel{outline:2px solid #ED2B30;outline-offset:-2px}.card.clk{cursor:pointer}.card.noclk{cursor:default}
+  .pcard{background:#fff;border:1px solid #e3e8f0;border-left:6px solid #484B4D;border-radius:10px;padding:12px 16px;margin-bottom:11px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .pcard.g{border-left-color:#1a7f37}.pcard.y{border-left-color:#c99a00}.pcard.r{border-left-color:#b3261e}
+  .phead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .pname{font-weight:bold;font-size:15px;color:#211E1E}
+  .pname a{color:inherit;text-decoration:none}.pname a:hover{color:#ED2B30;text-decoration:underline}
+  .pnum{font-size:12px;color:#5b6472}
+  .chip{padding:1px 8px;border-radius:999px;font-size:10px;font-weight:bold;white-space:nowrap}
+  .chip.stage{background:#eef2f8;color:#1F3864;border:1px solid #cfe0f3}
+  .chip.sect{background:#f1efe9;color:#6a5a3a;border:1px solid #e2d9c7}
+  .chip.close{background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e}
+  .chip.sp{background:#ECE7F5;color:#4a2f7a;border:1px solid #d6c8ee}
+  .pright{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .pill{padding:2px 9px;border-radius:999px;font-size:11px;font-weight:bold}
+  .pill.g{background:#C6EFCE;color:#006100}.pill.y{background:#FFEB9C;color:#9C6500}.pill.r{background:#FFC7CE;color:#9C0006}.pill.n{background:#eef1f6;color:#8a92a1}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px 18px;margin-top:9px;font-size:12.5px}
+  .pgrid .k{color:#7a828f;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;font-weight:700}
+  .pgrid .v{color:#2b3240}
+  .team{margin-top:8px;font-size:12px;color:#40485a;border-top:1px solid #f0f2f6;padding-top:7px}
+  .team b{color:#211E1E}
+  .money{font-variant-numeric:tabular-nums}
+  .over{color:#b3261e;font-weight:bold}.under{color:#1a7f37;font-weight:bold}
+  .srclinks{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  .srclinks a{font-size:11px;color:#484B4D;border:1px solid #cfd6e0;border-radius:6px;padding:2px 8px;text-decoration:none;background:#fff}
+  .srclinks a:hover{background:#484B4D;color:#fff}
+  .empty{color:#5b6472;font-style:italic;padding:16px 0}
+  .loading{padding:40px;text-align:center;color:#5b6472}
+  footer{margin-top:26px;font-size:11.5px;color:#8a92a1;border-top:1px solid #e3e8f0;padding-top:12px;line-height:1.5}
+  .tabs{display:flex;gap:2px;border-bottom:2px solid #e3e8f0;margin-bottom:16px}
+  .tab{padding:9px 20px;font-size:14px;font-weight:700;color:#5b6472;cursor:pointer;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+  .tab.active{color:#ED2B30;border-bottom-color:#ED2B30}
+  .panel{display:none}.panel.active{display:block}
+  .ms{position:relative;display:inline-block}
+  .ms-btn{padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;min-width:190px;text-align:left;font-family:inherit}
+  .ms-btn:after{content:'▾';float:right;color:#8a92a1}
+  .ms-panel{position:absolute;z-index:1000;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #c7cfdb;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.14);padding:8px;width:320px;max-height:340px;overflow:auto;display:none}
+  .ms-panel.open{display:block}
+  .ms-tools{display:flex;gap:8px;margin-bottom:6px}
+  .ms-tools button{font-size:11px;padding:3px 9px;border:1px solid #cfd6e0;border-radius:6px;background:#f5f7fa;cursor:pointer;font-family:inherit}
+  .ms-search{width:100%;margin-bottom:6px}
+  .ms-item{display:flex;align-items:center;gap:7px;padding:3px 4px;font-size:12.5px;cursor:pointer;border-radius:4px}
+  .ms-item:hover{background:#f5f7fa}
+  .fover{color:#b3261e;font-weight:bold}.funder{color:#1a7f37;font-weight:bold}
+  .pcard.fin{border-left-color:#484B4D}.pcard.fin.o{border-left-color:#b3261e}.pcard.fin.u{border-left-color:#1a7f37}
+  .varbox{background:#fff;border:1px solid #e3e8f0;border-left:5px solid #b3261e;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px}
+  .varbox.clean{border-left-color:#1a7f37}
+  .varbox b{color:#211E1E}
+  .pgrid .k.tip{border-bottom:1px dotted #aab2be;cursor:help}
+  .card[title]{cursor:help}
+  .fnote{font-size:12.5px;color:#40485a;background:#f0f4fa;border:1px solid #d5e0f0;border-radius:8px;padding:9px 13px;margin-bottom:14px}
+  .rwrap{overflow-x:auto;border:1px solid #e3e8f0;border-radius:10px;background:#fff}
+  .rtable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rtable th,.rtable td{padding:7px 10px;border-bottom:1px solid #eef1f6;text-align:right;white-space:nowrap}
+  .rtable th{position:sticky;top:0;background:#f7f9fc;color:#7a828f;font-size:10px;text-transform:uppercase;letter-spacing:.02em}
+  .rtable td.l,.rtable th.l{text-align:left}
+  .rtable tr.miss td{background:#fff5f5}.rtable tr.nce td{background:#fffaf0}.rtable tr.eacw td{background:#fff8ec}
+  .rdelta.d{color:#b3261e;font-weight:bold}.rdelta.z{color:#1a7f37}
+  .rstat.ok{color:#1a7f37;font-weight:bold}.rstat.bad{color:#b3261e;font-weight:bold}.rstat.warn{color:#9a6a00;font-weight:bold}
+  /* keep pills/chips/number tiles from overflowing */
+  .pill,.chip{white-space:nowrap;flex:none}
+  .pright{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+  .card{overflow:hidden}
+  .card .n{line-height:1.12}
+  /* ---------------- mobile ---------------- */
+  @media (max-width:680px){
+    .wrap{padding:12px}
+    .bh-banner-inner{gap:10px;padding:10px 12px 12px}
+    .bh-logo{height:40px}.bh-title{font-size:18px}.bh-sub{font-size:11px}
+    #map{height:260px;margin-bottom:14px}
+    .controls{gap:8px}.controls label{font-size:12px}
+    select,input[type=text]{font-size:13px;padding:7px 9px}
+    #q{min-width:0;flex:1 1 100%;width:100%}
+    .cards{grid-template-columns:1fr 1fr;gap:8px}
+    .card{padding:10px 11px}.card .n{font-size:16px}
+    .pcard{padding:11px 13px}
+    .pgrid{grid-template-columns:1fr 1fr;gap:6px 14px}
+    .phead{gap:6px}
+    .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
+    .tab{padding:8px 13px;font-size:13px;white-space:nowrap;flex:none}
+    .ms-panel{width:min(300px,86vw)}
+    .banner,.fnote{font-size:12px}
+  }
+  @media (max-width:420px){ .cards{grid-template-columns:1fr 1fr}.pgrid{grid-template-columns:1fr} }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
-
 <div class="bh-topbar"></div>
-<header class="bh-header">
-  <div class="wrap">
-    <div class="masthead">
-      <img class="bh-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAicAAAGHCAYAAABrpPKuAAAACXBIWXMAAAsSAAALEgHS3X78AAANXElEQVR4nO3dT24cZ37G8Z8cIZnASMic4CV6l5WI5ABkTmDlBOJydlGQA5hez2I0y6yGzi6rUCdwc5+FdIEGa5dggIkITOJMPGNl0U3rH22opVa/T1V9PkDDNAywH0Cw8fVb1dX3Xr58WQAAKT7rPQAA4HXiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIIk4AgCjiBACIcr/3gBSL1o6r6knvHezE8sf+fjUMb/8zAixae1JVx713BLhYDcNF7xH75M/+B7P7s/8p4uSVw6o66T2CnXj7z/HL2x8Wrd3+OFTV9R2vZ6thePFp53GH4/LvX9W7YT0H/uzXlr0HJBEnzFXbvN75j+KitZuqevba69qJC8D+iBN410Gto+WHcNmcuFzVOlaWVbV0wgLwaYgTeH+3wfIPVVWL1p7XJlRKrADsjDiBD/dg87qNladVdVnrULnuuAtg1MQJ7M4Xm9ftqcqTqrp0ogKwHc85gU/jQVX9uqr+a9HaxaK10857AEZDnMCn96iqvlm0dr1o7fGitcPegwCSiRPYn1ZVv6yq60Vr5yIF4G7iBPbvoNYPhhMpAHcQJ9DPG5HSeQtADHEC/R1U1Zebe1Ie9h4D0Js4gRytqv5t0dqlSz3AnIkTyPNFrS/1OEUBZkmcQKaDWp+iXDhFAeZGnEC2R1W1XLR23HsIwL6IE8j3oNaBctp7CMA+iBMYh4NaP2X2rPcQgE9NnMC4/FqgAFMnTmB8BAowaeIExkmgAJMlTmC8BAowSeIExu2JjxkDUyNOYNwOav0xYw9qAyZDnMD4HVTVZe8RALsiTmAaThatPe49AmAXxAlMx/mitaPeIwA+ljiB6TioqoveIwA+ljiBaTnxHTzA2IkTmJ6L3gMAPoY4gelpHs4GjJk4gWk67z0A4EOJE5im5t4TYKzECUyX554AoyROYLq+8Fh7YIzECUzbWe8BANsSJzBtD3sPANiWOIFpO3FpBxgbcQLTd9p7AMA2xAlM32nvAQDbECcwfce9BwBsQ5zA9J30HgCwDXECM7BozekJMBriBObBJ3aA0RAnMA+nvQcAvK/7vQcQ56veA2r9f/nHr/38oOMWAPZMnPCG1TCc995wl809E0e1PgE4LcGyLfecAKMhThiF1TA8q6pnVXVZVbVo7ajW3xvzuKoOug0bD/ecAKPhnhNGaTUM16thOF8Nw2FV/WNV3fTeBMBuiBNGbzUMT2p9yeeq8xQAdsBlHSZhNQwvqup00dpFVT3qPOe9fH7/T6p9/rO9vNeff/bZ4W//+m9O9/JmH+Bv/+ovDr/9/vud/b7f/P67+s3//t/Ofh+wX+KESVkNw9nmfpT4p6K2z39W//LdfuKk1jcQf7OvN9vWP//+T3f6+35x+Gf1r//x253+TmB/XNZhih6We1AARkucMDmbSzznvXcA8GHECVN1UU5PAEZJnDBJm9OTy947ANieOGHKlr0HALA9ccKUXfceAMD2xAmTtRqGZe8NAGxPnAAAUcQJABBFnAAAUcQJk7Vo7bT3BgC2J06YsqPeAwDYnjhhyk57DwBge+KESVq0dljrLwAEYGTECVP1uKoOeo8AYHvihMlZtHZU6zgBYITu9x4Au7S5nHNZTk0Yp9NFa+e9R+zZUe8B5BEnTMYmTJZV9aDzFPhQJ5sXzJrLOkzCorXjEiYAk+DkhFHbnJY8rqove28BYDfECaO0aO1hrT8q/Kj3FgB2S5wQb3M6clzrh6rd/tUNrwATJU54w6K1Ze8NrzmqqtZ7BAD7JU54m08KANCVT+sAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQ5X7vAcT5u94DtnC0eR1W1fHm59ZvDgC7IE54w2oYlr03fIxFa0e1DpWHm9dB10EAbE2cMCmrYbiuquuquqyqWrR2VlVnVXXSaxMA23HPCZO2GoaL1TCcVtXfV9XQeQ4A70GcMAurYbis9eWep723APDTXNZhNlbD8KKqHi5au6iqR53nwF2+Wg3Dee8R+7RobVkuu/IWJyfMzmoYzsoJCkAsccJcnZV7UAAiiRNmaXOJ57z3DgDeJU6YrdUwXJTTE4A44oS5u+w9AIA3iRPmTpwAhBEnzNrYH9cPMEXiBKpueg8A4BVxAlXPeg8A4BVxAgBEEScAQBRxAusvBAQghDiBqoPeAwB4xbcSM2uL1k57vff//PH7ujq41+vt73Ry8/Kqx/v++1/ee/Df9+pwV7/vP7/7w65+FdCBOGHuHvZ64+vffVv/9Ltve739nVbDcNrjfX/e2rKqTnq8N5DHZR3mrlucAHA3ccJsLVo7q6rWewcAbxInzNKitcOqetJ7BwDvEifM1WX5lA5AJHHC7Cxauyg3XwLE8mkdZmNzKeeyhAlANCcnzMLm5tfrEiY/pcszTgDe5uSEydqclDysqvPyqRyA0RAnTMqiteNaf1fOw6r6ovOcsXnRewBAlTjhLT0f576lo82rah0jh+WSzcd61nsAQJU44V3f9B5AN9e9BwBUuSEWeOW69wCAKnECbKyGYdl7A0CVOAHWnvceAHBLnABVboYFgogToKpq2XsAwC1xAlStH+sPEEGcAM9Xw+ABbEAMcQJc9B4A8DpxArikA0QRJzBvT1fDcN17BMDrxAnM20XvAQBvEycwX8NqGFzSAeKIE5iv894DAO4iTmCehtUwXPQeAXAXcQLzdN57AMCPEScwP8+dmgDJxAnMz1nvAQA/RZzAvPxqNQy+gRiIJk5gPp6Xe02AERAnMA83VXXmC/6AMRAnMA+PXc4BxkKcwPT9yqdzgDERJzBtX6+G4XHvEQDbECcwXc9Xw3DWewTAtsQJTNPzqjrtPQLgQ4gTmJ6nVXXqkznAWN3vPQDYqa9dygHGzskJTMdXwgSYAicnMH63D1i77D0EYBecnMC4XVXVsTABpsTJCYzXV6thOO89AmDXxAmMz1V5HD0wYeIExuOm1lFy0XsIwKckTiDfTVU9qaonnl0CzIE4gWxfV9X5ahiuew8B2BdxAnluquqi1icl132nAOyfOIEcQ60v31y4fAPMmTiB/r6uqkvPKgFYEyfQx1WtL91cOiUBeJM4gf15WlWXVbV0LwnAjxMn8Ok8r6plrWPEJRuA9yROYHeuqupZvQoSl2sAPoA4gQ9zGyLXVfVsNQzLrmsAJkScwI+72vx1WVUvahMj7hcB+LTECXNxU+u4eN3ytZ+f1TpAXvhCPYC+7r18+bL3BgCAH3zWewAAwOvECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFHECQAQRZwAAFH+H7ZG0O0BLkloAAAAAElFTkSuQmCC" alt="Bailey-Harris Construction">
-      <div class="bh-titles">
-        <div class="bh-title">Bailey-Harris</div>
-        <div class="bh-sub">Everything, in one place</div>
-      </div>
-      <div class="acct" id="acct" hidden>
-        <span class="who" id="acctname"></span>
-        <button class="btn ghost sm" id="signout">Sign out</button>
-      </div>
-    </div>
-  </div>
-</header>
-
-<main>
-
-  <div id="gatewrap" class="gatewrap" hidden>
-    <div class="hero-bg"></div>
-    <div class="hero-scrim"></div>
-    <section id="gate" class="gate">
-      <img src="data:image/png;base64,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" alt="">
-      <div class="rule"></div>
-      <h2>Sign in to continue</h2>
-      <p>Use your Bailey-Harris Microsoft account.</p>
-      <button class="btn" id="signin">Sign in with Microsoft</button>
-    </section>
-  </div>
-
-  <div id="app" hidden>
-    <section class="hero">
-      <div class="hero-bg"></div>
-      <div class="hero-scrim"></div>
-      <div class="wrap hero-inner">
-        <div class="hero-left">
-          <span class="eyebrow">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v4M17 2v4M3 9h18M5 4h14a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
-            <span id="today">&nbsp;</span>
-          </span>
-          <h1 class="hero-greet" id="greet">Good morning</h1>
-          <p class="hero-tag" id="tagline">Your desks, dashboards and the applications you use every day.</p>
-          <div class="clock"><span class="t" id="clock">&nbsp;</span><span class="z" id="tz"></span></div>
-        </div>
-        <div class="wx" id="wx" hidden></div>
-      </div>
-      <div class="wrap searchrow">
-        <div class="search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input id="q" type="search" placeholder="Find an app or a desk" autocomplete="off" spellcheck="false" aria-label="Filter">
-          <kbd>/</kbd>
-        </div>
-        <nav class="acts" id="acts" aria-label="Quick actions"></nav>
-      </div>
-    </section>
-
-    <div class="safety" id="safety" hidden></div>
-
-    <div class="wrap">
-      <div id="fatal" class="banner" hidden></div>
-      <div id="degraded" class="banner" hidden></div>
-
-      <div class="cols">
-        <aside class="rail" id="rail">
-          <section class="panel" id="newspanel" hidden></section>
-          <section class="panel" id="peoplepanel" hidden></section>
-        </aside>
-
-        <div class="main">
-          <section class="sec" id="sec-desks">
-            <div class="sechead"><h2>Desks and dashboards</h2><span class="rule"></span></div>
-            <div class="tiles" id="tiles"></div>
-          </section>
-
-          <div id="appsections"></div>
-
-          <p class="empty" id="noresults" hidden>Nothing matches that.</p>
-        </div>
-      </div>
-
-      <p class="foot" style="clear:both">
-        <span id="asof"></span>
-        <span id="linksrc"></span>
-      </p>
-
-      <details class="diag">
-        <summary>Diagnostics</summary>
-        <div>
-          <pre id="diag">…</pre>
-          <button class="btn ghost sm" id="copy">Copy diagnostics</button>
-          <span class="tag ok" id="copied" hidden>copied</span>
-        </div>
-      </details>
-    </div>
-
-    <div class="endband">
-      <div class="wrap">
-        <img src="data:image/png;base64,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" alt="">
-        <span class="legacy">Building a legacy</span>
-        <span class="since">Bailey-Harris Construction &middot; since 1979</span>
-      </div>
-    </div>
-  </div>
-</main>
-
-<script src="msal-browser.min.js"></script>
+<header class="bh-banner"><div class="bh-banner-inner"><img class="bh-logo" src="data:image/png;base64,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" alt="Bailey-Harris Construction">
+<div class="bh-titles"><div class="bh-title">Project Information</div><div class="bh-sub">Procore + Billy + Alabama &middot; <span id="asof">loading…</span></div></div><span class="bh-badge">&#9679; LIVE</span></div></header>
+<div class="wrap">
+  <div class="banner" style="background:#eef4ff;border-color:#c3d6f5;color:#1F3864;margin-bottom:14px">&#128260; This dashboard refreshes automatically every hour, at :15 past the hour. Refresh your browser and check the &ldquo;data as of&rdquo; time above for the latest pull.</div>
+  <div id="banner" class="banner" style="display:none"></div>
+  <div id="content"><div class="loading">Loading project data from SharePoint…</div></div>
+  <footer id="foot"></footer>
+</div>
 <script>
-"use strict";
-
-/* ============ configuration ============ */
-const CLIENT_ID = "1825a1c0-1ce3-4078-aeb7-a4714562c422";
-const TENANT_ID = "848aa890-7982-4028-befa-3323d82583ce";
-const SCOPES    = ["User.Read", "GroupMember.Read.All", "Sites.Selected"];
-
-const SP_HOST  = "baileyharris.sharepoint.com";
-const SP_PATH  = "/sites/Dashboard";
-const LINK_LIB  = "LauncherData";
-const LINK_FILE = "links.json";
-/* written nightly by the pipeline; when it is there it wins over anything
-   hand-typed into links.json, so the two never have to be kept in step */
-const PEOPLE_FILE = "people.json";
-const NEWS_FILE   = "newsletter.json";
-
-const ACCESS_CONTACT = "itadmin@baileyharris.com";
-
-/* The desks live in this repo and are gated by Entra group, so they stay here.
-   Everything else comes from links.json in SharePoint. */
-const DESKS = [
-  {
-    key: "compliance",
-    title: "Compliance Desk",
-    blurb: "Subcontractor and vendor insurance compliance, licences and expiries. Open to everyone.",
-    href: "https://compliance.baileyharris.com",
-    group: null,
-    external: true
-  },
-  {
-    key: "prequal",
-    title: "Prequal &amp; Sub Ratings",
-    blurb: "How subcontractors actually performed — ratings, notes, prequalification and diversity classifications.",
-    href: "/prequal/",
-    group: "b32fdca5-a99d-40d8-aabd-54975d34c386",
-    groupName: "BH-Desk-Prequal",
-    library: "PrequalData",
-    file: "ratings.json",
-    stats: d => [
-      ["Ratings", d.rows.length],
-      ["Jobs", new Set(d.rows.map(r => r.jn).filter(Boolean)).size]
-    ]
-  },
-  {
-    key: "precon",
-    title: "Precon Desk",
-    blurb: "What we have built, for pricing what we are about to bid — $/SF, schedule duration and comparables.",
-    href: "/precon/",
-    group: "41c5a747-de87-4e3a-9523-3e0da1bd08ac",
-    groupName: "BH-Desk-Precon",
-    library: "PreconData",
-    file: "projects.json",
-    stats: d => [
-      ["Jobs", d.rows.length],
-      ["With $/SF", d.rows.filter(p => p.psf != null && !p.sp && !p.flag).length]
-    ]
-  }
-];
-
-/* Last resort only. If links.json cannot be read the page still has to be
-   useful, so these public sign-in pages are carried in the page itself.
-   Nothing internal belongs in this list — the page source is world-readable
-   even though the interface is not. */
-/* Office location for the weather panel and the page's tagline. links.json may
-   carry a "site" object that overrides either; these are only the defaults. */
-const FALLBACK_SITE = {
-  weather: { tz: "America/Chicago",
-             locations: [{ label: "Auburn office", lat: 32.6099, lon: -85.4808 }] },
-  tagline: "Your desks, dashboards and the applications you use every day.",
-  actions: []
-};
-
-const FALLBACK = {
-  groups: [
-    { name: "Every day", items: [
-      { name: "Procore",   url: "https://account.activedirectory.windowsazure.com/applications/signin/Procore/87b67afa-8fd3-4537-982e-81b7c9376d55", desc: "Drawings, RFIs, submittals, daily logs", tag: "SSO" },
-      { name: "FieldEase", url: "https://login.fieldease.com", desc: "Receipts and expense capture" },
-      { name: "Bailey-Harris Intranet", url: "https://" + SP_HOST + "/SitePages/Home.aspx", desc: "Company news, policies and documents" }
-    ]},
-    { name: "Office and accounting", items: [
-      { name: "Spark",     url: "https://bh.pce.sparkbusinessworks.com/login?redirect=/", desc: "ComputerEase web portal" },
-      { name: "Billy",     url: "https://app.billyforinsurance.com", desc: "Subcontractor insurance and COI tracking" },
-      { name: "DocuSign",  url: "https://app.docusign.com", desc: "Send and sign documents" },
-      { name: "Bamboo HR", url: "https://baileyharris.bamboohr.com", desc: "Time off, benefits, employee records" }
-    ]},
-    { name: "Field and safety", items: [
-      { name: "HSI Safety Training", url: "https://sys.hsiplatform.com/en/baileyharrisconstruction/legacy-platform/login", desc: "Assigned safety courses and certificates" },
-      { name: "DroneDeploy",         url: "https://www.dronedeploy.com/app2/auth/signin", desc: "Site capture and progress maps" },
-      { name: "Screen Share",        url: "https://collage.bytello.com/", desc: "Cast to the conference room display" }
-    ]}
-  ]
-};
-
-/* ============ plumbing ============ */
-const $  = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-const D = [];
-const log = (k, v) => { D.push(k + ": " + v); const el = $("#diag"); if (el) el.textContent = D.join("\n"); };
-const n0 = v => v == null ? "—" : Math.round(v).toLocaleString("en-US");
-function esc(s){ const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
-function banner(id, title, detail){
-  const el = $(id);
-  el.hidden = false;
-  el.innerHTML = "<b>" + esc(title) + "</b>" + esc(detail);
+const MSAL_CLIENT_ID='1825a1c0-1ce3-4078-aeb7-a4714562c422';   // BH Dashboards app (hosts the desks)
+const TENANT='848aa890-7982-4028-befa-3323d82583ce';
+const SCOPES=['Sites.Selected','User.Read'];   // least-privilege: app granted to the Resources site only
+const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
+const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
+const CE_PATH='Compliance Dashboard/ce_data.json';
+const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
+const CID=15326;
+const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
+const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
+let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, CCCChart=null, MARGINChart=null; /* SELECTED/STAGES_SEL null = all */
+const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
+let RECFILTER='all';      // Sync Reconciliation tile filter
+const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
+async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const smoney=n=>{ n=num(n); return (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString(); };  // signed (deductive COs can be negative)
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+/* ---------- projection model (percent-complete, live/current) ----------
+   Fee = Margin = Profit = Contract − Projected Cost (EAC).
+   % complete = Cost-to-Date ÷ EAC ; Revenue Recognized = %×Contract ;
+   Remaining Revenue (backlog) = Contract − Recognized ; spread straight-line
+   over Months-to-Complete (now → projected completion). */
+function projOf(r){
+  const c=r.ce; if(!c) return null;
+  const contract=num(c.ce_contract)||num(r.revised_contract)||num(r.contract_amount);
+  const eac=num(c.ce_projected_cost), cost=num(c.ce_actual_cost);
+  const margin=contract-eac, pct=eac?cost/eac:0;
+  const revRec=contract*pct, remaining=contract-revRec;
+  let months=null; const compl=r.completion_date?new Date(r.completion_date):null; const now=new Date();
+  if(compl&&!isNaN(compl.getTime())) months=Math.max(0,(compl.getFullYear()-now.getFullYear())*12+(compl.getMonth()-now.getMonth()));
+  const monthly=(months!=null)?remaining/(months+1):null;
+  return {contract,eac,cost,margin,marginPct:contract?margin/contract*100:null,pct:pct*100,revRec,remaining,months,monthly,compl};
 }
-function fatal(title, detail){ banner("#fatal", title, detail); log("ERROR", title + " — " + detail); }
-
-let app, token;
-
-const cfg = {
-  auth: {
-    clientId: CLIENT_ID,
-    authority: "https://login.microsoftonline.com/" + TENANT_ID,
-    redirectUri: location.origin + "/",
-    navigateToLoginRequestUrl: false
-  },
-  cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false }
-};
-
-async function graph(path){
-  const res = await fetch("https://graph.microsoft.com/v1.0" + path, {
-    headers: { Authorization: "Bearer " + token }
-  });
-  let body = null;
-  try { body = await res.json(); } catch(_) {}
-  return { ok: res.ok, status: res.status, body };
+function monthLabels(n){ const out=[]; const t=new Date(); for(let i=0;i<n;i++){ const d=new Date(t.getFullYear(),t.getMonth()+i,1); out.push(d.toLocaleString(undefined,{month:'short',year:'2-digit'})); } return out; }
+async function fetchFile(token, path){
+  const H={Authorization:'Bearer '+token};
+  try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
+    if(s.ok){ const sid=(await s.json()).id;
+      const r=await fetch('https://graph.microsoft.com/v1.0/sites/'+sid+'/drive/root:/'+encodeURI(path)+':/content',{headers:H});
+      if(r.ok) return r; } }catch(e){}
+  return fetch('https://graph.microsoft.com/v1.0/drives/'+DRIVE_ID+'/root:/'+encodeURI(path)+':/content',{headers:H});
 }
-async function graphRaw(path){
-  const res = await fetch("https://graph.microsoft.com/v1.0" + path, {
-    headers: { Authorization: "Bearer " + token }
-  });
-  if (!res.ok) return { ok: false, status: res.status };
-  return { ok: true, status: res.status, text: await res.text() };
-}
-
-/* ============ rendering ============ */
-
-/* only http(s) — a links.json entry must never be able to introduce
-   javascript: or data: into an href */
-const OK_PROTO = { "http:":1, "https:":1, "tel:":1, "mailto:":1 };
-function safeUrl(u){
-  try {
-    const p = new URL(String(u), location.origin);
-    return OK_PROTO[p.protocol] ? p.href : null;
-  } catch(_) { return null; }
-}
-const opensTab = u => /^https?:/i.test(u);
-function initials(name){
-  const w = String(name).replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/);
-  if (!w.length || !w[0]) return "?";
-  return (w.length === 1 ? w[0].slice(0, 2) : w[0][0] + w[1][0]).toUpperCase();
-}
-function badgeClass(name){
-  let h = 0;
-  for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return "m" + (h % 3);
-}
-
-function renderApps(doc){
-  const host = $("#appsections");
-  host.innerHTML = "";
-  let n = 0;
-  (doc.groups || []).forEach(g => {
-    const items = (g.items || [])
-      .map(it => Object.assign({}, it, { _u: safeUrl(it.url) }))
-      .filter(it => it._u);
-    if (!items.length) return;
-    const sec = document.createElement("section");
-    sec.className = "sec";
-    sec.innerHTML =
-      '<div class="sechead"><h2>' + esc(g.name || "Applications") + '</h2>' +
-      '<span class="rule"></span><span class="count">' + items.length + '</span></div>' +
-      '<div class="apps">' + items.map(it => {
-        n++;
-        return '<a class="app" href="' + esc(it._u) + '"' +
-          (opensTab(it._u) ? ' target="_blank" rel="noopener noreferrer"' : '') +
-          ' data-find="' + esc(((it.name || "") + " " + (it.desc || "")).toLowerCase()) + '">' +
-          '<span class="mono-badge ' + badgeClass(it.name) + '" aria-hidden="true">' + esc(initials(it.name)) + '</span>' +
-          '<span class="appbody">' +
-            '<span class="appname">' + esc(it.name) +
-              (it.tag ? '<span class="pill">' + esc(it.tag) + '</span>' : '') + '</span>' +
-            (it.desc ? '<span class="appdesc">' + esc(it.desc) + '</span>' : '') +
-          '</span></a>';
-      }).join("") + '</div>';
-    host.append(sec);
-  });
-  log("app links", n);
-}
-
-function applyFilter(){
-  const q = $("#q").value.trim().toLowerCase();
-  let shown = 0;
-
-  $$("#appsections .app").forEach(a => {
-    const hit = !q || a.dataset.find.includes(q);
-    a.hidden = !hit;
-    if (hit) shown++;
-  });
-  $$("#appsections .sec").forEach(sec => {
-    const any = Array.from(sec.querySelectorAll(".app")).some(a => !a.hidden);
-    sec.hidden = !any;
-    const c = sec.querySelector(".count");
-    if (c) c.textContent = Array.from(sec.querySelectorAll(".app")).filter(a => !a.hidden).length;
-  });
-
-  $$("#tiles .tile").forEach(t => {
-    const hit = !q || (t.dataset.find || "").includes(q);
-    t.hidden = !hit;
-    if (hit) shown++;
-  });
-  const anyDesk = $$("#tiles .tile").some(t => !t.hidden);
-  $("#sec-desks").hidden = !anyDesk;
-
-  $("#noresults").hidden = shown > 0;
-}
-
-function greeting(){
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-}
-
-/* ============ date and clock ============ */
-function paintClock(){
-  const now = new Date();
-  $("#today").textContent = now.toLocaleDateString("en-US",
-    { weekday: "long", month: "long", day: "numeric" });
-  $("#clock").textContent = now.toLocaleTimeString("en-US",
-    { hour: "numeric", minute: "2-digit" });
-  try {
-    const z = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" })
-      .formatToParts(now).find(x => x.type === "timeZoneName");
-    $("#tz").textContent = z ? z.value : "";
-  } catch(_) {}
-}
-
-/* ============ weather ============ */
-/* WMO codes, as Open-Meteo returns them, mapped to one of eight drawings. */
-const WXCODE = {
-  0:["clear","Clear"], 1:["clear","Mainly clear"], 2:["partly","Partly cloudy"], 3:["cloud","Overcast"],
-  45:["fog","Fog"], 48:["fog","Freezing fog"],
-  51:["drizzle","Light drizzle"], 53:["drizzle","Drizzle"], 55:["drizzle","Heavy drizzle"],
-  56:["drizzle","Freezing drizzle"], 57:["drizzle","Freezing drizzle"],
-  61:["rain","Light rain"], 63:["rain","Rain"], 65:["rain","Heavy rain"],
-  66:["rain","Freezing rain"], 67:["rain","Freezing rain"],
-  71:["snow","Light snow"], 73:["snow","Snow"], 75:["snow","Heavy snow"], 77:["snow","Snow grains"],
-  80:["rain","Rain showers"], 81:["rain","Rain showers"], 82:["rain","Heavy showers"],
-  85:["snow","Snow showers"], 86:["snow","Snow showers"],
-  95:["storm","Thunderstorms"], 96:["storm","Thunderstorms, hail"], 99:["storm","Thunderstorms, hail"]
-};
-const CLOUD = '<path d="M7.2 18.3h9.3a3.6 3.6 0 0 0 .2-7.2 5.2 5.2 0 0 0-9.9 1.3 3.4 3.4 0 0 0 .4 5.9z"/>';
-const RAYS  = '<path d="M12 1.6v2.2M12 20.2v2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5' +
-              'M1.6 12h2.2M20.2 12h2.2M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>';
-function wxIcon(kind, night){
-  switch(kind){
-    case "clear":
-      return night
-        ? '<path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a7.6 7.6 0 1 0 11.3 11.3z"/>'
-        : '<circle class="sun" cx="12" cy="12" r="5"/>' + RAYS;
-    case "partly":
-      return night
-        ? '<path d="M17.8 8.6A5.4 5.4 0 0 1 12.4 3a4.8 4.8 0 1 0 5.4 5.6z"/>' + CLOUD
-        : '<circle class="sun" cx="8.6" cy="7.4" r="3.4"/>' +
-          '<path d="M8.6 1.7v1.5M3.6 7.4H2.1M4.9 3.7L3.8 2.6M12.2 3.7l1.1-1.1"/>' + CLOUD;
-    case "cloud":   return CLOUD;
-    case "fog":     return CLOUD + '<path d="M4.6 21h9.6M8.4 23.2h8"/>';
-    case "drizzle": return CLOUD + '<path d="M9.4 20.4l-.7 1.9M14.2 20.4l-.7 1.9"/>';
-    case "rain":    return CLOUD + '<path d="M7.6 20.2l-.8 2.2M12 20.2l-.8 2.2M16.4 20.2l-.8 2.2"/>';
-    case "snow":    return CLOUD +
-      '<circle class="drop" cx="8.2" cy="21.4" r="1"/><circle class="drop" cx="12" cy="22.6" r="1"/>' +
-      '<circle class="drop" cx="15.8" cy="21.4" r="1"/>';
-    case "storm":   return CLOUD + '<path d="M12.6 19.4l-3 3.6h2.6l-.6 2.6"/>';
-  }
-  return CLOUD;
-}
-function wxSvg(cls, code, night){
-  const k = (WXCODE[code] || ["cloud", "\u2014"])[0];
-  return '<svg class="' + cls + '" viewBox="0 0 24 26" aria-hidden="true">' + wxIcon(k, night) + '</svg>';
-}
-const degF = v => (v == null ? "\u2014" : Math.round(v) + "\u00B0");
-
-/* A location list, whether links.json gives one location or several. */
-function wxLocations(w){
-  if (!w) return [];
-  if (Array.isArray(w.locations) && w.locations.length)
-    return w.locations.filter(l => l && l.lat != null && l.lon != null)
-      .map(l => ({ label: l.label || "", lat: l.lat, lon: l.lon, tz: l.tz || w.tz }));
-  if (w.lat != null && w.lon != null)
-    return [{ label: w.label || "", lat: w.lat, lon: w.lon, tz: w.tz }];
-  return [];
-}
-/* which location this viewer last looked at - a convenience, never load-bearing */
-function wxRemembered(){ try { return localStorage.getItem("bh.wx") || ""; } catch(_) { return ""; } }
-function wxRemember(v){ try { localStorage.setItem("bh.wx", v); } catch(_) {} }
-
-async function fetchWeather(cfg){
-  if (!cfg || cfg.lat == null || cfg.lon == null) return null;
-  const url = "https://api.open-meteo.com/v1/forecast"
-    + "?latitude="  + encodeURIComponent(cfg.lat)
-    + "&longitude=" + encodeURIComponent(cfg.lon)
-    + "&current=temperature_2m,apparent_temperature,is_day,weather_code,wind_speed_10m"
-    + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
-    + "&temperature_unit=fahrenheit&wind_speed_unit=mph"
-    + "&timezone=" + encodeURIComponent(cfg.tz || "auto")
-    + "&forecast_days=4";
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 7000);
-  try {
-    const r = await fetch(url, { signal: ctl.signal, referrerPolicy: "no-referrer" });
-    if (!r.ok) { log("weather", "HTTP " + r.status); return null; }
-    const j = await r.json();
-    log("weather", "ok");
-    return j;
-  } catch(e) {
-    log("weather", "unavailable");
-    return null;
-  } finally { clearTimeout(timer); }
-}
-
-let wxLast = null;
-/* The weather is decoration. If it cannot be fetched the panel simply never
-   appears — a launcher must not lead with an error nobody can act on. */
-function renderWeather(data, cfg){
-  const el = $("#wx");
-  if (!data || !data.current || !el) return;
-  const c = data.current, d = data.daily || {};
-  const night = c.is_day === 0;
-  const cond = (WXCODE[c.weather_code] || ["cloud", "Current conditions"])[1];
-
-  let days = "";
-  const codes = d.weather_code || [], hi = d.temperature_2m_max || [],
-        lo = d.temperature_2m_min || [], iso = d.time || [];
-  for (let i = 1; i < Math.min(4, iso.length); i++){
-    const dt = new Date(iso[i] + "T12:00:00");
-    days += '<div class="wx-day"><span class="d">' +
-      esc(dt.toLocaleDateString("en-US", { weekday: "short" })) + '</span>' +
-      wxSvg("", codes[i], false) +
-      '<span class="hi">' + degF(hi[i]) + '</span><span class="lo">' + degF(lo[i]) + '</span></div>';
-  }
-
-  const many = wxAll.length > 1;
-  const head =
-    '<div class="wx-head"><span class="lbl">Weather</span>' +
-    (many
-      ? '<select id="wxpick" aria-label="Location">' + wxAll.map((l, i) =>
-          '<option value="' + i + '"' + (l === cfg ? ' selected' : '') + '>' +
-          esc(l.label || ("Location " + (i + 1))) + '</option>').join("") + '</select>'
-      : '') +
-    '</div>';
-
-  el.innerHTML = head +
-    '<div class="wx-top">' + wxSvg("wx-icon", c.weather_code, night) +
-      '<div class="wx-temp">' + degF(c.temperature_2m) + '</div>' +
-      '<div class="wx-body"><div class="wx-cond">' + esc(cond) + '</div>' +
-        '<div class="wx-sub">Feels ' + degF(c.apparent_temperature) +
-        ' &middot; Wind ' + (c.wind_speed_10m == null ? "\u2014" : Math.round(c.wind_speed_10m)) +
-        ' mph</div></div></div>' +
-    (days ? '<div class="wx-days">' + days + '</div>' : '') +
-    (many ? '' : '<div class="wx-place">' + esc((cfg && cfg.label) || "") + '</div>');
-  el.hidden = false;
-
-  const pick = $("#wxpick");
-  if (pick) pick.addEventListener("change", async e => {
-    const loc = wxAll[Number(e.target.value)] || wxAll[0];
-    wxCfg = loc;
-    wxRemember(loc.label);
-    renderWeather(await fetchWeather(loc), loc);
-  });
-}
-
-/* ---------- quick actions ---------- */
-function renderActions(items){
-  const host = $("#acts");
-  if (!host) return;
-  const ok = (items || []).map(a => Object.assign({}, a, { _u: safeUrl(a.url) })).filter(a => a._u);
-  host.innerHTML = ok.slice(0, 4).map(a =>
-    '<a class="act" href="' + esc(a._u) + '"' +
-      (opensTab(a._u) ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' +
-      esc(a.name) + '</a>').join("");
-  log("quick actions", ok.length);
-}
-
-/* ---------- safety strip ---------- */
-function renderSafety(s){
-  const el = $("#safety");
-  if (!el || !s || (s.days == null && !s.talk)) return;
-  const talkUrl = s.talkUrl ? safeUrl(s.talkUrl) : null;
-  el.innerHTML = '<div class="wrap">' +
-    (s.days == null ? '' :
-      '<span class="big">' + n0(s.days) + '</span>' +
-      '<span class="lbl">Days without a recordable</span>' +
-      (s.talk ? '<span class="sep"></span>' : '')) +
-    (s.talk ? '<span class="talk"><b>Toolbox talk this week</b>' +
-      (talkUrl ? '<a href="' + esc(talkUrl) + '" target="_blank" rel="noopener noreferrer">' +
-        esc(s.talk) + '</a>' : esc(s.talk)) + '</span>' : '') +
-    (s.asOf ? '<span class="stamp">as of ' + esc(s.asOf) + (SAMPLE ? ' \u00b7 sample' : '') + '</span>' : '') +
-    '</div>';
-  el.hidden = false;
-  log("safety", "shown");
-}
-
-/* ---------- newsletter ---------- */
-/* One issue at a time. The pages are named per month, so this is whatever
-   links.json currently points at — or whatever the pipeline last discovered. */
-function renderNewsletter(n){
-  const el = $("#newspanel");
-  if (!el || !n) return;
-  const parts = (n.sections || [])
-    .map(s => Object.assign({}, s, { _u: safeUrl(s.url) }))
-    .filter(s => s._u && s.name);
-  const issueUrl = n.url ? safeUrl(n.url) : (parts[0] ? parts[0]._u : null);
-  if (!issueUrl && !parts.length) return;
-  const archive = n.archiveUrl ? safeUrl(n.archiveUrl) : null;
-
-  el.innerHTML = '<h2>Newsletter' + sampleTag(!!pipelineNewsletter) + '</h2>' +
-    (issueUrl
-      ? '<a class="issue" href="' + esc(issueUrl) + '" target="_blank" rel="noopener noreferrer">' +
-          '<span class="when">Latest issue</span>' +
-          '<div class="h">' + esc(n.title || "This month") + '</div>' +
-          (n.blurb ? '<div class="x">' + esc(n.blurb) + '</div>' : '') +
-          (n.sentLabel ? '<div class="x" style="margin-top:6px;font-size:11px;color:var(--faint)">Sent ' +
-             esc(n.sentLabel) + '</div>' : '') +
-        '</a>'
-      : '') +
-    parts.map(s =>
-      '<a class="part" href="' + esc(s._u) + '" target="_blank" rel="noopener noreferrer">' +
-        '<span class="n">' + esc(s.name) + '</span>' +
-        '<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>' +
-      '</a>').join("") +
-    (archive ? '<a class="all" href="' + esc(archive) + '" target="_blank" rel="noopener noreferrer">Past issues</a>' : '');
-  el.hidden = false;
-  log("newsletter", (n.title || "?") + ", " + parts.length + " sections");
-}
-
-/* ---------- team: who is out, and this week's milestones ---------- */
-let SAMPLE = false;
-/* the placeholder marker comes off panel by panel as each pipeline goes live */
-const sampleTag = live => (SAMPLE && !live) ? '<span class="k" style="margin-left:8px">sample</span>' : '';
-const KINDLABEL = { birthday:"Birthday", anniversary:"Anniversary", newhire:"New hire" };
-
-function personRow(x, opts){
-  const chip = opts && opts.chip;
-  return '<div class="person ' + (opts && opts.away ? 'away ' : '') + badgeClass(x.name) + '">' +
-    '<span class="av" aria-hidden="true">' + esc(initials(x.name)) + '</span>' +
-    '<span class="who"><span class="nm">' + esc(x.name) + '</span>' +
-      (x.role ? '<span class="rl">' + esc(x.role) + '</span>' : '') + '</span>' +
-    '<span class="kind">' +
-      (chip ? '<span class="k' + (chip.now ? ' now' : '') + '">' + esc(chip.text) + '</span>' : '') +
-      (x.date ? '<span class="dt">' + esc(x.date) + '</span>' : '') +
-    '</span></div>';
-}
-
-function renderTeam(people, out, holidays, moreUrl){
-  const el = $("#peoplepanel");
-  if (!el) return;
-  const away = (out || []).filter(x => x && x.name);
-  const mile = (people || []).filter(x => x && x.name);
-  const hols = (holidays || []).filter(x => x && x.name);
-  if (!away.length && !mile.length && !hols.length) return;
-
-  const more = moreUrl ? safeUrl(moreUrl) : null;
-  let body = "";
-
-  if (away.length || hols.length){
-    body += '<div class="sub">Out</div>';
-    body += hols.slice(0, 2).map(x =>
-      '<div class="hol"><b>Holiday</b>' + esc(x.name) +
-      '<span class="d">' + esc(x.date) + '</span></div>').join("");
-    body += away.slice(0, 6).map(x =>
-      personRow(x, { away: true, chip: x.today ? { text: "Today", now: true } : null })).join("");
-    if (away.length > 6)
-      body += '<div class="sub" style="background:#fff;border-top:0;color:var(--muted)">and ' +
-              (away.length - 6) + ' more</div>';
-  }
-
-  if (mile.length){
-    body += '<div class="sub">This week</div>';
-    body += mile.slice(0, 6).map(x => personRow(x, {
-      chip: { text: x.years ? x.years + " years" : (KINDLABEL[x.kind] || x.kind || "") }
-    })).join("");
-  }
-
-  el.innerHTML = '<h2>Team' + sampleTag(!!pipelinePeople) +
-    '<span class="n">' + (away.length + mile.length) + '</span></h2>' + body +
-    (more ? '<a class="all" href="' + esc(more) + '" target="_blank" rel="noopener noreferrer">Open BambooHR</a>' : '');
-  el.hidden = false;
-  log("team", away.length + " out, " + mile.length + " milestones, " + hols.length + " holidays");
-}
-
-/* ============ boot ============ */
-let pipelinePeople = null;
-let pipelineNewsletter = null;
-let wxAll = wxLocations(FALLBACK_SITE.weather);
-let wxCfg = wxAll[0] || null;
-let wxPromise = null;
-
-async function main(){
-  $("#greet").textContent = greeting();
-  paintClock();
-  setInterval(paintClock, 15000);
-  /* fired before sign-in resolves so the panel is ready when the page appears */
-  wxPromise = fetchWeather(wxCfg);
-
-  if (typeof msal === "undefined"){
-    $("#app").hidden = false;
-    wxLast = await wxPromise;
-    renderWeather(wxLast, wxCfg);
-    renderApps(FALLBACK);
-    banner("#degraded", "Sign-in is unavailable right now.",
-      "The Microsoft authentication script did not load, so the desks cannot be opened from here. " +
-      "The applications below still work — each one signs you in on its own.");
-    $("#linksrc").textContent = "Links: built into this page.";
-    applyFilter();
-    return;
-  }
-
-  app = new msal.PublicClientApplication(cfg);
-  await app.initialize();
-  log("page", location.origin + location.pathname);
-
-  try { await app.handleRedirectPromise(); }
-  catch (e) {
-    $("#gatewrap").hidden = false;
-    log("redirect", ((e && (e.errorCode || e.name)) || "") + " " + ((e && e.errorMessage) || e));
-    return;
-  }
-
-  const accounts = app.getAllAccounts();
-  if (!accounts.length){ $("#gatewrap").hidden = false; return; }
-
-  const acct = accounts[0];
-  app.setActiveAccount(acct);
-  $("#acct").hidden = false;
-  $("#acctname").textContent = (acct.name || acct.username || "").split(" ")[0] || acct.username;
-  $("#app").hidden = false;
-  log("signed in as", acct.username);
-
-  const first = (acct.name || "").trim().split(/\s+/)[0];
-  if (first) $("#greet").textContent = greeting() + ", " + first;
-
-  wxLast = await wxPromise;
-  renderWeather(wxLast, wxCfg);
-
-  const claims = acct.idTokenClaims || {};
-  const myGroups = new Set(Array.isArray(claims.groups) ? claims.groups : []);
-  const overage = !!(claims._claim_names || claims._claim_sources);
-  log("groups in token", overage ? "overage" : myGroups.size);
-
-  /* Links first and independently of everything else: if Graph is having a
-     bad morning the page must still get people to Procore. */
-  let links = null;
-
-  try {
-    const r = await app.acquireTokenSilent({ scopes: SCOPES, account: acct });
-    token = r.accessToken;
-    log("token", "acquired");
-  } catch (e) {
-    if (e instanceof msal.InteractionRequiredAuthError) return app.acquireTokenRedirect({ scopes: SCOPES });
-    log("token", "failed — " + ((e && e.errorCode) || "") + " " + ((e && e.errorMessage) || e));
-  }
-
-  if (!token){
-    renderApps(FALLBACK);
-    applySite(null);
-    banner("#degraded", "Running on the built-in link list.",
-      "A Microsoft access token could not be obtained, so the desks and the current link list are unavailable. " +
-      "The applications below still work.");
-    $("#linksrc").textContent = "Links: built into this page.";
-    renderDesksUnavailable();
-    applyFilter();
-    return;
-  }
-
-  if (overage){
-    const g = await graph("/me/transitiveMemberOf/microsoft.graph.group?$select=id&$top=999");
-    if (g.ok && g.body && g.body.value){
-      g.body.value.forEach(x => myGroups.add(x.id));
-      log("groups from graph", myGroups.size);
-    } else log("groups from graph", "failed HTTP " + g.status);
-  }
-
-  let siteId = null, drives = {};
-  const site = await graph("/sites/" + SP_HOST + ":" + SP_PATH);
-  if (site.ok && site.body && site.body.id){
-    siteId = site.body.id;
-    log("site", SP_PATH + " resolved");
-    const dr = await graph("/sites/" + siteId + "/drives?$select=id,name");
-    if (dr.ok && dr.body && dr.body.value){
-      dr.body.value.forEach(d => { drives[d.name] = d.id; });
-      log("libraries", dr.body.value.map(d => d.name).join(", ") || "none");
-    } else log("libraries", "could not list — HTTP " + dr.status);
-  } else {
-    log("site", "HTTP " + site.status);
-  }
-
-  /* ---- files the pipelines write ---- */
-  if (siteId && drives[LINK_LIB]){
-    const lib = drives[LINK_LIB];
-
-    const pf = await graphRaw("/drives/" + lib + "/root:/" + PEOPLE_FILE + ":/content");
-    if (pf.ok){
-      try {
-        const j = JSON.parse(pf.text);
-        if (j && Array.isArray(j.people)){
-          pipelinePeople = j;
-          log(PEOPLE_FILE, j.people.length + " entries, generated " + (j.generated || "?"));
+async function load(){
+  try{
+    const token=await getToken(); if(!token) return;
+    const res=await fetchFile(token, PROJECTS_PATH);
+    if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
+    const data=await res.json();
+    ROWS=(data.projects||[]).filter(r=>!/\bFY\s?\d{2,4}\b/i.test((r.project||'')+' '+(r.project_number||'')));  // drop internal FY-tracking projects
+    GENERATED=data.generated_at||'';
+    // CE WIP data (best-effort) — merge by job_code = project_number
+    try{ const cr=await fetchFile(token, CE_PATH);
+      if(cr.ok){ const cd=await cr.json(); const cem={}; for(const j of (cd.jobs||[])) cem[String(j.job_code)]=j;
+        for(const r of ROWS){ r.ce=cem[String(r.project_number)]||null;
+          const pc=num(r.revised_contract||r.contract_amount), cc=r.ce?num(r.ce.ce_contract):0;
+          r.markup_gap=(r.ce && (pc-cc)>1000)?(pc-cc):0;   // Procore contract > CE = fee/markup not synced (Spark) -> CE margin/projection understated
+          // EAC not synced: Procore Cost-Projections EAC vs CE's imported EAC (Enter Revised Estimates) differ materially
+          const pE=num(r.projected_cost), cE=r.ce?num(r.ce.ce_projected_cost):0, eacTol=Math.max(5000, pE*0.01);
+          r.eac_gap=(r.ce && pE>0 && cE>0 && Math.abs(pE-cE)>eacTol)?(pE-cE):0;
         }
-      } catch(_) { log(PEOPLE_FILE, "parse failed"); }
-    } else log(PEOPLE_FILE, "HTTP " + pf.status);
-
-    const nf = await graphRaw("/drives/" + lib + "/root:/" + NEWS_FILE + ":/content");
-    if (nf.ok){
-      try {
-        const j = JSON.parse(nf.text);
-        if (j && j.newsletter && j.newsletter.url){
-          pipelineNewsletter = j;
-          log(NEWS_FILE, (j.newsletter.title || "?") + ", generated " + (j.generated || "?"));
-        }
-      } catch(_) { log(NEWS_FILE, "parse failed"); }
-    } else log(NEWS_FILE, "HTTP " + nf.status);
+        CE_GENERATED=cd.generated_at||''; }
+    }catch(e){}
+    document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
+    buildUI();
+  }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
+}
+function compClass(r){ const c=r.compliance; if(!c) return 'n'; if(c.noncompliant>0) return 'r'; if(c.expiring>0) return 'y'; if(c.fully_compliant) return 'g'; return 'n'; }
+function buildUI(){
+  const sectors=[...new Set(ROWS.map(r=>r.sector).filter(Boolean))].sort();
+  const stages=[...new Set(ROWS.map(r=>r.stage).filter(Boolean))].sort();
+  const offices=[...new Set(ROWS.map(r=>r.office).filter(Boolean))].sort();
+  document.getElementById('content').innerHTML=
+    '<div id="map"></div>'
+   +'<div class="controls">'
+   +'<label>Stage:</label><span class="ms"><button type="button" id="stBtn" class="ms-btn">All stages</button>'
+     +'<div id="stPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="stAll">Select all</button><button type="button" id="stNone">Clear</button></div><div id="stList"></div></div></span>'
+   +'<label>Sector:</label><select id="fSector"><option value="">All</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Office:</label><select id="fOffice"><option value="">All</option>'+offices.map(s=>'<option>'+esc(s)+'</option>').join('')+'</select>'
+   +'<label>Show:</label><select id="fFlag"><option value="">All</option><option value="close">Closing this month</option><option value="fc">Fully compliant</option><option value="nc">Has non-compliant subs</option><option value="rfi">Open RFIs</option><option value="over">Projected loss</option></select>'
+   +'</div>'
+   +'<div class="controls">'
+   +'<label>Projects:</label><span class="ms"><button type="button" id="msBtn" class="ms-btn">All projects</button>'
+     +'<div id="msPanel" class="ms-panel"><div class="ms-tools"><button type="button" id="msAll">Select all</button><button type="button" id="msNone">Clear</button></div>'
+     +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
+   +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
+   +'</div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
+   +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
+   +'<div id="panFin" class="panel">'
+     +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
+     +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
+   +'<div id="panProf" class="panel">'
+     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128202; <b>Live from ComputerEase</b> — actual cost, committed, billed, projected cost &amp; margin per job (accounting system of record). Matched to Procore by job number; bids / jobs not yet in CE won\'t appear. Hover any figure for its calculation.</div>'
+     +'<div class="cards" id="profCards"></div>'
+     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:16px">'
+       +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Contract vs Cost vs Committed</div><div style="height:250px"><canvas id="cccChart"></canvas></div></div>'
+       +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Projected Margin % by Project (target '+TARGET_MARGIN+'%)</div><div style="height:250px"><canvas id="marginChart"></canvas></div></div>'
+     +'</div>'
+     +'<div id="profList"></div></div>'
+   +'<div id="panRec" class="panel">'
+     +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
+     +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
+   +'<div id="panProj" class="panel">'
+     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
+     +'<div class="cards" id="projCards"></div>'
+     +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Company Projected Revenue by Month</div><div style="height:220px"><canvas id="projChart"></canvas></div></div>'
+     +'<div id="projList"></div></div>';
+  ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
+  document.getElementById('q').addEventListener('input',render);
+  document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
+  document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
+  document.getElementById('tabProf').addEventListener('click',()=>setTab('profitability'));
+  document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
+  document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
+  // stage multiselect wiring
+  document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();['msPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('stPanel').classList.toggle('open');});
+  document.getElementById('stPanel').addEventListener('click',e=>e.stopPropagation());
+  document.getElementById('stAll').addEventListener('click',()=>{STAGES_SEL=null;stRebuild();updateStBtn();onStruct();});
+  document.getElementById('stNone').addEventListener('click',()=>{STAGES_SEL=new Set();stRebuild();updateStBtn();onStruct();});
+  // project multiselect wiring
+  const closeAllPanels=()=>['msPanel','stPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id); if(el) el.classList.remove('open');});
+  document.getElementById('msBtn').addEventListener('click',e=>{e.stopPropagation();['stPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('msPanel').classList.toggle('open');});
+  document.getElementById('msPanel').addEventListener('click',e=>e.stopPropagation());
+  document.addEventListener('click',closeAllPanels);
+  document.getElementById('msSearch').addEventListener('input',msRebuild);
+  document.getElementById('msAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
+  document.getElementById('msNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
+  // Projections-tab project picker (synced to the same SELECTED)
+  const pjBtn=document.getElementById('pjBtn');
+  if(pjBtn){
+    pjBtn.addEventListener('click',e=>{e.stopPropagation();['stPanel','msPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('pjPanel').classList.toggle('open');});
+    document.getElementById('pjPanel').addEventListener('click',e=>e.stopPropagation());
+    document.getElementById('pjSearch').addEventListener('input',msRebuild);
+    document.getElementById('pjAll').addEventListener('click',()=>{SELECTED=null;msRebuild();updateMsBtn();render();});
+    document.getElementById('pjNone').addEventListener('click',()=>{SELECTED=new Set();msRebuild();updateMsBtn();render();});
   }
-
-  /* ---- the link list ---- */
-  if (siteId && drives[LINK_LIB]){
-    const f = await graphRaw("/drives/" + drives[LINK_LIB] + "/root:/" + LINK_FILE + ":/content");
-    if (f.ok){
-      try {
-        const parsed = JSON.parse(f.text);
-        if (parsed && Array.isArray(parsed.groups)){
-          links = parsed;
-          log("links.json", "read, " + parsed.groups.reduce((a, g) => a + (g.items || []).length, 0) + " links");
-        } else log("links.json", "no groups array");
-      } catch(_) { log("links.json", "parse failed"); }
-    } else log("links.json", "HTTP " + f.status);
-  } else log("links.json", "library " + LINK_LIB + " not available");
-
-  if (links){
-    renderApps(links);
-    applySite(links.site);
-    $("#linksrc").textContent = "Links: " + LINK_LIB + "/" + LINK_FILE +
-      (links.updated ? " · updated " + links.updated : "");
-  } else {
-    renderApps(FALLBACK);
-    applySite(null);
-    banner("#degraded", "Showing the built-in link list.",
-      "The current list could not be read from SharePoint, so some internal links are missing. " +
-      "Everything shown below still works.");
-    $("#linksrc").textContent = "Links: built into this page.";
-  }
-
-  /* ---- the desks ---- */
-  const host = $("#tiles");
-  host.innerHTML = "";
-  for (const desk of DESKS){
-    const allowed = !desk.group || myGroups.has(desk.group);
-    const el = document.createElement("article");
-    el.className = "tile" + (allowed ? "" : " locked");
-    el.dataset.find = (desk.title + " " + desk.blurb).replace(/&amp;/g, "&").toLowerCase();
-
-    if (!allowed){
-      el.innerHTML =
-        '<div class="tilehead"><h3>' + desk.title + '</h3>' +
-        '<span class="tag neutral">no access</span></div>' +
-        '<p>' + esc(desk.blurb) + '</p>' +
-        '<p class="msg">Access is granted through <span class="mono">' + esc(desk.groupName) + '</span>.</p>' +
-        '<a class="btn ghost" href="mailto:' + esc(ACCESS_CONTACT) +
-          '?subject=' + encodeURIComponent("Access request: " + desk.key) +
-          '&body=' + encodeURIComponent("Please add me to " + desk.groupName + ".") +
-          '">Request access</a>';
-      host.append(el);
-      log("tile " + desk.key, "locked");
-      continue;
+  document.getElementById('foot').innerHTML='Projects from Procore. Use the <b>Stage</b> filter for Construction / Pre-Con / Post-Con / Warranty / Post-Warranty / Bidding; click a stat card to filter. <b>Project Summary</b> covers team, owner, architect, schedule &amp; compliance; <b>Project Financials</b> covers Procore contract, change orders &amp; projected cost, The <b>Projects</b> picker (top bar, defaults to all) and Stage / Sector / Office filters apply to every tab and the map. <b>Profitability (WIP)</b> is live from ComputerEase — actual cost, committed, billed, projected fee/margin, revenue recognized &amp; over/under billed per job. <b>Projections</b> spreads remaining revenue (backlog) straight‑line over the months to completion for a monthly revenue forecast. <b>Sync Reconciliation</b> compares Procore vs CE (contract, cost, committed, EAC) to surface Spark sync gaps. Fee = margin = profit = Contract − Projected Cost. RFIs, change orders and budget are pulled for active jobs only. Compliance rollup from Billy + Alabama. Text search filters the lists; the map reflects the Stage / Sector / Office filters. Source: SharePoint /Compliance Dashboard/projects_data.json.';
+  MAP=L.map('map',{scrollWheelZoom:false}).setView([32.6,-85.6],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(MAP);
+  MARKERS=L.layerGroup().addTo(MAP);
+  stRebuild(); updateStBtn(); msRebuild(); updateMsBtn(); render();
+}
+/* ---------- stage multiselect ---------- */
+function allStages(){ return [...new Set(ROWS.map(r=>r.stage).filter(Boolean))].sort(); }
+function stRebuild(){
+  document.getElementById('stList').innerHTML = allStages().map(s=>{
+    const on=STAGES_SEL?STAGES_SEL.has(s):true;
+    return '<label class="ms-item"><input type="checkbox" data-stage="'+esc(s)+'"'+(on?' checked':'')+'><span>'+esc(s)+'</span></label>'; }).join('');
+  document.querySelectorAll('#stList input[type=checkbox]').forEach(cb=>cb.addEventListener('change',stToggle));
+}
+function stToggle(e){
+  const s=e.target.getAttribute('data-stage'); const all=allStages();
+  if(STAGES_SEL===null) STAGES_SEL=new Set(all);
+  if(e.target.checked) STAGES_SEL.add(s); else STAGES_SEL.delete(s);
+  if(all.every(x=>STAGES_SEL.has(x))) STAGES_SEL=null;
+  updateStBtn(); onStruct();
+}
+function updateStBtn(){
+  const all=allStages(), n=all.length;
+  const sel=STAGES_SEL?[...STAGES_SEL].filter(s=>all.includes(s)).length:n;
+  document.getElementById('stBtn').textContent=(STAGES_SEL===null||sel===n)?'All stages ('+n+')':(sel+' of '+n+' stages');
+}
+function pinColor(cls){ return cls==='g'?'#1a7f37':cls==='y'?'#c99a00':cls==='r'?'#b3261e':'#5b6472'; }
+function setTab(t){ TAB=t;
+  document.getElementById('tabSum').classList.toggle('active',t==='summary');
+  document.getElementById('tabFin').classList.toggle('active',t==='financials');
+  document.getElementById('tabProf').classList.toggle('active',t==='profitability');
+  document.getElementById('tabProj').classList.toggle('active',t==='projections');
+  document.getElementById('tabRec').classList.toggle('active',t==='reconciliation');
+  document.getElementById('panSum').classList.toggle('active',t==='summary');
+  document.getElementById('panFin').classList.toggle('active',t==='financials');
+  document.getElementById('panProf').classList.toggle('active',t==='profitability');
+  document.getElementById('panProj').classList.toggle('active',t==='projections');
+  document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
+  const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
+  if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
+  render();   // re-render so charts on the now-visible tab size correctly (Chart.js needs a visible canvas)
+}
+/* ---------- filtering ---------- */
+function structFiltered(){
+  const fS=fSector.value,fO=fOffice.value,fF=fFlag.value;
+  let v=ROWS.filter(r=>(!fS||r.sector===fS)&&(STAGES_SEL?STAGES_SEL.has(r.stage):true)&&(!fO||r.office===fO));
+  if(fF==='close') v=v.filter(r=>r.closing_this_month);
+  else if(fF==='fc') v=v.filter(r=>r.compliance&&r.compliance.fully_compliant);
+  else if(fF==='nc') v=v.filter(r=>r.compliance&&r.compliance.noncompliant>0);
+  else if(fF==='rfi') v=v.filter(r=>r.rfis_open>0);
+  else if(fF==='over') v=v.filter(r=>r.projected_cost&&r.projected_margin<0);
+  return v;
+}
+function candIds(){ return new Set(structFiltered().map(r=>r.procore_id)); }
+function searchOf(arr){ const q=(document.getElementById('q').value||'').toLowerCase().trim(); if(!q) return arr;
+  return arr.filter(r=>((r.project||'')+' '+(r.owner||'')+' '+(r.architect||'')+' '+(r.project_number||'')+' '+((r.team||[]).map(t=>t.name).join(' '))).toLowerCase().includes(q)); }
+function selFiltered(){ const b=structFiltered(); return SELECTED?b.filter(r=>SELECTED.has(r.procore_id)):b; }  // picker applies (no text search) — used by the map
+function sumView(){ return searchOf(selFiltered()); }   // all list tabs: picker + text search
+function finView(){ return searchOf(selFiltered()); }   // (kept as an alias; same as sumView now)
+function onStruct(){ SELECTED=null; msRebuild(); updateMsBtn(); render(); }
+/* ---------- multiselect ---------- */
+function msListHtml(term){
+  const cand=structFiltered().slice().sort((a,b)=>String(a.project).localeCompare(String(b.project)));
+  return cand.filter(r=>!term||String(r.project).toLowerCase().includes(term)||String(r.project_number).toLowerCase().includes(term))
+    .map(r=>{ const on=SELECTED?SELECTED.has(r.procore_id):true;
+      return '<label class="ms-item"><input type="checkbox" data-id="'+r.procore_id+'"'+(on?' checked':'')+'>'
+        +'<span>'+esc(r.project)+' <span style="color:#8a92a1">'+esc(r.project_number)+'</span></span></label>'; })
+    .join('') || '<div class="empty" style="padding:8px">No projects</div>';
+}
+function msRebuild(){   // drives BOTH the Financials (#ms) and Projections (#pj) pickers
+  const ms=document.getElementById('msList'); if(ms) ms.innerHTML=msListHtml(((document.getElementById('msSearch')||{}).value||'').toLowerCase());
+  const pj=document.getElementById('pjList'); if(pj) pj.innerHTML=msListHtml(((document.getElementById('pjSearch')||{}).value||'').toLowerCase());
+  document.querySelectorAll('#msList input[type=checkbox], #pjList input[type=checkbox]').forEach(cb=>cb.addEventListener('change',msToggle));
+}
+function msToggle(e){
+  const id=Number(e.target.getAttribute('data-id'));
+  const ids=candIds();
+  if(SELECTED===null) SELECTED=new Set(ids);
+  if(e.target.checked) SELECTED.add(id); else SELECTED.delete(id);
+  let all=true; ids.forEach(i=>{ if(!SELECTED.has(i)) all=false; });
+  if(all) SELECTED=null;
+  updateMsBtn(); msRebuild(); render();
+}
+function updateMsBtn(){
+  const ids=candIds(), n=ids.size;
+  const sel=SELECTED?[...SELECTED].filter(i=>ids.has(i)).length:n;
+  const label=(SELECTED===null||sel===n)?('All projects ('+n+')'):(sel+' of '+n+' selected');
+  ['msBtn','pjBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=label; });
+}
+/* ---------- render ---------- */
+function render(){
+  // ---- Summary tab (no project picker) ----
+  const list=sumView();
+  const closing=list.filter(r=>r.closing_this_month).length;
+  const ncp=list.filter(r=>r.compliance&&r.compliance.noncompliant>0).length;
+  const rfip=list.filter(r=>r.rfis_open>0).length;
+  const cosm=list.reduce((a,r)=>a+(r.cos_approved_this_month||0),0);
+  document.getElementById('sumCards').innerHTML=
+    card('total',list.length,'Projects','')
+   +card('soon',closing,'Closing This Month','close')
+   +card('nc',ncp,'Non-Compliant','nc')
+   +card('rfi',rfip,'Open RFIs','rfi')
+   +card('co',cosm,'COs Approved / Mo');
+  document.getElementById('sumList').innerHTML = list.length ? list.map(pcardSummary).join('') : '<div class="empty">No projects match.</div>';
+  // map pins (Stage/Sector/Office/Show only — not search, not the picker)
+  MARKERS.clearLayers(); const pts=[];
+  selFiltered().forEach(r=>{ if(r.lat==null||r.lng==null) return; const cls=compClass(r);
+    const m=L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:1.5,fillColor:pinColor(cls),fillOpacity:.95});
+    m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
+    m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
+  if(pts.length){ try{ MAP.fitBounds(pts,{padding:[30,30],maxZoom:11}); }catch(e){} }
+  // ---- Financials tab (honors project picker) ----
+  renderFin(finView());
+  // ---- Profitability / WIP tab (CE data) ----
+  renderProf(list);
+  // ---- Projections tab (monthly revenue forecast, honors project picker) ----
+  renderProj(finView());
+  // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
+  renderRec(list);
+  updateMsBtn();
+}
+function renderProj(list){
+  const rows=list.map(r=>({r,p:projOf(r)})).filter(x=>x.p && x.p.months!=null && x.p.remaining>1);
+  let maxM=1; rows.forEach(x=>maxM=Math.max(maxM,x.p.months+1));
+  const H=Math.min(maxM,24); const months=monthLabels(H);
+  const S=f=>rows.reduce((a,x)=>a+num(x.p[f]),0);
+  const totContract=S('contract'), totRev=S('revRec'), totRemain=S('remaining'), totFee=S('margin');
+  const monthTotals=months.map((m,i)=>rows.reduce((a,x)=>a+((i<=x.p.months)?x.p.monthly:0),0));
+  document.getElementById('projCards').innerHTML=
+    card('total',money(totContract),'Contract (backlog jobs)',null,'Sum of contract for shown jobs that have a CE match and a completion date.')
+   +card('ok',money(totRev),'Revenue Recognized',null,'% Complete × Contract, summed — revenue earned to date.')
+   +card('rfi',money(totRemain),'Remaining Revenue (Backlog)',null,'Contract − Revenue Recognized — revenue left to earn/bill.')
+   +card(totFee<0?'nc':'ok',smoney(totFee),'Projected Fee / Margin',null,'Contract − Projected Cost (EAC). Fee = margin = profit.')
+   +card('co',money(monthTotals[0]||0),(months[0]||'')+' Projected Rev',null,'Projected revenue across shown jobs for the current month.');
+  if(typeof Chart!=='undefined'){ const cv=document.getElementById('projChart');
+    if(cv){ if(PROJCHART) PROJCHART.destroy();
+      PROJCHART=new Chart(cv,{type:'bar',data:{labels:months,datasets:[{data:monthTotals,backgroundColor:'#ED2B30',borderRadius:4,maxBarThickness:44}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+Math.round(c.parsed.y).toLocaleString()}}},scales:{y:{ticks:{callback:v=>'$'+(v/1e6).toFixed(1)+'M'}},x:{ticks:{maxRotation:0,autoSkip:true}}}}});
     }
-
-    let statsHtml = "", tag = "";
-
-    if (desk.library && siteId){
-      const driveId = drives[desk.library];
-      if (!driveId){
-        tag = '<span class="tag crit">no library</span>';
-        statsHtml = '<p class="msg" style="color:var(--crit)">No document library called <span class="mono">' +
-          esc(desk.library) + '</span> on the site.</p>';
-        log("tile " + desk.key, "library missing");
-      } else {
-        const f = await graphRaw("/drives/" + driveId + "/root:/" + desk.file + ":/content");
-        if (f.ok){
-          try {
-            const data = JSON.parse(f.text);
-            statsHtml = '<div class="stats">' + desk.stats(data).map(p =>
-              '<div class="stat"><span class="k">' + esc(p[0]) + '</span>' +
-              '<span class="v">' + n0(p[1]) + '</span></div>').join("") + '</div>';
-            log("tile " + desk.key, desk.file + " read, " + (data.rows ? data.rows.length : "?") + " rows");
-          } catch (e) {
-            tag = '<span class="tag crit">bad file</span>';
-            statsHtml = '<p class="msg" style="color:var(--crit)">' + esc(desk.file) + ' is not valid JSON.</p>';
-            log("tile " + desk.key, desk.file + " parse failed");
-          }
-        } else if (f.status === 403){
-          tag = '<span class="tag crit">403</span>';
-          statsHtml = '<p class="msg" style="color:var(--crit)">You are in <span class="mono">' +
-            esc(desk.groupName) + '</span> but SharePoint denied the read. The group has not been granted on the ' +
-            '<span class="mono">' + esc(desk.library) + '</span> library.</p>';
-          log("tile " + desk.key, "403 — Entra membership without a SharePoint grant");
-        } else if (f.status === 404){
-          tag = '<span class="tag warn">no data</span>';
-          statsHtml = '<p class="msg" style="color:var(--warn)">' + esc(desk.file) +
-            ' has not been uploaded to <span class="mono">' + esc(desk.library) + '</span> yet.</p>';
-          log("tile " + desk.key, desk.file + " 404");
-        } else {
-          tag = '<span class="tag crit">HTTP ' + f.status + '</span>';
-          log("tile " + desk.key, "HTTP " + f.status);
-        }
-      }
+  }
+  const head='<tr><th class="l">Job</th><th>Remaining</th><th>Mo Left</th>'+months.map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr>';
+  const body=rows.sort((a,b)=>b.p.remaining-a.p.remaining).map(x=>{
+    const cells=months.map((m,i)=>'<td>'+((i<=x.p.months)?money(x.p.monthly):'')+'</td>').join('');
+    const wl=[]; if(x.r.markup_gap) wl.push('CE contract short '+money(x.r.markup_gap)+' (markup not synced)'); if(x.r.eac_gap) wl.push('EAC not synced ('+smoney(x.r.eac_gap)+' vs Procore)');
+    const warn=wl.length?' <span title="'+wl.join('; ')+' — this projection may be understated or stale." style="color:#b3261e;cursor:help">&#9888;</span>':'';
+    return '<tr><td class="l"><b>'+esc(x.r.project_number)+'</b> '+esc(x.r.project)+warn+'</td><td>'+money(x.p.remaining)+'</td><td>'+x.p.months+'</td>'+cells+'</tr>';
+  }).join('');
+  const totRow='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totRemain)+'</td><td></td>'+monthTotals.map(t=>'<td>'+money(t)+'</td>').join('')+'</tr>';
+  document.getElementById('projList').innerHTML = rows.length
+    ? '<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+totRow+'</tbody></table></div>'
+    : '<div class="empty">No jobs to project — needs a CE match, a Procore completion date, and remaining revenue.</div>';
+}
+function recClassify(r){
+  // returns {kind, cls, status, pC,cC,dC,pCost,cCost,pCom,cCom,pE,cE, markup, eac}
+  const pC=num(r.revised_contract||r.contract_amount);
+  if(!r.ce) return {kind:'notce',cls:'nce',status:'Not in CE',pC,cC:null,dC:null,
+    pCost:num(r.cost_to_date)||null,cCost:null,pCom:num(r.committed)||null,cCom:null,
+    pE:num(r.projected_cost)||null,cE:null,markup:false,eac:false};
+  const cC=num(r.ce.ce_contract), dC=pC-cC;
+  const pCost=num(r.cost_to_date), cCost=num(r.ce.ce_actual_cost);
+  const pCom=num(r.committed), cCom=(r.ce.ce_committed==null?null:num(r.ce.ce_committed));
+  const pE=num(r.projected_cost), cE=num(r.ce.ce_projected_cost);
+  const markup=r.markup_gap>0, eac=r.eac_gap!==0 && r.eac_gap!=null;
+  let kind,cls,status;
+  if(Math.abs(dC)>1){ kind='mismatch'; cls='miss'; status='Contract Δ '+smoney(dC)+' (Spark)'; }
+  else if(eac){ kind='insync'; cls='eacw'; status='EAC not synced '+smoney(r.eac_gap); }
+  else { kind='insync'; cls=''; status='In sync'; }
+  return {kind,cls,status,pC,cC,dC,pCost,cCost,pCom,cCom,pE,cE,markup,eac};
+}
+function recCard(cls,n,label,key,tip){
+  const on=(RECFILTER===key);
+  return '<div class="card '+cls+(on?' sel':'')+'" onclick="setRecFilter(\''+key+'\')" title="'+esc(tip)+(on?' — click to clear filter':' — click to filter')+'" style="cursor:pointer">'
+    +'<div class="cn">'+esc(String(n))+'</div><div class="cl">'+esc(label)+'</div></div>';
+}
+function setRecFilter(k){ RECFILTER=(RECFILTER===k?'all':k); renderRec(sumView()); }
+function recMatch(c,k){
+  if(k==='all') return true;
+  if(k==='insync') return c.kind==='insync';
+  if(k==='mismatch') return c.kind==='mismatch';
+  if(k==='notce') return c.kind==='notce';
+  if(k==='markup') return c.markup;
+  if(k==='eac') return c.eac;
+  return true;
+}
+function renderRec(list){
+  const items=list.map(r=>({r,c:recClassify(r)}));
+  const inSync=items.filter(x=>x.c.kind==='insync').length;
+  const mism=items.filter(x=>x.c.kind==='mismatch').length;
+  const notCe=items.filter(x=>x.c.kind==='notce').length;
+  const mkJobs=items.filter(x=>x.c.markup); const mkTot=mkJobs.reduce((a,x)=>a+num(x.r.markup_gap),0);
+  const eacJobs=items.filter(x=>x.c.eac);
+  document.getElementById('recCards').innerHTML=
+    recCard('ok',inSync,'In Sync','insync','Procore revised contract matches CE contract (within $1).')
+   +recCard('nc',mkJobs.length,'Missing Markup','markup','Jobs where the fee/CO markup is handled in Procore in a way Spark isn’t exporting — Procore contract is higher than CE by >$1k. Their WIP/margin/projection are understated.')
+   +recCard('nc',mism,'Contract Mismatch','mismatch','Procore contract ≠ CE contract (any diff >$1) — a Spark sync gap.')
+   +recCard('soon',notCe,'Not in CE','notce','Procore jobs with no matching CE job (bids, or not yet synced through Spark).')
+   +recCard(eacJobs.length?'nc':'ok',eacJobs.length,'EAC Not Synced','eac','Jobs where Procore EAC (projected cost) differs materially from CE’s — the EAC hasn’t been pushed into CE yet, so CE WIP/projection is stale.')
+   +recCard(mkTot?'nc':'ok',smoney(mkTot),'Markup Not in CE','markup','Total markup Procore has that CE is missing — the amount Spark hasn’t carried. This is how much WIP margin is understated across shown jobs.');
+  const shown=items.filter(x=>recMatch(x.c,RECFILTER));
+  const trs=shown.map(x=>recRow(x.r,x.c)).join('');
+  const note=(RECFILTER!=='all')?'<div style="padding:6px 2px;color:#5b6472;font-size:12px">Showing '+shown.length+' of '+items.length+' jobs (filtered) · <a href="#" onclick="setRecFilter(RECFILTER);return false" style="color:#ED2B30;text-decoration:none">clear</a></div>':'';
+  document.getElementById('recList').innerHTML=note+'<div class="rwrap"><table class="rtable">'
+    +'<thead><tr><th class="l">Job</th><th>Contract · Procore</th><th>Contract · CE</th><th>Δ</th><th>Cost·Date · PC</th><th>Cost·Date · CE</th><th>Committed · PC</th><th>Committed · CE</th><th>EAC · PC</th><th>EAC · CE</th><th class="l">Status</th></tr></thead><tbody>'
+    +(trs||'<tr><td colspan="11" class="l" style="color:#5b6472;font-style:italic;padding:14px">No projects match this filter.</td></tr>')
+    +'</tbody></table></div>';
+}
+function recRow(r,c){
+  const m=v=>v==null?'—':money(v);
+  const dCell = (c.dC==null)?'—':'<span class="rdelta '+(Math.abs(c.dC)>1?'d':'z')+'">'+(Math.abs(c.dC)>1?smoney(c.dC):'&#10003;')+'</span>';
+  const sc = c.cls==='miss'?'bad':((c.cls==='nce'||c.cls==='eacw')?'warn':'ok');
+  const mkChip = c.markup?' <span class="rdelta d" title="Markup not in CE">&#9888;mk</span>':'';
+  return '<tr class="'+c.cls+'"><td class="l"><b>'+esc(r.project_number)+'</b> '+esc(r.project)+mkChip+(isRpt(r)?' '+rptChip(r):'')+'</td>'
+    +'<td>'+m(c.pC)+'</td><td>'+m(c.cC)+'</td><td>'+dCell+'</td>'
+    +'<td>'+m(c.pCost)+'</td><td>'+m(c.cCost)+'</td>'
+    +'<td>'+m(c.pCom)+'</td><td>'+m(c.cCom)+'</td>'
+    +'<td>'+m(c.pE)+'</td><td>'+m(c.cE)+'</td>'
+    +'<td class="l rstat '+sc+'">'+esc(c.status)+'</td></tr>';
+}
+function renderProf(list){
+  const withCe=list.filter(r=>r.ce);
+  const S=f=>withCe.reduce((a,r)=>a+num(r.ce[f]),0);
+  const totContract=S('ce_contract'), totCost=S('ce_actual_cost'), totCommitted=S('ce_committed'), totEac=S('ce_projected_cost'), totBilled=S('ce_billed'), totMargin=S('ce_projected_margin'), totOU=S('ce_over_under_billed');
+  const marginPct=totContract?(totMargin/totContract*100):null;
+  const totRev=withCe.reduce((a,r)=>{const p=projOf(r);return a+(p?p.revRec:0);},0);
+  const totRemain=withCe.reduce((a,r)=>{const p=projOf(r);return a+(p?p.remaining:0);},0);
+  document.getElementById('profCards').innerHTML=
+    card('total',money(totContract),'Contract',null,'CE current contract (incl. approved changes), summed across shown jobs with a CE match.')
+   +card('co',money(totCost),'Cost to Date',null,'CE actual incurred cost (excludes committed).')
+   +card('rfi',money(totCommitted),'Committed',null,'CE committed — executed subs/POs not yet incurred.')
+   +card('nc',money(totEac),'Projected Cost (EAC)',null,'CE projected final cost at completion.')
+   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Fee / Margin',null,'Contract − Projected Cost (EAC). Fee = margin = profit.')
+   +card('ok',money(totRev),'Revenue Recognized',null,'% Complete × Contract, summed — revenue earned to date.')
+   +card('total',money(totRemain),'Remaining Revenue',null,'Contract − Revenue Recognized — backlog left to earn/bill.')
+   +card('soon',money(totBilled),'Billed to Date',null,'CE amount billed to the owner to date.')
+   +card(totOU<0?'total':'ok',(totOU<0?'Under ':'Over ')+money(Math.abs(totOU)),'Net Over/Under Billed',null,'Billed − earned (cost-based). Under = billing behind cost progress.');
+  if(typeof Chart!=='undefined'){
+    const j1=withCe.slice().sort((a,b)=>num(b.ce.ce_contract)-num(a.ce.ce_contract)).slice(0,15);
+    const c1=document.getElementById('cccChart');
+    if(c1){ if(CCCChart)CCCChart.destroy();
+      CCCChart=new Chart(c1,{type:'bar',data:{labels:j1.map(r=>r.project_number),datasets:[
+        {label:'Contract',data:j1.map(r=>num(r.ce.ce_contract)),backgroundColor:'#1F3864'},
+        {label:'Cost to Date',data:j1.map(r=>num(r.ce.ce_actual_cost)),backgroundColor:'#ED2B30'},
+        {label:'Committed',data:j1.map(r=>num(r.ce.ce_committed)),backgroundColor:'#c99a00'}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}},scales:{y:{ticks:{callback:v=>'$'+(v/1e6).toFixed(1)+'M'}},x:{ticks:{maxRotation:60,minRotation:45,font:{size:9}}}}}});
     }
-
-    el.innerHTML =
-      '<div class="tilehead"><h3>' + desk.title + '</h3>' + tag + '</div>' +
-      '<p>' + esc(desk.blurb) + '</p>' + statsHtml +
-      '<a class="btn" href="' + esc(desk.href) + '"' + (desk.external ? ' rel="noopener"' : '') + '>Open</a>';
-    host.append(el);
+    const j2=withCe.slice().filter(r=>r.ce.ce_projected_margin_pct!=null).sort((a,b)=>num(b.ce.ce_projected_margin_pct)-num(a.ce.ce_projected_margin_pct));
+    const c2=document.getElementById('marginChart');
+    if(c2){ if(MARGINChart)MARGINChart.destroy();
+      const mp=j2.map(r=>num(r.ce.ce_projected_margin_pct));
+      MARGINChart=new Chart(c2,{type:'bar',data:{labels:j2.map(r=>r.project_number),datasets:[
+        {label:'Margin %',data:mp,backgroundColor:mp.map(v=>v<0?'#b3261e':(v<TARGET_MARGIN?'#c99a00':'#1a7f37'))},
+        {type:'line',label:'Target',data:j2.map(()=>TARGET_MARGIN),borderColor:'#5b6472',borderDash:[6,4],borderWidth:1.5,pointRadius:0}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.datasetIndex===0?'Margin ':'Target ')+Number(c.parsed.y).toFixed(1)+'%'}}},scales:{y:{ticks:{callback:v=>v+'%'}},x:{ticks:{maxRotation:60,minRotation:45,font:{size:9}}}}}});
+    }
   }
-
-  $("#asof").textContent = "Read " + new Date().toLocaleString("en-US") + ".";
-  applyFilter();
+  document.getElementById('profList').innerHTML = withCe.length ? withCe.map(pcardProf).join('')
+    : '<div class="empty">No CE job data for the current filter. (Matched by job number — bids and jobs not yet in ComputerEase won\'t appear.)</div>';
 }
-
-/* Everything below the links themselves — the tagline, quick actions, the safety
-   strip, the two rail panels and the weather locations — comes out of the same
-   links.json "site" block, so IT edits one file and nothing is rebuilt. A panel
-   whose data is absent simply never renders; none of them can break the page. */
-function applySite(site){
-  SAMPLE = !!(site && site.sample);
-  const t = $("#tagline");
-  if (t) t.textContent = (site && site.tagline) || FALLBACK_SITE.tagline;
-
-  renderActions((site && site.actions) || FALLBACK_SITE.actions);
-  renderSafety(site && site.safety);
-  /* Mailchimp supplies which issue is current; links.json can still supply the
-     section shortcuts and a past-issues link, which Mailchimp knows nothing about. */
-  const hand = (site && site.newsletter) || null;
-  let issue = hand;
-  if (pipelineNewsletter){
-    issue = Object.assign({}, hand || {}, pipelineNewsletter.newsletter);
-    if (hand && hand.sections && !pipelineNewsletter.newsletter.sections)
-      issue.sections = hand.sections;
-    if (hand && hand.archiveUrl && !pipelineNewsletter.newsletter.archiveUrl)
-      issue.archiveUrl = hand.archiveUrl;
-  }
-  renderNewsletter(issue);
-
-  /* the pipeline's file, when present, is the source of truth for people */
-  const people = pipelinePeople ? pipelinePeople.people : ((site && site.people) || []);
-  const out    = pipelinePeople ? (pipelinePeople.out || [])      : ((site && site.out) || []);
-  const hols   = pipelinePeople ? (pipelinePeople.holidays || []) : ((site && site.holidays) || []);
-  renderTeam(people, out, hols, site && site.peopleUrl);
-
-  /* the rail floats, so an empty one would hold open a 322px gutter */
-  const rail = $("#rail");
-  if (rail){
-    const anyPanel = Array.from(rail.children).some(el => !el.hidden);
-    rail.hidden = !anyPanel;
-    log("rail", anyPanel ? "shown" : "empty, hidden");
-  }
-
-  const list = wxLocations(site && site.weather);
-  if (!list.length) return;
-  wxAll = list;
-  const want = wxRemembered();
-  const next = list.find(l => l.label === want) || list[0];
-  const same = wxCfg && Number(next.lat) === Number(wxCfg.lat) && Number(next.lon) === Number(wxCfg.lon);
-  wxCfg = next;
-  if (same) { renderWeather(wxLast, next); return; }
-  fetchWeather(next).then(d => { wxLast = d; renderWeather(d, next); });
+function isRpt(r){ return !!(r.ce && r.ce.ce_source==='wip_report'); }
+function rptChip(r){ return isRpt(r)?'<span class="chip" style="background:#E7F0FF;color:#1F3864;border:1px solid #b9cdf0" title="These CE figures come from a Work-in-Progress report export, not the live CE API — this job isn’t published to the API yet. Committed cost isn’t available from the report. Refresh by re-exporting the WIP report from CE.">CE (report)</span>':''; }
+function pcardProf(r){
+  const c=r.ce; const mNeg=num(c.ce_projected_margin)<0; const ouNeg=num(c.ce_over_under_billed)<0; const pid=r.procore_id;
+  const pill='<span class="pright"><span class="pill '+(mNeg?'r':'g')+'">'+(mNeg?'Projected loss':'Margin '+(c.ce_projected_margin_pct!=null?Number(c.ce_projected_margin_pct).toFixed(1)+'%':''))+'</span></span>';
+  return '<div class="pcard fin '+(mNeg?'o':'u')+'">'
+    +'<div class="phead"><span class="pname"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'
+    +rptChip(r)
+    +(r.markup_gap?'<span class="chip" style="background:#FFC7CE;color:#9C0006;border:1px solid #e6a3a3" title="Procore contract exceeds CE by '+money(r.markup_gap)+' — fee/CO markup is handled in Procore in a way Spark isn\'t exporting, so CE is short. Margin, revenue recognized &amp; projection below are understated by up to this amount until it syncs.">&#9888; CE missing markup '+smoney(r.markup_gap)+'</span>':'')
+    +(r.eac_gap?'<span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="Procore Estimate-at-Completion differs from CE by '+smoney(r.eac_gap)+' — the latest Procore cost projection may not be imported into CE yet (Enter Revised Estimates). CE EAC / %complete / margin here may be stale.">&#9888; EAC not synced '+smoney(r.eac_gap)+'</span>':'')
+    +pill+'</div>'
+    +'<div class="pgrid">'
+    +kv('Contract','<span class="money">'+money(c.ce_contract)+'</span>','CE current contract incl. approved changes.')
+    +kv('Billed to Date','<span class="money">'+money(c.ce_billed)+'</span>','CE amount billed to the owner to date.')
+    +kv('Cost to Date','<span class="money">'+money(c.ce_actual_cost)+'</span>','CE actual incurred cost (excludes committed).')
+    +kv('Committed',c.ce_committed==null?'<span style="color:#8a94a3">n/a (report)</span>':'<span class="money">'+money(c.ce_committed)+'</span>',c.ce_committed==null?'Committed cost isn\'t available — this job is WIP-report-sourced and no subcontract export was provided.':'CE committed — executed subs/POs not yet incurred.'+(c.ce_committed_source==='sub_report'?' Derived from the subcontract report (≈ the API committed within ~2%).':''))
+    +kv('Projected Cost (EAC)','<span class="money">'+money(c.ce_projected_cost)+'</span>','CE projected final cost at completion.')
+    +kv('Projected Fee / Margin','<span class="'+(mNeg?'fover':'funder')+'">'+smoney(c.ce_projected_margin)+(c.ce_projected_margin_pct!=null?' · '+Number(c.ce_projected_margin_pct).toFixed(1)+'%':'')+'</span>','Contract ('+money(c.ce_contract)+') − Projected Cost ('+money(c.ce_projected_cost)+'). Fee = margin = profit.')
+    +kv('% Complete',(c.ce_pct_complete!=null?Math.round(c.ce_pct_complete)+'%':'—'),'Cost-based: Cost to Date ('+money(c.ce_actual_cost)+') ÷ Projected Cost ('+money(c.ce_projected_cost)+').')
+    +kv('Revenue Recognized','<span class="money">'+money((projOf(r)||{}).revRec)+'</span>','% Complete × Contract — revenue earned to date.')
+    +kv('Remaining Revenue','<span class="money">'+money((projOf(r)||{}).remaining)+'</span>','Contract − Revenue Recognized — backlog left to earn/bill.')
+    +kv('Over/Under Billed','<span class="'+(ouNeg?'fover':'funder')+'">'+(ouNeg?'Under ':'Over ')+money(Math.abs(num(c.ce_over_under_billed)))+'</span>','Billed ('+money(c.ce_billed)+') − earned (Contract × % complete). Under = billing behind cost progress.')
+    +'</div>'
+    +'<div class="srclinks"><a href="'+pcBase(pid)+'/tools/budgeting" target="_blank">Procore budget</a></div>'
+    +'</div>';
 }
-
-function renderDesksUnavailable(){
-  const host = $("#tiles");
-  host.innerHTML = "";
-  DESKS.forEach(desk => {
-    const el = document.createElement("article");
-    el.className = "tile locked";
-    el.dataset.find = (desk.title + " " + desk.blurb).replace(/&amp;/g, "&").toLowerCase();
-    el.innerHTML =
-      '<div class="tilehead"><h3>' + desk.title + '</h3>' +
-      '<span class="tag neutral">unavailable</span></div>' +
-      '<p>' + esc(desk.blurb) + '</p>' +
-      '<p class="msg">Sign-in has to succeed before this can open.</p>';
-    host.append(el);
-  });
+function card(cls,n,label,flag,tip){
+  const t=tip?' title="'+esc(tip)+'"':'';
+  if(flag==null) return '<div class="card noclk '+cls+'"'+t+'><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+  const cur=(document.getElementById('fFlag')||{}).value;
+  const sel=(cur===flag)?' sel':'';
+  return '<div class="card clk '+cls+sel+'" onclick="setFlag(\''+flag+'\')"'+t+'><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
 }
-
-/* ============ events ============ */
-$("#signin").addEventListener("click", () => app.loginRedirect({ scopes: SCOPES }));
-$("#signout").addEventListener("click", () => app.logoutRedirect());
-$("#q").addEventListener("input", applyFilter);
-$("#q").addEventListener("keydown", e => { if (e.key === "Escape"){ e.target.value = ""; applyFilter(); } });
-document.addEventListener("keydown", e => {
-  if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)){
-    e.preventDefault();
-    $("#q").focus();
-  }
-});
-$("#copy").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText($("#diag").textContent);
-    $("#copied").hidden = false;
-    setTimeout(() => { $("#copied").hidden = true; }, 1800);
-  } catch(_) {}
-});
-
-main().catch(e => {
-  $("#app").hidden = false;
-  fatal("Unexpected failure", (e && e.stack) || String(e));
-});
+function setFlag(f){ const el=document.getElementById('fFlag'); const cur=el.value; el.value=(cur===f)?'':f; onStruct(); }
+function kv(k,v,tip){ const t=tip?' title="'+esc(tip)+'"':''; const kc=tip?'k tip':'k'; return '<div'+t+'><div class="'+kc+'">'+k+'</div><div class="v">'+v+'</div></div>'; }
+/* Summary card — team / owner / schedule / compliance (no financials) */
+function pcardSummary(r){
+  const cls=compClass(r); const c=r.compliance;
+  const compPill = c? (cls==='g'?'<span class="pill g">Compliant</span>':cls==='y'?'<span class="pill y">Expiring</span>':cls==='r'?'<span class="pill r">'+c.noncompliant+' non-compliant</span>':'<span class="pill n">—</span>') : '<span class="pill n">no compliance data</span>';
+  const team=(r.team||[]).filter(t=>t.name).slice(0,8).map(t=>'<b>'+esc(t.name)+'</b>'+(t.role?' ('+esc(t.role)+')':'')).join(' &middot; ');
+  const pid=r.procore_id; const s={project:pcOverview(pid),rfis:pcBase(pid)+'/tools/rfis'};
+  return '<div class="pcard '+cls+'">'
+    +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
+    +'<span class="chip stage">'+esc(r.stage)+'</span>'+(r.sector?'<span class="chip '+(r.sector_code==='05'?'sp':'sect')+'">'+esc(r.sector)+'</span>':'')
+    +(r.closing_this_month?'<span class="chip close">Closing this month</span>':'')
+    +'<span class="pright">'+compPill+'</span></div>'
+    +'<div class="pgrid">'
+    +kv('Owner',esc(r.owner||'—'))+kv('Architect',esc(r.architect||'—'))
+    +kv('Completion',esc(r.completion_date||'—'))
+    +kv('Open RFIs',(r.rfis_open||0)+(r.rfis_open&&r.rfis_open_list&&r.rfis_open_list[0]&&r.rfis_open_list[0].link?' <a href="'+esc(r.rfis_open_list[0].link)+'" target="_blank" style="font-size:11px">view</a>':''))
+    +kv('Office',esc(r.office||'—'))
+    +kv('Address',esc(r.address||'—'))
+    +'</div>'
+    +(team?'<div class="team"><span class="pgrid"></span>Team: '+team+'</div>':'')
+    +'<div class="srclinks"><a href="'+esc(s.project)+'" target="_blank">Procore project</a><a href="'+esc(s.rfis)+'" target="_blank">RFIs</a>'
+    +(c?'<a href="https://compliance.baileyharris.com" target="_blank">Compliance ('+c.compliant+'/'+c.vendors+' ok)</a>':'')+'</div>'
+    +'</div>';
+}
+/* Financials tab */
+function renderFin(list){
+  const totContract=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
+  const totEac=list.reduce((a,r)=>a+num(r.projected_cost),0);
+  const totMargin=list.reduce((a,r)=>a+num(r.projected_margin),0);
+  const totCommitted=list.reduce((a,r)=>a+num(r.committed),0);
+  const totJtd=list.reduce((a,r)=>a+num(r.cost_to_date),0);
+  const loss=list.filter(r=>r.projected_cost&&r.projected_margin<0);
+  const marginPct=totContract?(totMargin/totContract*100):null;
+  document.getElementById('finCards').innerHTML=
+    card('total',money(totContract),'Total Contract (rev.)',null,'REVENUE — sum of each shown project’s Revised Contract, from the Procore prime contracts.')
+   +card('co',money(totEac),'Projected Cost (EAC)',null,'COST — sum of Estimate at Completion from the Cost Projections budget view (projected total cost to build).')
+   +card(totMargin<0?'nc':'ok',smoney(totMargin)+(marginPct!=null?' · '+marginPct.toFixed(1)+'%':''),'Projected Margin',null,'Revised Contract − Projected Cost (EAC) across shown projects. Negative = projected loss.')
+   +card('soon',loss.length,'Projects at Loss','over','Shown active projects where Projected Cost exceeds Revised Contract (projected margin negative). Click to filter.')
+   +card('rfi',money(totCommitted),'Committed',null,'COST — sum of Commitments (SUB/PO/PSA): executed subcontract & PO value.')
+   +card('co',money(totJtd),'Cost to Date',null,'COST — sum of Job to Date Costs (actual cost incurred so far).');
+  document.getElementById('finVar').innerHTML = loss.length
+    ? '<div class="varbox"><b>&#9888; Projected loss ('+loss.length+')</b><div style="margin-top:7px;line-height:1.7">'
+        +loss.map(r=>'<a href="'+pcBase(r.procore_id)+'/tools/budgeting" target="_blank" style="color:#211E1E;text-decoration:none;font-weight:600">'+esc(r.project)+'</a> — <span class="fover">'+smoney(r.projected_margin)+'</span> <span style="color:#7a828f">(projected cost '+money(r.projected_cost)+' vs contract '+money(r.revised_contract||r.contract_amount)+')</span>').join('<br>')
+        +'</div></div>'
+    : '<div class="varbox clean"><b>&#10003; No projects projected to lose money</b> <span style="color:#7a828f">— Projected Cost (EAC) is within contract on all shown active jobs.</span></div>';
+  document.getElementById('finList').innerHTML = list.length ? list.map(fcard).join('') : '<div class="empty">No projects match.</div>';
+}
+function fcard(r){
+  const hasCost=!!r.projected_cost;
+  const marginNeg = r.projected_margin<0;
+  const overCls = hasCost ? (marginNeg?'o':'u') : '';
+  const pill = hasCost
+    ? '<span class="pright"><span class="pill '+(marginNeg?'r':'g')+'">'+(marginNeg?'Projected loss':'Margin '+(r.projected_margin_pct!=null?r.projected_margin_pct.toFixed(1)+'%':''))+'</span></span>'
+    : '';
+  const marginCell = hasCost ? '<span class="'+(marginNeg?'fover':'funder')+'">'+smoney(r.projected_margin)+(r.projected_margin_pct!=null?' · '+r.projected_margin_pct.toFixed(1)+'%':'')+'</span>' : '—';
+  const pctCell = (r.pct_complete!=null)? Math.round(r.pct_complete)+'%' : '—';
+  const ouCell = hasCost ? '<span class="'+(r.over_under_budget<0?'fover':'funder')+'">'+(r.over_under_budget<0?'Over ':'Under ')+money(Math.abs(r.over_under_budget))+'</span>' : '—';
+  const pid=r.procore_id; const s={contract:pcBase(pid)+'/tools/prime-contracts',budget:pcBase(pid)+'/tools/budgeting',project:pcOverview(pid)};
+  return '<div class="pcard fin '+overCls+'">'
+    +'<div class="phead"><span class="pname"><a href="'+esc(s.project)+'" target="_blank">'+esc(r.project)+'</a></span><span class="pnum">'+esc(r.project_number)+'</span>'
+    +'<span class="chip stage">'+esc(r.stage)+'</span>'+pill+'</div>'
+    +'<div class="pgrid">'
+    +kv('Contract','<span class="money">'+money(r.contract_amount)+'</span>','REVENUE — Procore prime contract grand_total (original contract, before COs).')
+    +kv('Approved COs','<span class="money">'+money(r.approved_cos)+'</span>','REVENUE — prime contract approved_change_orders.')
+    +kv('Pending COs','<span class="money">'+money(r.pending_cos)+'</span>','REVENUE — prime contract pending_change_orders_amount (not yet approved).')
+    +kv('Revised Contract','<span class="money">'+money(r.revised_contract)+'</span>','REVENUE — revised_contract_amount = Contract ('+money(r.contract_amount)+') + Approved COs ('+money(r.approved_cos)+').')
+    +kv('Committed','<span class="money">'+money(r.committed)+'</span>','COST — Commitments (SUB/PO/PSA): executed subcontract & PO value (Cost Projections view).')
+    +kv('Cost to Date','<span class="money">'+money(r.cost_to_date)+'</span>','COST — Job to Date Costs: actual cost incurred so far (matches CE actual cost).')
+    +kv('Projected Cost (EAC)','<span class="money">'+money(r.projected_cost)+'</span>','COST — Estimate at Completion: projected total cost to finish the job.')
+    +kv('Projected Margin',marginCell,'Revised Contract ('+money(r.revised_contract||r.contract_amount)+') − Projected Cost ('+money(r.projected_cost)+'). Negative = projected loss.')
+    +kv('% Complete',pctCell,'Cost-based: Cost to Date ('+money(r.cost_to_date)+') ÷ Projected Cost ('+money(r.projected_cost)+').')
+    +kv('Over/Under Budget',ouCell,'Revised Budget ('+money(r.budget_revised)+') − Projected Cost ('+money(r.projected_cost)+'). Note: on this view the budget mirrors the contract.')
+    +kv('COs approved this mo',(r.cos_approved_this_month||0)+(r.cos_approved_this_month_amt?' · '+money(r.cos_approved_this_month_amt):''),'Prime (owner-side) change-order packages approved/executed this calendar month. Count · total.')
+    +kv('Commitment COs (cost)','<span class="money">'+smoney(r.commitment_cos)+'</span>','COST — approved commitment (subcontract/PO) change orders. Can be negative when deductive.')
+    +kv('Commitment COs this mo',(r.commitment_cos_this_month||0)+(r.commitment_cos_this_month_amt?' · '+smoney(r.commitment_cos_this_month_amt):''),'Approved commitment change orders this calendar month. Count · total.')
+    +'</div>'
+    +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget (Cost Projections)</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
+    +'</div>';
+}
+load();
 </script>
 </body>
 </html>
