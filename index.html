@@ -538,7 +538,7 @@ function pcardProf(r){
     +pill+'</div>'
     +'<div class="pgrid">'
     +kv('Contract (CE)','<span class="money">'+money(c.ce_contract)+'</span>','CE current contract incl. approved changes.')
-    +(r.markup_gap?kv('Contract (with missing markup)','<span class="money" style="color:#1a7f37">'+money(trueContract)+'</span> <span style="color:#9C0006;font-size:11px;white-space:nowrap">(+'+smoney(r.markup_gap)+' missing)</span>','TRUE contract = CE contract ('+money(c.ce_contract)+') + '+smoney(r.markup_gap)+' of fee/CO markup not yet synced into CE ('+money(trueContract)+' total, from Procore).'):'')
+    +(r.markup_gap?kv('Contract (Procore)','<span class="money" style="color:#1a7f37">'+money(trueContract)+'</span> <span style="color:#9C0006;font-size:11px;white-space:nowrap">(+'+smoney(r.markup_gap)+' missing)</span>','TRUE contract = CE contract ('+money(c.ce_contract)+') + '+smoney(r.markup_gap)+' of fee/CO markup not yet synced into CE ('+money(trueContract)+' total, from Procore).'):'')
     +kv('Billed to Date','<span class="money">'+money(c.ce_billed)+'</span>','CE amount billed to the owner to date.')
     +kv('Cost to Date','<span class="money">'+money(c.ce_actual_cost)+'</span>','CE actual incurred cost (excludes committed).')
     +kv('Committed',c.ce_committed==null?'<span style="color:#8a94a3">n/a (report)</span>':'<span class="money">'+money(c.ce_committed)+'</span>',c.ce_committed==null?'Committed cost isn\'t available — this job is WIP-report-sourced and no subcontract export was provided.':'CE committed — executed subs/POs not yet incurred.'+(c.ce_committed_source==='sub_report'?' Derived from the subcontract report (≈ the API committed within ~2%).':''))
