@@ -393,26 +393,32 @@ function render(){
 // Procore-style cost projection card, Procore vs CE side by side (Budget -> EAC -> Overrun -> ETC).
 function projCostCard(r){
   const c=r.ce||{};
-  const P={b:num(r.budget_revised),cost:num(r.cost_to_date),k:num(r.committed),e:num(r.projected_cost)};
-  const C={b:num(c.ce_orig_est_cost),cost:num(c.ce_actual_cost),k:num(c.ce_committed),e:num(c.ce_projected_cost)};
-  const hasP=P.e>0||P.cost>0||P.b>0, hasC=C.e>0||C.cost>0||C.b>0;
+  const rpt=isRpt(r);   // CE numbers came from the WIP report export (no budget/committed columns)
+  // raw (nullable) so we can show "n/a" when a source genuinely doesn't provide a field
+  const Praw={b:r.budget_revised,cost:r.cost_to_date,k:r.committed,e:r.projected_cost};
+  const Craw={b:c.ce_orig_est_cost,cost:c.ce_actual_cost,k:c.ce_committed,e:c.ce_projected_cost};
+  const P={b:num(Praw.b),cost:num(Praw.cost),k:num(Praw.k),e:num(Praw.e)};
+  const C={b:num(Craw.b),cost:num(Craw.cost),k:num(Craw.k),e:num(Craw.e)};
+  const hasP=P.e>0||P.cost>0||P.b>0, hasC=C.e>0||C.cost>0;
   const ov=x=>(x.e>0&&x.b>0)?(x.e-x.b):null;          // Overrun = EAC − Revised Budget
   const etc=x=>(x.e>0)?(x.e-x.cost):null;             // Estimate To Complete = EAC − Cost-to-Date
   const pctc=x=>(x.e>0)?(x.cost/x.e*100):null;
-  const m=(v,has)=>(!has||v==null)?'<span class="muted">—</span>':money(v);
-  const ovCell=x=>{ const o=ov(x); if(o==null) return '<span class="muted">—</span>'; return '<span class="'+(o>0?'fover':'funder')+'">'+(o>0?'Over ':'Under ')+money(Math.abs(o))+'</span>'; };
-  const etcCell=x=>{ const e=etc(x); return e==null?'<span class="muted">—</span>':money(e); };
-  const pctCell=x=>{ const p=pctc(x); return p==null?'<span class="muted">—</span>':Math.round(p)+'%'; };
+  const na='<span class="muted" title="Not provided by this source">n/a</span>', dash='<span class="muted">—</span>';
+  const mP=v=>(!hasP||v==null)?(hasP?na:dash):money(v);                 // Procore cell
+  const mC=v=>v==null?na:(hasC?money(v):dash);                          // CE cell: null -> n/a (report has no budget/committed)
+  const ovCell=x=>{ const o=ov(x); if(o==null) return na; return '<span class="'+(o>0?'fover':'funder')+'">'+(o>0?'Over ':'Under ')+money(Math.abs(o))+'</span>'; };
+  const etcCell=x=>{ const e=etc(x); return e==null?na:money(e); };
+  const pctCell=x=>{ const p=pctc(x); return p==null?na:Math.round(p)+'%'; };
   const rowT=(label,pv,cv,hl)=>'<tr'+(hl?' style="background:#f7faff"':'')+'><td class="l">'+label+'</td><td>'+pv+'</td><td>'+cv+'</td></tr>';
   const eacVar=(hasP&&hasC&&P.e>0&&C.e>0)?(P.e-C.e):null;
   const varChip=(eacVar!=null&&Math.abs(eacVar)>Math.max(5000,P.e*0.01))?'<span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="Procore EAC ('+money(P.e)+') vs CE EAC ('+money(C.e)+') differ by '+smoney(eacVar)+'">&#9888; EAC Δ '+smoney(eacVar)+'</span>':'';
   return '<div class="pcard fin" style="margin-bottom:10px">'
-    +'<div class="phead"><span class="pname">'+esc(r.project)+'</span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'+varChip+'</div>'
-    +'<div class="rwrap"><table class="rtable"><thead><tr><th class="l">Metric</th><th>Procore</th><th>ComputerEase</th></tr></thead><tbody>'
-    +rowT('Revised Budget',m(P.b,hasP),m(C.b,hasC))
-    +rowT('Cost to Date',m(P.cost,hasP),m(C.cost,hasC))
-    +rowT('Committed',m(P.k,hasP),m(C.k,hasC))
-    +rowT('EAC (projected cost)','<b>'+m(P.e,hasP)+'</b>','<b>'+m(C.e,hasC)+'</b>',true)
+    +'<div class="phead"><span class="pname">'+esc(r.project)+'</span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'+rptChip(r)+varChip+'</div>'
+    +'<div class="rwrap"><table class="rtable"><thead><tr><th class="l">Metric</th><th>Procore</th><th>ComputerEase'+(rpt?' (report)':'')+'</th></tr></thead><tbody>'
+    +rowT('Revised Budget',mP(Praw.b),mC(Craw.b))
+    +rowT('Cost to Date',mP(Praw.cost),mC(Craw.cost))
+    +rowT('Committed',mP(Praw.k),mC(Craw.k))
+    +rowT('EAC (projected cost)','<b>'+mP(Praw.e)+'</b>','<b>'+mC(Craw.e)+'</b>',true)
     +rowT('Overrun (EAC − Budget)',ovCell(P),ovCell(C),true)
     +rowT('ETC (cost to complete)',etcCell(P),etcCell(C))
     +rowT('% at Completion',pctCell(P),pctCell(C))
