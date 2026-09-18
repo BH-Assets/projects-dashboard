@@ -134,11 +134,13 @@ const SCOPES=['Sites.Selected','User.Read'];   // least-privilege: app granted t
 const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
 const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
 const CE_PATH='Compliance Dashboard/ce_data.json';
+const PROJSNAP_PATH='Compliance Dashboard/proj_snapshots.json';   // monthly reviewed snapshots (from VP workbook import)
 const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
 let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, CCCChart=null, MARGINChart=null; /* SELECTED/STAGES_SEL null = all */
+let MONTHLY=null, MPMONTH='';   // monthly snapshots + selected month (Monthly Projections tab)
 const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
 let RECFILTER='all';      // Sync Reconciliation tile filter
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
@@ -192,6 +194,8 @@ async function load(){
         }
         CE_GENERATED=cd.generated_at||''; }
     }catch(e){}
+    // Monthly reviewed snapshots (best-effort; tab shows an empty state until the first month is imported)
+    try{ const mr=await fetchFile(token, PROJSNAP_PATH); if(mr.ok){ MONTHLY=await mr.json(); } }catch(e){ MONTHLY=null; }
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
   }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
@@ -216,7 +220,7 @@ function buildUI(){
      +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
-   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Forecasting</button><button type="button" id="tabMonthly" class="tab">Monthly Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
@@ -239,13 +243,21 @@ function buildUI(){
      +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2;margin-top:18px">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
      +'<div class="cards" id="projCards"></div>'
      +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Company Projected Revenue by Month</div><div style="height:220px"><canvas id="projChart"></canvas></div></div>'
-     +'<div id="projList"></div></div>';
+     +'<div id="projList"></div></div>'
+   +'<div id="panMonthly" class="panel">'
+     +'<div class="fnote" style="background:#eef3fb;border-color:#c3d4ee">&#128197; <b>Monthly Projections</b> — the reviewed month-end record from the VP monthly workbooks. Pick a month (&ldquo;Costs through&rdquo;) to see each job&rsquo;s Contract, EAC and Fee with the prior-month value and variance.</div>'
+     +'<div class="controls"><label>Month (costs through):</label> <select id="mpMonth" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select> <span id="mpMeta" style="color:#7a828f;font-size:12px;margin-left:10px"></span></div>'
+     +'<div class="cards" id="mpCards"></div>'
+     +'<div id="mpList"></div>'
+   +'</div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
   document.getElementById('tabSum').addEventListener('click',()=>setTab('summary'));
   document.getElementById('tabFin').addEventListener('click',()=>setTab('financials'));
   document.getElementById('tabProf').addEventListener('click',()=>setTab('profitability'));
   document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
+  document.getElementById('tabMonthly').addEventListener('click',()=>setTab('monthly'));
+  { const mm=document.getElementById('mpMonth'); if(mm) mm.addEventListener('change',function(){ MPMONTH=this.value; renderMonthly(); }); }
   document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();['msPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('stPanel').classList.toggle('open');});
@@ -301,11 +313,13 @@ function setTab(t){ TAB=t;
   document.getElementById('tabFin').classList.toggle('active',t==='financials');
   document.getElementById('tabProf').classList.toggle('active',t==='profitability');
   document.getElementById('tabProj').classList.toggle('active',t==='projections');
+  document.getElementById('tabMonthly').classList.toggle('active',t==='monthly');
   document.getElementById('tabRec').classList.toggle('active',t==='reconciliation');
   document.getElementById('panSum').classList.toggle('active',t==='summary');
   document.getElementById('panFin').classList.toggle('active',t==='financials');
   document.getElementById('panProf').classList.toggle('active',t==='profitability');
   document.getElementById('panProj').classList.toggle('active',t==='projections');
+  document.getElementById('panMonthly').classList.toggle('active',t==='monthly');
   document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
   const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
@@ -384,11 +398,48 @@ function render(){
   renderFin(finView());
   // ---- Profitability / WIP tab (CE data) ----
   renderProf(list);
-  // ---- Projections tab (monthly revenue forecast, honors project picker) ----
+  // ---- Forecasting tab (cost projection + monthly revenue forecast) ----
   renderProj(finView());
+  // ---- Monthly Projections tab (reviewed month-end snapshots) ----
+  renderMonthly();
   // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
   renderRec(list);
   updateMsBtn();
+}
+function monthName(m){ const [y,mo]=String(m).split('-'); const d=new Date(Number(y),Number(mo)-1,1); return isNaN(d)?m:d.toLocaleString(undefined,{month:'short',year:'numeric'}); }
+// ---- Monthly Projections tab (reviewed month-end snapshots from the VP workbooks) ----
+function renderMonthly(){
+  const sel=document.getElementById('mpMonth'); if(!sel) return;
+  const snaps=(MONTHLY&&MONTHLY.snapshots)||{};
+  const months=((MONTHLY&&MONTHLY.months)||Object.keys(snaps)).slice().sort();
+  const meta=document.getElementById('mpMeta'), cards=document.getElementById('mpCards'), listEl=document.getElementById('mpList');
+  if(!months.length){ meta.textContent=''; cards.innerHTML='';
+    listEl.innerHTML='<div class="empty">No monthly snapshots yet. Once a VP monthly workbook is imported to <b>proj_snapshots.json</b>, pick a month here to see per-job Contract / EAC / Fee with prior-month variance.</div>'; return; }
+  if(!MPMONTH||!months.includes(MPMONTH)) MPMONTH=months[months.length-1];   // default latest
+  if(sel.options.length!==months.length){ sel.innerHTML=months.slice().reverse().map(m=>'<option value="'+m+'">'+monthName(m)+'</option>').join(''); }
+  sel.value=MPMONTH;
+  const snap=snaps[MPMONTH]||{}, jobs=(snap.jobs||[]).filter(j=>num(j.projected_contract)||num(j.eac)||num(j.cost_to_date));
+  meta.textContent=(snap.costs_through?('Costs through '+snap.costs_through):'')+(snap.as_of?('  ·  submitted '+snap.as_of):'')+'  ·  '+jobs.length+' jobs';
+  const S=f=>jobs.reduce((a,j)=>a+num(j[f]),0);
+  const totC=S('projected_contract'),totEac=S('eac'),totFee=S('projected_fee'),conVar=S('contract_variance'),feeVar=S('fee_variance');
+  cards.innerHTML=
+    card('total',money(totC),'Projected Contract',null,'Sum of projected contract for '+monthName(MPMONTH)+'.')
+   +card('co',money(totEac),'Projected Cost (EAC)',null,'Sum of projected cost at completion.')
+   +card(totFee<0?'nc':'ok',money(totFee),'Projected Fee',null,'Sum of projected fee.')
+   +card(conVar<0?'nc':'ok',smoney(conVar),'Contract Δ vs prior mo',null,'Total change in projected contract vs the previous month.')
+   +card(feeVar<0?'nc':'ok',smoney(feeVar),'Fee Δ vs prior mo',null,'Total change in projected fee vs the previous month.');
+  const dcell=v=>{ const n=num(v); if(!n) return '<span class="muted">—</span>'; return '<span class="'+(n>0?'funder':'fover')+'">'+(n>0?'+':'')+smoney(n)+'</span>'; };
+  const head='<tr><th class="l">Job</th><th>Proj Contract</th><th>Δ Contract</th><th>Cost to Date</th><th>EAC</th><th>% C</th><th>Rev Rec</th><th>Proj Fee</th><th>Fee %</th><th>Δ Fee</th><th>Billed</th></tr>';
+  const body=jobs.sort((a,b)=>num(b.projected_contract)-num(a.projected_contract)).map(j=>
+    '<tr><td class="l"><b>'+esc(j.job_no||'')+'</b> '+esc(j.job_name||'')+'</td>'
+    +'<td>'+money(j.projected_contract)+'</td><td>'+dcell(j.contract_variance)+'</td>'
+    +'<td>'+money(j.cost_to_date)+'</td><td>'+money(j.eac)+'</td>'
+    +'<td>'+(j.pct_complete!=null&&j.pct_complete!==''?Math.round(num(j.pct_complete)*(num(j.pct_complete)<=1?100:1))+'%':'—')+'</td>'
+    +'<td>'+money(j.revenue_recognized)+'</td>'
+    +'<td>'+money(j.projected_fee)+'</td><td>'+(j.proj_fee_pct!=null&&j.proj_fee_pct!==''?(num(j.proj_fee_pct)*(num(j.proj_fee_pct)<=1?100:1)).toFixed(1)+'%':'—')+'</td><td>'+dcell(j.fee_variance)+'</td>'
+    +'<td>'+money(j.billings_to_date)+'</td></tr>').join('');
+  const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totC)+'</td><td>'+dcell(conVar)+'</td><td>'+money(S('cost_to_date'))+'</td><td>'+money(totEac)+'</td><td></td><td>'+money(S('revenue_recognized'))+'</td><td>'+money(totFee)+'</td><td></td><td>'+dcell(feeVar)+'</td><td>'+money(S('billings_to_date'))+'</td></tr>';
+  listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>';
 }
 // Procore-style cost projection card, Procore vs CE side by side (Budget -> EAC -> Overrun -> ETC).
 function projCostCard(r){
