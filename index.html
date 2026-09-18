@@ -233,7 +233,10 @@ function buildUI(){
      +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
      +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
    +'<div id="panProj" class="panel">'
-     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
+     +'<div class="fnote" style="background:#eef3fb;border-color:#c3d4ee">&#128202; <b>Cost projection</b> (Procore-style), <b>Procore vs CE</b> side by side. EAC = projected final cost; <b>Overrun</b> = EAC − Revised Budget (red = over); <b>ETC</b> = EAC − Cost-to-Date (cost left to spend). Watch the EAC / Overrun variance between the two systems.</div>'
+     +'<div class="cards" id="projCostCards"></div>'
+     +'<div id="projCostList"></div>'
+     +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2;margin-top:18px">&#128200; <b>Monthly revenue projection</b> (live). % Complete = Cost‑to‑Date ÷ Projected Cost; Revenue Recognized = % × Contract; the <b>Remaining Revenue (backlog)</b> is spread straight‑line over the months to projected completion. Needs a CE match + a Procore completion date. <i>Point‑in‑time (as‑of month) snapshots coming later.</i></div>'
      +'<div class="cards" id="projCards"></div>'
      +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Company Projected Revenue by Month</div><div style="height:220px"><canvas id="projChart"></canvas></div></div>'
      +'<div id="projList"></div></div>';
@@ -387,7 +390,48 @@ function render(){
   renderRec(list);
   updateMsBtn();
 }
+// Procore-style cost projection card, Procore vs CE side by side (Budget -> EAC -> Overrun -> ETC).
+function projCostCard(r){
+  const c=r.ce||{};
+  const P={b:num(r.budget_revised),cost:num(r.cost_to_date),k:num(r.committed),e:num(r.projected_cost)};
+  const C={b:num(c.ce_orig_est_cost),cost:num(c.ce_actual_cost),k:num(c.ce_committed),e:num(c.ce_projected_cost)};
+  const hasP=P.e>0||P.cost>0||P.b>0, hasC=C.e>0||C.cost>0||C.b>0;
+  const ov=x=>(x.e>0&&x.b>0)?(x.e-x.b):null;          // Overrun = EAC − Revised Budget
+  const etc=x=>(x.e>0)?(x.e-x.cost):null;             // Estimate To Complete = EAC − Cost-to-Date
+  const pctc=x=>(x.e>0)?(x.cost/x.e*100):null;
+  const m=(v,has)=>(!has||v==null)?'<span class="muted">—</span>':money(v);
+  const ovCell=x=>{ const o=ov(x); if(o==null) return '<span class="muted">—</span>'; return '<span class="'+(o>0?'fover':'funder')+'">'+(o>0?'Over ':'Under ')+money(Math.abs(o))+'</span>'; };
+  const etcCell=x=>{ const e=etc(x); return e==null?'<span class="muted">—</span>':money(e); };
+  const pctCell=x=>{ const p=pctc(x); return p==null?'<span class="muted">—</span>':Math.round(p)+'%'; };
+  const rowT=(label,pv,cv,hl)=>'<tr'+(hl?' style="background:#f7faff"':'')+'><td class="l">'+label+'</td><td>'+pv+'</td><td>'+cv+'</td></tr>';
+  const eacVar=(hasP&&hasC&&P.e>0&&C.e>0)?(P.e-C.e):null;
+  const varChip=(eacVar!=null&&Math.abs(eacVar)>Math.max(5000,P.e*0.01))?'<span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="Procore EAC ('+money(P.e)+') vs CE EAC ('+money(C.e)+') differ by '+smoney(eacVar)+'">&#9888; EAC Δ '+smoney(eacVar)+'</span>':'';
+  return '<div class="pcard fin" style="margin-bottom:10px">'
+    +'<div class="phead"><span class="pname">'+esc(r.project)+'</span><span class="pnum">'+esc(r.project_number)+'</span><span class="chip stage">'+esc(r.stage)+'</span>'+varChip+'</div>'
+    +'<div class="rwrap"><table class="rtable"><thead><tr><th class="l">Metric</th><th>Procore</th><th>ComputerEase</th></tr></thead><tbody>'
+    +rowT('Revised Budget',m(P.b,hasP),m(C.b,hasC))
+    +rowT('Cost to Date',m(P.cost,hasP),m(C.cost,hasC))
+    +rowT('Committed',m(P.k,hasP),m(C.k,hasC))
+    +rowT('EAC (projected cost)','<b>'+m(P.e,hasP)+'</b>','<b>'+m(C.e,hasC)+'</b>',true)
+    +rowT('Overrun (EAC − Budget)',ovCell(P),ovCell(C),true)
+    +rowT('ETC (cost to complete)',etcCell(P),etcCell(C))
+    +rowT('% at Completion',pctCell(P),pctCell(C))
+    +'</tbody></table></div></div>';
+}
 function renderProj(list){
+  // ---- Cost projection (Procore vs CE) ----
+  { const jobs=list.filter(r=>num(r.projected_cost)>0||num(r.cost_to_date)>0||(r.ce&&num(r.ce.ce_projected_cost)>0));
+    const sP=f=>jobs.reduce((a,r)=>a+num(r[f]),0), sC=f=>jobs.reduce((a,r)=>a+(r.ce?num(r.ce[f]):0),0);
+    const budP=sP('budget_revised'), eacP=sP('projected_cost'), eacC=sC('ce_projected_cost'), ovP=eacP-budP, eacVarTot=eacP-eacC;
+    document.getElementById('projCostCards').innerHTML=
+      card('total',money(budP),'Revised Budget (Procore)',null,'Sum of Procore Revised Budget across shown jobs.')
+     +card('co',money(eacP),'EAC (Procore)',null,'Sum of Procore Estimate at Completion (projected final cost).')
+     +card(ovP>0?'nc':'ok',(ovP>0?'Over ':'Under ')+money(Math.abs(ovP)),'Overrun vs Budget (Procore)',null,'Procore EAC − Revised Budget. Over = projected above budget.')
+     +card('rfi',money(eacC),'EAC (CE)',null,'Sum of ComputerEase projected cost (EAC).')
+     +card(Math.abs(eacVarTot)>1000?'soon':'ok',smoney(eacVarTot),'EAC variance (Procore − CE)',null,'How far Procore’s total EAC differs from CE’s. Large = the two systems’ projections are out of sync.');
+    const cc=jobs.map(r=>({r,e:Math.max(num(r.projected_cost),r.ce?num(r.ce.ce_projected_cost):0)})).sort((a,b)=>b.e-a.e).map(x=>projCostCard(x.r)).join('');
+    document.getElementById('projCostList').innerHTML = cc || '<div class="empty">No cost projection data yet — needs Procore budget cost (run the pull) or a CE match.</div>';
+  }
   const rows=list.map(r=>({r,p:projOf(r)})).filter(x=>x.p && x.p.months!=null && x.p.remaining>1);
   let maxM=1; rows.forEach(x=>maxM=Math.max(maxM,x.p.months+1));
   const H=Math.min(maxM,24); const months=monthLabels(H);
