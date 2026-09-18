@@ -245,7 +245,7 @@ function buildUI(){
      +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Company Projected Revenue by Month</div><div style="height:220px"><canvas id="projChart"></canvas></div></div>'
      +'<div id="projList"></div></div>'
    +'<div id="panMonthly" class="panel">'
-     +'<div class="fnote" style="background:#eef3fb;border-color:#c3d4ee">&#128197; <b>Monthly Projections</b> — the reviewed month-end record from the VP monthly workbooks. Pick a month (&ldquo;Costs through&rdquo;) to see each job&rsquo;s Contract, EAC and Fee with the prior-month value and variance.</div>'
+     +'<div class="fnote" style="background:#eef3fb;border-color:#c3d4ee">&#128197; <b>Monthly Projections</b> — the reviewed month-end record from Procore&rsquo;s <b>approved</b> budget snapshots. Pick a month (&ldquo;Costs through&rdquo;) to see each job&rsquo;s Contract, EAC and Fee with the prior-month value and variance. Any month still awaiting approval is flagged <b>unapproved</b>.</div>'
      +'<div class="controls"><label>Month (costs through):</label> <select id="mpMonth" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select> <span id="mpMeta" style="color:#7a828f;font-size:12px;margin-left:10px"></span></div>'
      +'<div class="cards" id="mpCards"></div>'
      +'<div id="mpList"></div>'
@@ -414,12 +414,15 @@ function renderMonthly(){
   const months=((MONTHLY&&MONTHLY.months)||Object.keys(snaps)).slice().sort();
   const meta=document.getElementById('mpMeta'), cards=document.getElementById('mpCards'), listEl=document.getElementById('mpList');
   if(!months.length){ meta.textContent=''; cards.innerHTML='';
-    listEl.innerHTML='<div class="empty">No monthly snapshots yet. Once a VP monthly workbook is imported to <b>proj_snapshots.json</b>, pick a month here to see per-job Contract / EAC / Fee with prior-month variance.</div>'; return; }
+    listEl.innerHTML='<div class="empty">No monthly snapshots yet. Once the Monthly Projections import runs (pulls Procore approved budget snapshots into <b>proj_snapshots.json</b>), pick a month here to see per-job Contract / EAC / Fee with prior-month variance.</div>'; return; }
   if(!MPMONTH||!months.includes(MPMONTH)) MPMONTH=months[months.length-1];   // default latest
   if(sel.options.length!==months.length){ sel.innerHTML=months.slice().reverse().map(m=>'<option value="'+m+'">'+monthName(m)+'</option>').join(''); }
   sel.value=MPMONTH;
   const snap=snaps[MPMONTH]||{}, jobs=(snap.jobs||[]).filter(j=>num(j.projected_contract)||num(j.eac)||num(j.cost_to_date));
-  meta.textContent=(snap.costs_through?('Costs through '+snap.costs_through):'')+(snap.as_of?('  ·  submitted '+snap.as_of):'')+'  ·  '+jobs.length+' jobs';
+  const notAppr=j=>!!(j.approval_status&&!/approv/i.test(j.approval_status));   // explicitly not-yet-approved
+  const unappr=jobs.filter(notAppr);
+  meta.innerHTML=(snap.costs_through?('Costs through '+esc(snap.costs_through)):'')+(snap.as_of?('  ·  submitted '+esc(snap.as_of)):'')+'  ·  '+jobs.length+' jobs'
+    +(unappr.length?' <span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="'+unappr.length+' job(s) have no approved snapshot for this month yet — showing the latest available. Approve in Procore to lock the month.">&#9888; '+unappr.length+' unapproved</span>':(jobs.length?' <span class="chip" style="background:#e7f6ec;color:#1a7f37;border:1px solid #b7e0c2">&#10003; all approved</span>':''));
   const S=f=>jobs.reduce((a,j)=>a+num(j[f]),0);
   const totC=S('projected_contract'),totEac=S('eac'),totFee=S('projected_fee'),conVar=S('contract_variance'),feeVar=S('fee_variance');
   cards.innerHTML=
@@ -431,7 +434,7 @@ function renderMonthly(){
   const dcell=v=>{ const n=num(v); if(!n) return '<span class="muted">—</span>'; return '<span class="'+(n>0?'funder':'fover')+'">'+(n>0?'+':'')+smoney(n)+'</span>'; };
   const head='<tr><th class="l">Job</th><th>Proj Contract</th><th>Δ Contract</th><th>Cost to Date</th><th>EAC</th><th>% C</th><th>Rev Rec</th><th>Proj Fee</th><th>Fee %</th><th>Δ Fee</th><th>Billed</th></tr>';
   const body=jobs.sort((a,b)=>num(b.projected_contract)-num(a.projected_contract)).map(j=>
-    '<tr><td class="l"><b>'+esc(j.job_no||'')+'</b> '+esc(j.job_name||'')+'</td>'
+    '<tr><td class="l"><b>'+esc(j.job_no||'')+'</b> '+esc(j.job_name||'')+(notAppr(j)?' <span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="Snapshot &ldquo;'+esc(j.snapshot_label||'')+'&rdquo; is '+esc(j.approval_status||'')+' — not yet approved">unapproved</span>':'')+'</td>'
     +'<td>'+money(j.projected_contract)+'</td><td>'+dcell(j.contract_variance)+'</td>'
     +'<td>'+money(j.cost_to_date)+'</td><td>'+money(j.eac)+'</td>'
     +'<td>'+(j.pct_complete!=null&&j.pct_complete!==''?Math.round(num(j.pct_complete)*(num(j.pct_complete)<=1?100:1))+'%':'—')+'</td>'
