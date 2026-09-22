@@ -134,13 +134,15 @@ const SCOPES=['Sites.Selected','User.Read'];   // least-privilege: app granted t
 const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjvoe';
 const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
 const CE_PATH='Compliance Dashboard/ce_data.json';
-const PROJSNAP_PATH='Compliance Dashboard/proj_snapshots.json';   // monthly reviewed snapshots (from VP workbook import)
+const PROJSNAP_PATH='Compliance Dashboard/proj_snapshots.json';   // monthly reviewed snapshots (Procore approved)
+const CEHIST_PATH='Compliance Dashboard/ce_history.json';          // rolling monthly CE WIP capture (for WIP as-of)
 const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
 const CID=15326;
 const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/projects/'+id;
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
 let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, CCCChart=null, MARGINChart=null; /* SELECTED/STAGES_SEL null = all */
 let MONTHLY=null, MPMONTH='';   // monthly snapshots + selected month (Monthly Projections tab)
+let CEHIST=null, ASOF='live';   // CE monthly history + as-of month for Financials/WIP ('live' = current)
 const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
 let RECFILTER='all';      // Sync Reconciliation tile filter
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
@@ -196,6 +198,7 @@ async function load(){
     }catch(e){}
     // Monthly reviewed snapshots (best-effort; tab shows an empty state until the first month is imported)
     try{ const mr=await fetchFile(token, PROJSNAP_PATH); if(mr.ok){ MONTHLY=await mr.json(); } }catch(e){ MONTHLY=null; }
+    try{ const hr=await fetchFile(token, CEHIST_PATH); if(hr.ok){ CEHIST=await hr.json(); } }catch(e){ CEHIST=null; }
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
   }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
@@ -224,9 +227,11 @@ function buildUI(){
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
+     +'<div class="controls"><label>As of:</label> <select id="finAsof" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select> <span id="finAsofNote" style="color:#7a828f;font-size:12px;margin-left:8px"></span></div>'
      +'<div class="cards" id="finCards"></div><div id="finVar"></div><div id="finList"></div></div>'
    +'<div id="panProf" class="panel">'
      +'<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128202; <b>Live from ComputerEase</b> — actual cost, committed, billed, projected cost &amp; margin per job (accounting system of record). Matched to Procore by job number; bids / jobs not yet in CE won\'t appear. Hover any figure for its calculation.</div>'
+     +'<div class="controls"><label>As of:</label> <select id="profAsof" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select> <span id="profAsofNote" style="color:#7a828f;font-size:12px;margin-left:8px"></span></div>'
      +'<div class="cards" id="profCards"></div>'
      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:16px">'
        +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Contract vs Cost vs Committed</div><div style="height:250px"><canvas id="cccChart"></canvas></div></div>'
@@ -258,6 +263,8 @@ function buildUI(){
   document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
   document.getElementById('tabMonthly').addEventListener('click',()=>setTab('monthly'));
   { const mm=document.getElementById('mpMonth'); if(mm) mm.addEventListener('change',function(){ MPMONTH=this.value; renderMonthly(); }); }
+  { const fa=document.getElementById('finAsof'); if(fa) fa.addEventListener('change',function(){ setAsof(this.value); }); }
+  { const pa=document.getElementById('profAsof'); if(pa) pa.addEventListener('change',function(){ setAsof(this.value); }); }
   document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();['msPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('stPanel').classList.toggle('open');});
@@ -394,10 +401,14 @@ function render(){
     m.bindPopup('<b>'+esc(r.project)+'</b><br>'+esc(r.project_number)+' · '+esc(r.stage)+' · '+esc(r.sector)+'<br>'+esc(r.owner||'')+(r.contract_amount?'<br>'+money(r.contract_amount):'')+'<br><a href="'+pcOverview(r.procore_id)+'" target="_blank">Open in Procore</a>');
     m.addTo(MARKERS); pts.push([r.lat,r.lng]); });
   if(pts.length){ try{ MAP.fitBounds(pts,{padding:[30,30],maxZoom:11}); }catch(e){} }
-  // ---- Financials tab (honors project picker) ----
-  renderFin(finView());
-  // ---- Profitability / WIP tab (CE data) ----
-  renderProf(list);
+  // ---- Financials + WIP tabs (honor project picker; support accounting "as of" month) ----
+  populateAsof();
+  const finRaw=finView(); const finA=(ASOF!=='live')?asofFin(finRaw):null;
+  renderFin(finA||finRaw);
+  const profA=(ASOF!=='live')?asofProf(list):null;
+  renderProf(profA||list);
+  { const fn=document.getElementById('finAsofNote'); if(fn) fn.innerHTML=(ASOF==='live')?'Live from Procore (current)':(finA?('&#128197; Procore approved snapshot &mdash; '+monthName(ASOF)+' ('+finA.length+' jobs)'):('&#9888; No Procore snapshot for '+monthName(ASOF)+' &mdash; showing live')); }
+  { const pn=document.getElementById('profAsofNote'); if(pn) pn.innerHTML=(ASOF==='live')?'Live from ComputerEase (current)':(profA?('&#128197; CE month-end &mdash; '+monthName(ASOF)+' ('+profA.length+' jobs)'):('&#9888; No CE history for '+monthName(ASOF)+' yet (building monthly) &mdash; showing live')); }
   // ---- Forecasting tab (cost projection + monthly revenue forecast) ----
   renderProj(finView());
   // ---- Monthly Projections tab (reviewed month-end snapshots) ----
@@ -418,7 +429,13 @@ function renderMonthly(){
   if(!MPMONTH||!months.includes(MPMONTH)) MPMONTH=months[months.length-1];   // default latest
   if(sel.options.length!==months.length){ sel.innerHTML=months.slice().reverse().map(m=>'<option value="'+m+'">'+monthName(m)+'</option>').join(''); }
   sel.value=MPMONTH;
-  const snap=snaps[MPMONTH]||{}, jobs=(snap.jobs||[]).filter(j=>num(j.projected_contract)||num(j.eac)||num(j.cost_to_date));
+  const snap=snaps[MPMONTH]||{};
+  // honor the shared project picker + text search (snapshot jobs are keyed by project_number)
+  const selNums = SELECTED ? new Set(ROWS.filter(r=>SELECTED.has(r.procore_id)).map(r=>String(r.project_number))) : null;
+  const q=(document.getElementById('q')?document.getElementById('q').value:'').toLowerCase().trim();
+  let jobs=(snap.jobs||[]).filter(j=>num(j.projected_contract)||num(j.eac)||num(j.cost_to_date));
+  if(selNums) jobs=jobs.filter(j=>selNums.has(String(j.job_no)));
+  if(q) jobs=jobs.filter(j=>((j.job_no||'')+' '+(j.job_name||'')).toLowerCase().includes(q));
   const notAppr=j=>!!(j.approval_status&&!/approv/i.test(j.approval_status));   // explicitly not-yet-approved
   const unappr=jobs.filter(notAppr);
   meta.innerHTML=(snap.costs_through?('Costs through '+esc(snap.costs_through)):'')+(snap.as_of?('  ·  submitted '+esc(snap.as_of)):'')+'  ·  '+jobs.length+' jobs'
@@ -689,6 +706,16 @@ function pcardSummary(r){
     +'</div>';
 }
 /* Financials tab */
+// ---- As-of month overlay (accounting): Financials from Procore approved snapshots, WIP from CE history ----
+function asofMonths(){ const a=new Set(); if(MONTHLY&&MONTHLY.months) MONTHLY.months.forEach(m=>a.add(m)); if(CEHIST&&CEHIST.months) CEHIST.months.forEach(m=>a.add(m)); return [...a].sort(); }
+function populateAsof(){ const months=asofMonths(); const opts='<option value="live">Live (current)</option>'+months.slice().reverse().map(m=>'<option value="'+m+'">As of '+monthName(m)+'</option>').join('');
+  for(const id of ['finAsof','profAsof']){ const el=document.getElementById(id); if(!el) continue; if(el.options.length!==months.length+1) el.innerHTML=opts; el.value=(ASOF==='live'||months.includes(ASOF))?ASOF:'live'; } }
+function setAsof(v){ ASOF=v; render(); }
+function asofFin(rows){ const s=MONTHLY&&MONTHLY.snapshots&&MONTHLY.snapshots[ASOF]; if(!s) return null; const m={}; for(const j of s.jobs) m[String(j.job_no)]=j;
+  return rows.filter(r=>m[String(r.project_number)]).map(r=>{ const j=m[String(r.project_number)]; const contract=num(j.projected_contract), eac=num(j.eac);
+    return Object.assign({},r,{ revised_contract:contract, contract_amount:contract, approved_cos:0, pending_cos:0, budget_revised:contract, projected_cost:eac, cost_to_date:num(j.cost_to_date), committed:num(j.committed), projected_margin:contract-eac, projected_margin_pct:contract?((contract-eac)/contract*100):null, over_under_budget:contract-eac, pct_complete:(j.pct_complete!=null?num(j.pct_complete)*(num(j.pct_complete)<=1?100:1):null), cost_source:'Approved snapshot '+ASOF }); }); }
+function asofProf(rows){ const s=CEHIST&&CEHIST.snapshots&&CEHIST.snapshots[ASOF]; if(!s) return null; const m={}; for(const j of s.jobs) m[String(j.job_code)]=j;
+  return rows.map(r=>Object.assign({},r,{ce:m[String(r.project_number)]||null})).filter(r=>r.ce); }
 function renderFin(list){
   const totContract=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
   const totEac=list.reduce((a,r)=>a+num(r.projected_cost),0);
