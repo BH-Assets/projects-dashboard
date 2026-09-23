@@ -135,7 +135,6 @@ const DRIVE_ID='b!UgjUeEqLf0e6Z37An3qt5NP_8dR2rQJBoZpkPrOgBP0b4x1AxB_JT5QG_didjv
 const PROJECTS_PATH='Compliance Dashboard/projects_data.json';
 const CE_PATH='Compliance Dashboard/ce_data.json';
 const PROJSNAP_PATH='Compliance Dashboard/proj_snapshots.json';   // monthly reviewed snapshots (Procore approved)
-const SNAPLINES_DIR='Compliance Dashboard/snapshot_lines';          // per-project budget-code rows behind the snapshot comparison
 const CEHIST_PATH='Compliance Dashboard/ce_history.json';          // rolling monthly CE WIP capture (for WIP as-of)
 const SITE_PATH='baileyharris.sharepoint.com:/sites/Resources';   // Sites.Selected target
 const CID=15326;
@@ -143,10 +142,10 @@ const pcBase=id=>'https://app.procore.com/webclients/host/companies/'+CID+'/proj
 const pcOverview=id=>pcBase(id)+'/tools/hubs/project-hub/views/overview';
 let ROWS=[], GENERATED='', CE_GENERATED='', MAP=null, MARKERS=null, TAB='summary', SELECTED=null, STAGES_SEL=null, PROJCHART=null, CCCChart=null, MARGINChart=null; /* SELECTED/STAGES_SEL null = all */
 let MONTHLY=null, MPMONTH='';   // monthly snapshots + selected month (Monthly Projections tab)
-let SNAPIDX=null, CMPFILE=null, CMPJOB='', CMPA='', CMPB='', CMPVARONLY=true, CMPBUSY=false;   // Budget Snapshot Analysis
 let CEHIST=null, ASOF='live';   // CE monthly history + as-of month for Financials/WIP ('live' = current)
 const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
 let RECFILTER='all';      // Sync Reconciliation tile filter
+let TRMETRIC='billings', TRBASIS='avg', TRCHART=null;   // Trends tab: metric + basis + chart
 const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
@@ -200,8 +199,6 @@ async function load(){
     }catch(e){}
     // Monthly reviewed snapshots (best-effort; tab shows an empty state until the first month is imported)
     try{ const mr=await fetchFile(token, PROJSNAP_PATH); if(mr.ok){ MONTHLY=await mr.json(); } }catch(e){ MONTHLY=null; }
-    // Budget-code snapshot index (best-effort; the comparison shows an empty state until the lines import runs)
-    try{ const sx=await fetchFile(token, SNAPLINES_DIR+'/_index.json'); if(sx.ok){ SNAPIDX=await sx.json(); } }catch(e){ SNAPIDX=null; }
     try{ const hr=await fetchFile(token, CEHIST_PATH); if(hr.ok){ CEHIST=await hr.json(); } }catch(e){ CEHIST=null; }
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
@@ -227,7 +224,7 @@ function buildUI(){
      +'<input type="text" id="msSearch" class="ms-search" placeholder="find a project…"><div id="msList"></div></div></span>'
    +'<input id="q" type="text" placeholder="search project / owner / PM…" style="min-width:220px">'
    +'</div>'
-   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Forecasting</button><button type="button" id="tabMonthly" class="tab">Monthly Projections</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
+   +'<div class="tabs"><button type="button" id="tabSum" class="tab active">Project Summary</button><button type="button" id="tabFin" class="tab">Project Financials</button><button type="button" id="tabProf" class="tab">Profitability (WIP)</button><button type="button" id="tabProj" class="tab">Forecasting</button><button type="button" id="tabMonthly" class="tab">Monthly Projections</button><button type="button" id="tabTrends" class="tab">Trends</button><button type="button" id="tabRec" class="tab">Sync Reconciliation</button></div>'
    +'<div id="panSum" class="panel active"><div class="cards" id="sumCards"></div><div id="sumList"></div></div>'
    +'<div id="panFin" class="panel">'
      +'<div class="fnote">&#128161; <b>Data validation:</b> hover any figure (card or row) to see its Procore source and the exact calculation. This aid can be removed once the numbers are verified.</div>'
@@ -258,17 +255,17 @@ function buildUI(){
      +'<div class="controls"><label>Month (costs through):</label> <select id="mpMonth" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select> <span id="mpMeta" style="color:#7a828f;font-size:12px;margin-left:10px"></span></div>'
      +'<div class="cards" id="mpCards"></div>'
      +'<div id="mpList"></div>'
-     +'<div style="border-top:2px solid #e3e8f0;margin:28px 0 0"></div>'
-     +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf;margin-top:18px">&#128200; <b>Budget Snapshot Analysis</b> &mdash; pick a job and any two snapshots to compare it budget code by budget code. <b>Variance = Snapshot 1 &minus; Snapshot 2</b>, so a positive number means the estimate came <i>down</i>; an increase shows red in parentheses. <b>Current</b> is the live budget view, not a reviewed month &mdash; it moves between refreshes.</div>'
+   +'</div>'
+   +'<div id="panTrends" class="panel">'
+     +'<div class="fnote" style="background:#f3eefb;border-color:#d8c9ee">&#128200; <b>Trends</b> — month-over-month <b>billings</b> and <b>cost</b> by job type (sector). Monthly figures are the change in cumulative billed / cost between snapshots. Deepens as monthly history accumulates.</div>'
      +'<div class="controls">'
-       +'<label>Job:</label> <select id="cmpJob" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px;min-width:260px"></select>'
-       +'<label style="margin-left:10px">Snapshot 1 (previous):</label> <select id="cmpA" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select>'
-       +'<label style="margin-left:10px">Snapshot 2 (latest):</label> <select id="cmpB" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select>'
-       +'<label style="margin-left:14px;cursor:pointer"><input type="checkbox" id="cmpVar" checked style="vertical-align:-1px;margin-right:5px">Show only variances</label>'
-       +'<button type="button" id="cmpCsv" style="margin-left:14px;padding:8px 14px;border:1px solid #c7cfdb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer">&#11123; Export CSV</button>'
+       +'<label>Show:</label> <select id="trMetric" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"><option value="billings">Billings / month</option><option value="cost">Cost / month</option></select>'
+       +' <label style="margin-left:10px">Basis:</label> <select id="trBasis" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"><option value="avg">Average per active job</option><option value="total">Total per type</option></select>'
+       +' <span id="trNote" style="color:#7a828f;font-size:12px;margin-left:10px"></span>'
      +'</div>'
-     +'<div id="cmpMeta" style="color:#7a828f;font-size:12px;margin:-4px 0 10px"></div>'
-     +'<div id="cmpList"></div>'
+     +'<div class="cards" id="trCards"></div>'
+     +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px;margin-bottom:16px"><div id="trChartTitle" style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Month over month by job type</div><div style="height:320px"><canvas id="trChart"></canvas></div></div>'
+     +'<div id="trList"></div>'
    +'</div>';
   ['fSector','fOffice','fFlag'].forEach(id=>document.getElementById(id).addEventListener('input',onStruct));
   document.getElementById('q').addEventListener('input',render);
@@ -278,13 +275,11 @@ function buildUI(){
   document.getElementById('tabProj').addEventListener('click',()=>setTab('projections'));
   document.getElementById('tabMonthly').addEventListener('click',()=>setTab('monthly'));
   { const mm=document.getElementById('mpMonth'); if(mm) mm.addEventListener('change',function(){ MPMONTH=this.value; renderMonthly(); }); }
-  { const cj=document.getElementById('cmpJob'); if(cj) cj.addEventListener('change',function(){ CMPJOB=this.value; CMPA=''; CMPB=''; cmpLoadJob(); }); }
-  { const ca=document.getElementById('cmpA'); if(ca) ca.addEventListener('change',function(){ CMPA=this.value; cmpTable(); }); }
-  { const cb=document.getElementById('cmpB'); if(cb) cb.addEventListener('change',function(){ CMPB=this.value; cmpTable(); }); }
-  { const cv=document.getElementById('cmpVar'); if(cv) cv.addEventListener('change',function(){ CMPVARONLY=this.checked; cmpTable(); }); }
-  { const cc=document.getElementById('cmpCsv'); if(cc) cc.addEventListener('click',cmpCsv); }
   { const fa=document.getElementById('finAsof'); if(fa) fa.addEventListener('change',function(){ setAsof(this.value); }); }
   { const pa=document.getElementById('profAsof'); if(pa) pa.addEventListener('change',function(){ setAsof(this.value); }); }
+  document.getElementById('tabTrends').addEventListener('click',()=>setTab('trends'));
+  { const tm=document.getElementById('trMetric'); if(tm) tm.addEventListener('change',function(){ TRMETRIC=this.value; renderTrends(); }); }
+  { const tb=document.getElementById('trBasis'); if(tb) tb.addEventListener('change',function(){ TRBASIS=this.value; renderTrends(); }); }
   document.getElementById('tabRec').addEventListener('click',()=>setTab('reconciliation'));
   // stage multiselect wiring
   document.getElementById('stBtn').addEventListener('click',e=>{e.stopPropagation();['msPanel','pjPanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});document.getElementById('stPanel').classList.toggle('open');});
@@ -341,12 +336,14 @@ function setTab(t){ TAB=t;
   document.getElementById('tabProf').classList.toggle('active',t==='profitability');
   document.getElementById('tabProj').classList.toggle('active',t==='projections');
   document.getElementById('tabMonthly').classList.toggle('active',t==='monthly');
+  document.getElementById('tabTrends').classList.toggle('active',t==='trends');
   document.getElementById('tabRec').classList.toggle('active',t==='reconciliation');
   document.getElementById('panSum').classList.toggle('active',t==='summary');
   document.getElementById('panFin').classList.toggle('active',t==='financials');
   document.getElementById('panProf').classList.toggle('active',t==='profitability');
   document.getElementById('panProj').classList.toggle('active',t==='projections');
   document.getElementById('panMonthly').classList.toggle('active',t==='monthly');
+  document.getElementById('panTrends').classList.toggle('active',t==='trends');
   document.getElementById('panRec').classList.toggle('active',t==='reconciliation');
   const mp=document.getElementById('map'); if(mp) mp.style.display=(t==='summary')?'':'none';   // map only on Summary
   if(t==='summary'&&MAP) setTimeout(()=>MAP.invalidateSize(),40);
@@ -433,10 +430,76 @@ function render(){
   renderProj(finView());
   // ---- Monthly Projections tab (reviewed month-end snapshots) ----
   renderMonthly();
-  renderCompare();
+  // ---- Trends tab (CFO: month-over-month billings/cost by job type) ----
+  renderTrends();
   // ---- Sync Reconciliation tab (Procore vs CE via Spark) ----
   renderRec(list);
   updateMsBtn();
+}
+// ---- Trends tab: month-over-month billings & cost per job type (sector) ----
+const TR_PALETTE=['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#ca8a04','#db2777','#4f46e5','#059669'];
+function renderTrends(){
+  const cards=document.getElementById('trCards'), listEl=document.getElementById('trList'), note=document.getElementById('trNote'), titleEl=document.getElementById('trChartTitle');
+  if(!cards) return;
+  const isBill=TRMETRIC==='billings';
+  const field=isBill?'ce_billed':'ce_actual_cost';
+  const metricLabel=isBill?'Billings':'Cost';
+  const snaps=(CEHIST&&CEHIST.snapshots)||{};
+  const months=((CEHIST&&CEHIST.months)||Object.keys(snaps)).slice().sort();
+  const secOf={}; ROWS.forEach(r=>{ secOf[String(r.project_number)]=r.sector||'Unclassified'; });
+  note.textContent=isBill
+    ? 'Billings/month = change in CE amount billed to owner between consecutive month-end captures.'
+    : 'Cost/month = change in CE actual cost between consecutive month-end captures.';
+  if(months.length<2){
+    cards.innerHTML=''; if(TRCHART){ try{TRCHART.destroy();}catch(e){} TRCHART=null; }
+    listEl.innerHTML='<div class="empty">Not enough monthly CE history to chart trends yet. Each CE WIP pull captures one month into <b>ce_history.json</b>; after a couple of month-end runs, month-over-month '+metricLabel.toLowerCase()+' per job type will appear here.'+(months.length?' (Have '+months.length+' month so far.)':'')+'</div>';
+    return;
+  }
+  // cumulative value per job per month
+  const cum={}; months.forEach(ym=>{ const m={}; ((snaps[ym]&&snaps[ym].jobs)||[]).forEach(j=>{ m[String(j.job_code)]=num(j[field]); }); cum[ym]=m; });
+  const deltaMonths=months.slice(1);
+  // aggregate per sector per delta-month
+  const secTot={}, secCnt={};   // sector -> [per delta month]
+  const seenSec=new Set();
+  deltaMonths.forEach((ym,i)=>{
+    const cur=cum[ym], prev=cum[months[i]];
+    const codes=new Set([...Object.keys(cur),...Object.keys(prev)]);
+    const tThis={}, cThis={};
+    codes.forEach(jc=>{ const d=(cur[jc]||0)-(prev[jc]||0); if(!d) return; const s=secOf[jc]||'Unclassified'; tThis[s]=(tThis[s]||0)+d; cThis[s]=(cThis[s]||0)+1; seenSec.add(s); });
+    // stash this month's maps for second pass
+    (secTot.__rows=secTot.__rows||[]).push(tThis); (secCnt.__rows=secCnt.__rows||[]).push(cThis);
+  });
+  const sectors=[...seenSec].sort();
+  const rowsT=secTot.__rows, rowsC=secCnt.__rows;
+  const series={};   // sector -> {total:[],avg:[]}
+  sectors.forEach(s=>{ series[s]={total:deltaMonths.map((_,i)=>rowsT[i][s]||0), avg:deltaMonths.map((_,i)=>{ const c=rowsC[i][s]||0; return c?(rowsT[i][s]||0)/c:0; })}; });
+  const basisArr=s=>series[s][TRBASIS];
+  const compTotal=deltaMonths.map((_,i)=>sectors.reduce((a,s)=>a+(rowsT[i][s]||0),0));
+  const compCnt=deltaMonths.map((_,i)=>sectors.reduce((a,s)=>a+(rowsC[i][s]||0),0));
+  const compBasis=deltaMonths.map((_,i)=>TRBASIS==='avg'?(compCnt[i]?compTotal[i]/compCnt[i]:0):compTotal[i]);
+  // ---- summary cards: latest delta-month per sector + Δ vs prior delta-month ----
+  const li=deltaMonths.length-1, pi=li-1;
+  const basisWord=TRBASIS==='avg'?'avg/job':'total';
+  const lastMonthName=monthName(deltaMonths[li]);
+  let cardsHtml=card('total',money(TRBASIS==='avg'?(compCnt[li]?compTotal[li]/compCnt[li]:0):compTotal[li]),metricLabel+' '+lastMonthName+' ('+basisWord+')',null,'Company-wide '+metricLabel.toLowerCase()+' in '+lastMonthName+' ('+basisWord+').');
+  const topSecs=sectors.slice().sort((a,b)=>Math.abs(basisArr(b)[li])-Math.abs(basisArr(a)[li])).slice(0,4);
+  topSecs.forEach(s=>{ const v=basisArr(s)[li], pv=pi>=0?basisArr(s)[pi]:null, dv=pv!=null?v-pv:null;
+    const sub=dv!=null?(' · '+(dv>=0?'▲':'▼')+' '+money(Math.abs(dv))+' vs prior'):'';
+    cardsHtml+=card(dv==null?'total':(dv>=0?'ok':'soon'),money(v),esc(s)+' — '+lastMonthName,null,s+' '+metricLabel.toLowerCase()+' ('+basisWord+') for '+lastMonthName+sub)+''; });
+  cards.innerHTML=cardsHtml;
+  // ---- chart ----
+  titleEl.textContent=metricLabel+' per month by job type — '+(TRBASIS==='avg'?'average per active job':'total per type');
+  if(window.Chart){
+    const ctx=document.getElementById('trChart'); if(ctx){ if(TRCHART){ try{TRCHART.destroy();}catch(e){} }
+      const ds=sectors.map((s,i)=>({label:s,data:basisArr(s),borderColor:TR_PALETTE[i%TR_PALETTE.length],backgroundColor:'transparent',tension:0.4,borderWidth:2,pointRadius:2,fill:false}));
+      TRCHART=new Chart(ctx,{type:'line',data:{labels:deltaMonths.map(monthName),datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.y)}}},scales:{y:{ticks:{callback:v=>money(v)}}}}});
+    }
+  }
+  // ---- table ----
+  const head='<tr><th class="l">Job type</th>'+deltaMonths.map(m=>'<th>'+monthName(m)+'</th>').join('')+'</tr>';
+  const body=sectors.map((s,i)=>'<tr><td class="l"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:'+TR_PALETTE[i%TR_PALETTE.length]+';margin-right:6px"></span><b>'+esc(s)+'</b></td>'+basisArr(s).map(v=>'<td>'+(v?money(v):'<span class="muted">—</span>')+'</td>').join('')+'</tr>').join('');
+  const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company '+basisWord+'</td>'+compBasis.map(v=>'<td>'+money(v)+'</td>').join('')+'</tr>';
+  listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>';
 }
 function monthName(m){ const [y,mo]=String(m).split('-'); const d=new Date(Number(y),Number(mo)-1,1); return isNaN(d)?m:d.toLocaleString(undefined,{month:'short',year:'numeric'}); }
 // ---- Monthly Projections tab (reviewed month-end snapshots from the VP workbooks) ----
@@ -481,132 +544,6 @@ function renderMonthly(){
     +'<td>'+money(j.billings_to_date)+'</td></tr>').join('');
   const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totC)+'</td><td>'+dcell(conVar)+'</td><td>'+money(S('cost_to_date'))+'</td><td>'+money(totEac)+'</td><td></td><td>'+money(S('revenue_recognized'))+'</td><td>'+money(totFee)+'</td><td></td><td>'+dcell(feeVar)+'</td><td>'+money(S('billings_to_date'))+'</td></tr>';
   listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>';
-}
-/* ===================== Budget Snapshot Analysis ==========================
-   One job, two snapshots, compared budget code by budget code — the same view
-   Spark's Budget Projections screen gives. The rows are written per project by
-   import_snapshot_lines.js, and only the selected job's file is fetched, so the
-   page cost stays flat as jobs are added.
-   A stored row is [revised budget, job-to-date cost, committed, EAC]. The
-   comparison is on EAC: that is the number the month-end review turns on, and
-   the one Spark puts side by side. */
-const EAC_IDX=3;
-const money2=n=>(n||n===0)?'$ '+Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'&mdash;';
-/* Spark's sign convention, kept deliberately: Variance = Snapshot 1 - Snapshot 2.
-   Positive means the estimate came DOWN between the two (money back); negative
-   means it grew, and shows red in parentheses exactly as the source screen does. */
-function vcell(n){ n=num(n); if(!Math.round(n*100)) return '<span class="muted">&mdash;</span>';
-  return n>0 ? '<span class="funder">'+money2(n)+'</span>'
-             : '<span class="fover">( '+money2(Math.abs(n))+' )</span>'; }
-function snapLabel(s){
-  if(!s) return '';
-  if(String(s.id)==='current') return 'Current (live)';
-  const base=s.label||monthName(s.month||'')||('Snapshot '+s.id);
-  return base+(/approv/i.test(s.approval||'')?'':' — '+(s.approval||'unapproved'));
-}
-function renderCompare(){
-  const jobSel=document.getElementById('cmpJob'); if(!jobSel) return;
-  const meta=document.getElementById('cmpMeta'), out=document.getElementById('cmpList');
-  const list=(SNAPIDX&&SNAPIDX.projects)||[];
-  if(!list.length){
-    jobSel.innerHTML=''; ['cmpA','cmpB'].forEach(id=>{const e=document.getElementById(id); if(e) e.innerHTML='';});
-    if(meta) meta.textContent='';
-    out.innerHTML='<div class="empty">No budget-code snapshot data yet. Run the <b>Budget snapshot LINES import</b> workflow &mdash; it writes <b>snapshot_lines/</b> into the same SharePoint folder &mdash; then reload this page.</div>';
-    return; }
-  if(!CMPJOB||!list.some(p=>p.job_no===CMPJOB)) CMPJOB=list[list.length-1].job_no;
-  jobSel.innerHTML=list.map(p=>'<option value="'+esc(p.job_no)+'">'+esc(p.job_no)+' — '+esc(p.job_name||'')+'</option>').join('');
-  jobSel.value=CMPJOB;
-  cmpLoadJob();
-}
-async function cmpLoadJob(){
-  const out=document.getElementById('cmpList'); if(!out) return;
-  if(CMPFILE&&CMPFILE.job_no===CMPJOB){ cmpFill(); return; }
-  if(CMPBUSY) return; CMPBUSY=true;
-  out.innerHTML='<div class="loading">Loading budget codes for '+esc(CMPJOB)+'&hellip;</div>';
-  try{
-    const token=await getToken(); if(!token){ CMPBUSY=false; return; }
-    const r=await fetchFile(token, SNAPLINES_DIR+'/'+CMPJOB+'.json');
-    if(!r.ok) throw new Error('Graph HTTP '+r.status);
-    CMPFILE=await r.json();
-  }catch(e){ CMPFILE=null; CMPBUSY=false;
-    out.innerHTML='<div class="empty">Could not load budget codes for '+esc(CMPJOB)+': '+esc((e&&e.message)||e)+'</div>'; return; }
-  CMPBUSY=false; CMPA=''; CMPB=''; cmpFill();
-}
-/* Newest first, with the live budget at the top when the import captured one. */
-function cmpSnaps(){ if(!CMPFILE) return [];
-  const arr=(CMPFILE.snapshots||[]).slice().reverse();
-  return CMPFILE.current ? [CMPFILE.current].concat(arr) : arr; }
-function cmpFill(){
-  const a=document.getElementById('cmpA'), b=document.getElementById('cmpB'); if(!a||!b) return;
-  const snaps=cmpSnaps();
-  if(!snaps.length){ a.innerHTML=''; b.innerHTML='';
-    document.getElementById('cmpList').innerHTML='<div class="empty">No snapshots stored for this job yet.</div>'; return; }
-  const opts=snaps.map(s=>'<option value="'+esc(String(s.id))+'">'+esc(snapLabel(s))+'</option>').join('');
-  a.innerHTML=opts; b.innerHTML=opts;
-  // Default to the most recent pair: Snapshot 2 = newest (Current when present), Snapshot 1 = the one before it.
-  if(!CMPA||!snaps.some(s=>String(s.id)===CMPA)) CMPA=String((snaps[1]||snaps[0]).id);
-  if(!CMPB||!snaps.some(s=>String(s.id)===CMPB)) CMPB=String(snaps[0].id);
-  a.value=CMPA; b.value=CMPB;
-  const cv=document.getElementById('cmpVar'); if(cv) cv.checked=CMPVARONLY;
-  cmpTable();
-}
-function cmpRows(){
-  if(!CMPFILE) return null;
-  const snaps=cmpSnaps();
-  const A=snaps.find(s=>String(s.id)===CMPA), B=snaps.find(s=>String(s.id)===CMPB);
-  if(!A||!B) return null;
-  const codes=CMPFILE.codes||{};
-  const keys=[...new Set(Object.keys(A.rows||{}).concat(Object.keys(B.rows||{})))].sort();
-  const rows=keys.map(k=>{
-    const ra=(A.rows||{})[k], rb=(B.rows||{})[k];
-    const va=ra?num(ra[EAC_IDX]):0, vb=rb?num(rb[EAC_IDX]):0;
-    return { code:k, desc:(codes[k]&&codes[k].d)||'', type:(codes[k]&&codes[k].t)||'',
-             a:va, b:vb, v:va-vb, onlyA:!rb, onlyB:!ra };
-  });
-  return {A:A,B:B,rows:rows};
-}
-function cmpTable(){
-  const out=document.getElementById('cmpList'), meta=document.getElementById('cmpMeta'); if(!out) return;
-  const d=cmpRows();
-  if(!d){ out.innerHTML='<div class="empty">Pick two snapshots to compare.</div>'; if(meta) meta.textContent=''; return; }
-  /* Totals are over EVERY code, not the filtered view — "show only variances" hides
-     rows that did not move, it does not change what the job is projected to cost. */
-  const totA=d.rows.reduce((t,r)=>t+num(r.a),0), totB=d.rows.reduce((t,r)=>t+num(r.b),0);
-  const moved=d.rows.filter(r=>Math.round(r.v*100)!==0);
-  const shown=CMPVARONLY?moved:d.rows;
-  if(meta) meta.innerHTML=esc(CMPFILE.job_no||'')+' '+esc(CMPFILE.job_name||'')
-    +'  ·  '+d.rows.length+' budget codes, '+moved.length+' moved'
-    +(String(d.B.id)==='current'?'  ·  <span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="Snapshot 2 is the live budget view, not an approved month-end record.">Current is live, not reviewed</span>':'')
-    +(CMPFILE.generated_at?('  ·  captured '+new Date(CMPFILE.generated_at).toLocaleString()):'');
-  const th=(s,tot)=>'<th style="text-align:right">'+esc(snapLabel(s))+'<div style="font-weight:400;font-size:11px;color:#7a828f">Estimate at Completion</div><div style="color:#1F3864">'+money2(tot)+'</div></th>';
-  const head='<tr><th class="l">Budget Code</th><th class="l">Type</th><th class="l">Budget Code Description</th>'
-    +th(d.A,totA)+th(d.B,totB)
-    +'<th style="text-align:right">Variance<div style="font-weight:400;font-size:11px;color:#7a828f">Snap 1 &minus; Snap 2</div><div>'+vcell(totA-totB)+'</div></th></tr>';
-  const chip=t=>' <span class="chip" style="background:#eef3fb;color:#1F3864;border:1px solid #c3d4ee">'+t+'</span>';
-  const body=shown.map(r=>
-    '<tr><td class="l"><b>'+esc(r.code)+'</b>'+(r.onlyB?chip('new'):'')+(r.onlyA?chip('dropped'):'')+'</td>'
-    +'<td class="l">'+esc(r.type)+'</td><td class="l">'+esc(r.desc)+'</td>'
-    +'<td>'+(r.onlyB?'<span class="muted">0</span>':money2(r.a))+'</td>'
-    +'<td>'+(r.onlyA?'<span class="muted">0</span>':money2(r.b))+'</td>'
-    +'<td>'+vcell(r.v)+'</td></tr>').join('');
-  const empty='<tr><td class="l" colspan="6"><span class="muted">Nothing moved between these two snapshots.</span></td></tr>';
-  const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Total</td><td></td><td></td><td>'+money2(totA)+'</td><td>'+money2(totB)+'</td><td>'+vcell(totA-totB)+'</td></tr>';
-  out.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+(body||empty)+tot+'</tbody></table></div>';
-}
-function cmpCsv(){
-  const d=cmpRows(); if(!d) return;
-  const rows=CMPVARONLY?d.rows.filter(r=>Math.round(r.v*100)!==0):d.rows;
-  const totA=d.rows.reduce((t,r)=>t+num(r.a),0), totB=d.rows.reduce((t,r)=>t+num(r.b),0);
-  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const lines=[['Budget Code','Type','Budget Code Description',
-                'Snapshot 1 ('+snapLabel(d.A)+') EAC','Snapshot 2 ('+snapLabel(d.B)+') EAC','Variance'].map(q).join(',')];
-  for(const r of rows) lines.push([r.code,r.type,r.desc,num(r.a).toFixed(2),num(r.b).toFixed(2),r.v.toFixed(2)].map(q).join(','));
-  lines.push(['Total','','',totA.toFixed(2),totB.toFixed(2),(totA-totB).toFixed(2)].map(q).join(','));
-  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=(CMPFILE.job_no||'job').replace(/[^\w.-]+/g,'_')+'_snapshot_comparison.csv';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
 }
 // Procore-style cost projection card, Procore vs CE side by side (Budget -> EAC -> Overrun -> ETC).
 function projCostCard(r){
