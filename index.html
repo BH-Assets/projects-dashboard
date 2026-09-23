@@ -543,7 +543,21 @@ function renderMonthly(){
   if(q) jobs=jobs.filter(j=>((j.job_no||'')+' '+(j.job_name||'')).toLowerCase().includes(q));
   const notAppr=j=>!!(j.approval_status&&!/approv/i.test(j.approval_status));   // explicitly not-yet-approved
   const unappr=jobs.filter(notAppr);
-  meta.innerHTML=(snap.costs_through?('Costs through '+esc(snap.costs_through)):'')+(snap.as_of?('  ·  submitted '+esc(snap.as_of)):'')+'  ·  '+jobs.length+' jobs'
+  /* COVERAGE. A month only holds the jobs that had a Procore budget-view snapshot, so a
+     job with no snapshot is absent from snap.jobs entirely rather than showing as zero.
+     Summing what is present and calling it "Company total" reads as the whole company
+     when it can be a small slice of it - and that is exactly the number someone reaches
+     for when a projection is being disputed. So: count the jobs the dashboard knows
+     about, under the same filters, and name what is missing instead of dropping it. */
+  const captured=new Set(jobs.map(j=>String(j.job_no)));
+  let known=ROWS.slice();
+  if(SELECTED) known=known.filter(r=>SELECTED.has(r.procore_id));
+  if(q) known=known.filter(r=>((r.project_number||'')+' '+(r.project||'')).toLowerCase().includes(q));
+  const missing=known.filter(r=>!captured.has(String(r.project_number)))
+                     .sort((a,b)=>num(b.revised_contract||b.contract_amount)-num(a.revised_contract||a.contract_amount));
+  const totalKnown=known.length||jobs.length;
+  meta.innerHTML=(snap.costs_through?('Costs through '+esc(snap.costs_through)):'')+(snap.as_of?('  ·  submitted '+esc(snap.as_of)):'')+'  ·  '+jobs.length+' of '+totalKnown+' jobs captured'
+    +(missing.length?' <span class="chip" style="background:#fde8e8;color:#8a1f1f;border:1px solid #f0bcbc" title="'+missing.length+' job(s) on the dashboard have no budget snapshot for this month, so they are in none of the totals below.">&#9888; '+missing.length+' not captured</span>':'')
     +(unappr.length?' <span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="'+unappr.length+' job(s) have no approved snapshot for this month yet — showing the latest available. Approve in Procore to lock the month.">&#9888; '+unappr.length+' unapproved</span>':(jobs.length?' <span class="chip" style="background:#e7f6ec;color:#1a7f37;border:1px solid #b7e0c2">&#10003; all approved</span>':''));
   const S=f=>jobs.reduce((a,j)=>a+num(j[f]),0);
   const totC=S('projected_contract'),totEac=S('eac'),totFee=S('projected_fee'),conVar=S('contract_variance'),feeVar=S('fee_variance');
@@ -563,8 +577,24 @@ function renderMonthly(){
     +'<td>'+money(j.revenue_recognized)+'</td>'
     +'<td>'+money(j.projected_fee)+'</td><td>'+(j.proj_fee_pct!=null&&j.proj_fee_pct!==''?(num(j.proj_fee_pct)*(num(j.proj_fee_pct)<=1?100:1)).toFixed(1)+'%':'—')+'</td><td>'+dcell(j.fee_variance)+'</td>'
     +'<td>'+money(j.billings_to_date)+'</td></tr>').join('');
-  const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Company total</td><td>'+money(totC)+'</td><td>'+dcell(conVar)+'</td><td>'+money(S('cost_to_date'))+'</td><td>'+money(totEac)+'</td><td></td><td>'+money(S('revenue_recognized'))+'</td><td>'+money(totFee)+'</td><td></td><td>'+dcell(feeVar)+'</td><td>'+money(S('billings_to_date'))+'</td></tr>';
-  listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>';
+  const tot='<tr style="font-weight:bold;background:#f7f9fc"><td class="l">Total &mdash; '+jobs.length+' of '+totalKnown+' jobs</td><td>'+money(totC)+'</td><td>'+dcell(conVar)+'</td><td>'+money(S('cost_to_date'))+'</td><td>'+money(totEac)+'</td><td></td><td>'+money(S('revenue_recognized'))+'</td><td>'+money(totFee)+'</td><td></td><td>'+dcell(feeVar)+'</td><td>'+money(S('billings_to_date'))+'</td></tr>';
+  /* Name the jobs the month did not capture. Without this the tab under-reports in
+     silence; with it, the gap reads as a to-do list of snapshots to take or approve. */
+  let miss='';
+  if(missing.length){
+    const everSnap=new Set();
+    Object.keys(snaps).forEach(m=>((snaps[m]&&snaps[m].jobs)||[]).forEach(j=>everSnap.add(String(j.job_no))));
+    miss='<div class="fnote" style="background:#fdf2f2;border-color:#f0bcbc;margin-top:14px">'
+      +'<b>&#9888; Not captured for '+esc(monthName(MPMONTH))+' &mdash; '+missing.length+' job'+(missing.length===1?'':'s')+', excluded from every total above.</b>'
+      +'<div style="margin-top:8px;font-size:12px;line-height:1.7">'
+      +missing.map(r=>'<div><b>'+esc(r.project_number||'')+'</b> '+esc(r.project||'')
+          +' <span class="muted">&mdash; '+(everSnap.has(String(r.project_number))
+              ?'has snapshots in other months, none for this one'
+              :'no budget snapshot has ever been captured in Procore')+'</span>'
+          +' <span class="muted">('+money(r.revised_contract||r.contract_amount)+' contract)</span></div>').join('')
+      +'</div><div style="margin-top:8px;font-size:12px" class="muted">Take or approve a budget-view snapshot in Procore for these jobs to bring them into the month.</div></div>';
+  }
+  listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>'+miss;
 }
 /* ===================== Budget Snapshot Analysis ==========================
    One job, two snapshots, compared budget code by budget code - the same view
