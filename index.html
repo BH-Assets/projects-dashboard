@@ -282,7 +282,7 @@ function buildUI(){
      +'<div id="profList"></div></div>'
    +'<div id="panRec" class="panel">'
      +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
-     +'<div class="cards" id="recCards"></div><div id="recList"></div></div>'
+     +'<div class="cards" id="recCards"></div><div id="eacList"></div><div id="recList"></div></div>'
    +'<div id="panProj" class="panel">'
      +'<div class="fnote" style="background:#eef3fb;border-color:#c3d4ee">&#128202; <b>Cost projection</b> (Procore-style), <b>Procore vs CE</b> side by side. EAC = projected final cost; <b>Overrun</b> = EAC − Revised Budget (red = over); <b>ETC</b> = EAC − Cost-to-Date (cost left to spend). Watch the EAC / Overrun variance between the two systems.</div>'
      +'<div class="cards" id="projCostCards"></div>'
@@ -1146,6 +1146,90 @@ function recMatch(c,k){
   if(k==='eac') return c.eac;
   return true;
 }
+/* ---------------- MONTHLY EAC WORKLIST (Procore <-> CE) ----------------------
+   The Estimate-at-Completion lives in Procore's cost projections and has to be
+   re-entered in CE each month. Nothing pushes it automatically, so CE drifts and
+   every CE-derived figure - % complete, projected margin, revenue recognised -
+   drifts with it. The reconciliation tiles above say a gap EXISTS; this says what
+   to do about each one, in the order worth doing.
+
+   Three different jobs, deliberately not merged into one number:
+     - "Update CE"      both systems have an EAC and they disagree
+     - "Push to CE"     Procore has one, CE has none
+     - "Project first"  CE has one, PROCORE has none - the projection was never
+                        made, so there is nothing to copy and the PM has to build
+                        it in Procore before this row can be closed
+   And a warning that must not be automated away: where Procore's EAC is a small
+   fraction of the contract while CE's is near it, PROCORE is the stale side (22-659
+   is the live example - $11.2M EAC against a $35.9M contract). Copying that into CE
+   would destroy a good number with a bad one. Those rows say "check Procore first".
+
+   No new data and no new API calls: projected_cost and ce_projected_cost are both
+   already loaded, and the PM comes from the Procore team array already on the row. */
+function pmOf(r){
+  const t=(r.team||[]).filter(x=>x&&x.name);
+  const pm=t.find(x=>/project manager/i.test(x.role||'')) || t.find(x=>/superintendent/i.test(x.role||''));
+  return pm?pm.name:'';
+}
+function eacWorkRows(list){
+  const out=[];
+  for(const r of list){
+    if(!r.ce) continue;                                  // not in CE at all - a different problem
+    const con=num(r.revised_contract||r.contract_amount);
+    const pE=num(r.projected_cost), cE=num(r.ce.ce_projected_cost);
+    const tol=Math.max(5000, pE*0.01);
+    let action='', why='', cls='';
+    if(pE>0 && cE>0){
+      if(Math.abs(pE-cE)<=tol) continue;                 // already in sync
+      action='Update CE'; cls='w';
+      /* Procore materially BELOW contract while CE sits near it = Procore never finished
+         its projection. Flag rather than exclude: it is still a gap, just not this one. */
+      if(con>0 && pE < con*0.6 && cE >= con*0.8){
+        action='Check Procore first'; cls='r';
+        why='Procore EAC is '+Math.round(pE/con*100)+'% of contract while CE is '+Math.round(cE/con*100)+'% — Procore looks stale, not CE. Do not copy this into CE.';
+      }
+    } else if(pE>0 && !(cE>0)){ action='Push to CE'; cls='w'; why='CE holds no EAC for this job.'; }
+    else if(!(pE>0) && cE>0){ action='Project in Procore first'; cls='r';
+      why='Procore has no cost projection, so there is nothing to push. The PM has to build it in Procore.'; }
+    else continue;                                        // neither has one
+    out.push({r, con, pE, cE, d:(pE>0&&cE>0)?(pE-cE):null, action, why, cls, pm:pmOf(r)});
+  }
+  return out.sort((a,b)=>Math.abs(b.d||b.pE||b.cE||0)-Math.abs(a.d||a.pE||a.cE||0));
+}
+function renderEacWork(list){
+  const el=document.getElementById('eacList'); if(!el) return;
+  const w=eacWorkRows(list);
+  if(!w.length){ el.innerHTML='<div class="gap-card" style="margin:10px 0"><b>EAC is in sync on every job shown.</b> '
+    +'<span style="color:#5b6472">Nothing to re-enter in CE this month.</span></div>'; return; }
+  const nUpd=w.filter(x=>x.action==='Update CE').length;
+  const nPush=w.filter(x=>x.action==='Push to CE').length;
+  const nChk=w.filter(x=>/Check Procore/.test(x.action)).length;
+  const nProj=w.filter(x=>/Project in Procore/.test(x.action)).length;
+  const bits=[]; if(nUpd)bits.push(nUpd+' to re-enter in CE'); if(nPush)bits.push(nPush+' with no CE value');
+  if(nChk)bits.push(nChk+' where Procore looks stale'); if(nProj)bits.push(nProj+' with no Procore projection');
+  el.innerHTML='<div class="gap-card" style="margin:10px 0">'
+    +'<b>Monthly EAC worklist — '+w.length+' job'+(w.length===1?'':'s')+'</b>'
+    +' <span style="color:#5b6472">'+bits.join(' · ')+'</span>'
+    +'<div style="margin-top:6px;color:#5b6472;font-size:12px">Procore holds the cost projection; CE needs it re-entered each month (Enter Revised Estimates). '
+    +'Until it is, CE\'s % complete, projected margin and revenue recognised are stale. '
+    +'<b>Contract is shown beside both EACs on purpose</b> — an EAC far below contract is the number to question, not to copy.</div>'
+    +'<div class="rwrap" style="margin-top:8px"><table class="rtable"><thead><tr>'
+    +'<th class="l">Job</th><th class="l">PM</th><th>Contract</th><th>EAC · Procore</th><th>EAC · CE</th><th>&Delta;</th><th class="l">Action</th>'
+    +'</tr></thead><tbody>'
+    +w.map(x=>{
+      const link='<a href="'+pcOverview(x.r.procore_id)+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(x.r.project_number||'')+'</a>';
+      const d=(x.d==null)?'<span style="color:#5b6472">—</span>'
+        :'<span class="rdelta d">'+smoney(x.d)+'</span>';
+      const pct=(x.con>0&&x.pE>0)?'<div style="font-size:11px;color:#5b6472">'+Math.round(x.pE/x.con*100)+'% of contract</div>':'';
+      return '<tr><td class="l"><b>'+link+'</b> '+esc(x.r.project||'')+'</td>'
+        +'<td class="l">'+(x.pm?esc(x.pm):'<span style="color:#5b6472">—</span>')+'</td>'
+        +'<td>'+money(x.con)+'</td>'
+        +'<td>'+(x.pE>0?money(x.pE):'<span style="color:#5b6472">none</span>')+pct+'</td>'
+        +'<td>'+(x.cE>0?money(x.cE):'<span style="color:#5b6472">none</span>')+'</td>'
+        +'<td>'+d+'</td>'
+        +'<td class="l rstat '+(x.cls==='r'?'bad':'warn')+'"'+(x.why?' title="'+esc(x.why)+'"':'')+'>'+esc(x.action)+(x.why?' &#9432;':'')+'</td></tr>';
+    }).join('')+'</tbody></table></div></div>';
+}
 function renderRec(list){
   const items=list.map(r=>({r,c:recClassify(r)}));
   const inSync=items.filter(x=>x.c.kind==='insync').length;
@@ -1160,6 +1244,7 @@ function renderRec(list){
    +recCard('soon',notCe,'Not in CE','notce','Procore jobs with no matching CE job (bids, or not yet synced through Spark).')
    +recCard(eacJobs.length?'nc':'ok',eacJobs.length,'EAC Not Synced','eac','Jobs where Procore EAC (projected cost) differs materially from CE’s — the EAC hasn’t been pushed into CE yet, so CE WIP/projection is stale.')
    +recCard(mkTot?'nc':'ok',smoney(mkTot),'Markup Not in CE','markup','Total markup Procore has that CE is missing — the amount Spark hasn’t carried. This is how much WIP margin is understated across shown jobs.');
+  renderEacWork(list);
   const shown=items.filter(x=>recMatch(x.c,RECFILTER));
   const trs=shown.map(x=>recRow(x.r,x.c)).join('');
   const note=(RECFILTER!=='all')?'<div style="padding:6px 2px;color:#5b6472;font-size:12px">Showing '+shown.length+' of '+items.length+' jobs (filtered) · <a href="#" onclick="setRecFilter(RECFILTER);return false" style="color:#ED2B30;text-decoration:none">clear</a></div>':'';
