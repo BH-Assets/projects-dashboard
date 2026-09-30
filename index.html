@@ -30,6 +30,28 @@
   .card .n{font-size:24px;font-weight:bold}.card .l{font-size:11px;color:#5b6472;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
   .card.total .n{color:#7F1B29}.card.soon .n{color:#9a6a00}.card.ok .n{color:#1a7f37}.card.rfi .n{color:#1a4fb0}.card.co .n{color:#484B4D}.card.nc .n{color:#b3261e}
   .card.sel{outline:2px solid #ED2B30;outline-offset:-2px}.card.clk{cursor:pointer}.card.noclk{cursor:default}
+  /* Power BI-style 3-metric KPI card, BH palette. A stat tile, not a chart: no hover layer. */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px;margin-bottom:18px}
+  .kpi3{background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px}
+  .kpi3.acc{border:2px solid #1F3864}
+  .kpi3 .kt{font-size:12px;font-weight:700;color:#1F3864;margin-bottom:9px;letter-spacing:.01em}
+  .kpi3.acc .kt{color:#1F3864}
+  .kpi3 .kv{font-size:21px;font-weight:700;color:#211E1E;line-height:1.15;font-variant-numeric:tabular-nums}
+  .kpi3 .kv.neg{color:#b3261e}.kpi3 .kv.pos{color:#1a7f37}
+  .kpi3 .kl{font-size:11px;color:#5b6472;margin:1px 0 9px}
+  .kpi3 .kl:last-child{margin-bottom:0}
+  /* Dense schedule. Banded rows, tabular figures, accounting negatives. */
+  .wtable{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .wtable th{background:#f7f9fc;color:#1F3864;font-size:11px;text-transform:uppercase;letter-spacing:.03em;
+             padding:8px 9px;text-align:right;border-bottom:2px solid #c7cfdb;white-space:nowrap}
+  .wtable th.l,.wtable td.l{text-align:left}
+  .wtable td{padding:6px 9px;text-align:right;border-bottom:1px solid #eef1f6;white-space:nowrap}
+  .wtable tbody tr:nth-child(even){background:#fafbfd}
+  .wtable tbody tr:hover{background:#eef3fb}
+  .wtable tfoot td{padding:9px;font-weight:700;border-top:2px solid #1F3864;background:#f7f9fc;color:#1F3864}
+  .wneg{color:#b3261e}.wpos{color:#1a7f37}.wmut{color:#98a0ad}
+  .wjob{font-weight:600;color:#211E1E}.wsub{font-size:11px;color:#7a828f;font-weight:400}
+  @media (max-width:900px){ .wrap-scroll{overflow-x:auto} }
   .pcard{background:#fff;border:1px solid #e3e8f0;border-left:6px solid #484B4D;border-radius:10px;padding:12px 16px;margin-bottom:11px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
   .pcard.g{border-left-color:#1a7f37}.pcard.y{border-left-color:#c99a00}.pcard.r{border-left-color:#b3261e}
   .phead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
@@ -497,15 +519,20 @@ function updateMsBtn(){
    Nothing in CE or Procore prompts that decision, so this table does.
    Buyout coverage is a PROXY for buyout being complete, not a milestone date - the
    pipeline has no milestone field. It is live and self-updating, which a typed date is not. */
+var WIPVIEW='ops';   // 'ops' = budget & buyout columns | 'cfo' = the balance-sheet WIP schedule
+function setWipView(v){ WIPVIEW=v; render(); }
 var BUYOUT_COVER_FLAG = 75;    // % of non-fee budget committed before contingency is "due a decision"
-function buyoutRows(){
+function buyoutRows(list){
   if(!ROLLUP||!Array.isArray(ROLLUP.jobs)) return null;
-  const inView=new Set(finView().map(r=>String(r.project_number)));
+  /* Same list the rest of the tab is showing - including an as-of month restatement.
+     Reading finView() here instead made this table show jobs while every other panel
+     was empty, which reads as a bug in the data rather than a filter. */
+  const inView=new Set((list||finView()).map(r=>String(r.project_number)));
   return ROLLUP.jobs.filter(j=>inView.has(String(j.job_no)));
 }
-function renderBuyout(){
+function renderBuyout(list){
   const out=document.getElementById('buyWrap'); if(!out) return;
-  const rows=buyoutRows();
+  const rows=buyoutRows(list);
   if(rows===null){
     out.innerHTML='<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128736; <b>Buyout &amp; contingency</b> needs <b>snapshot_lines/_rollup.json</b>. Re-run the <b>Budget snapshot LINES import</b> workflow &mdash; the rollup is written alongside the per-job files.</div>';
     return;
@@ -570,6 +597,11 @@ function renderBuyout(){
 function applyFeeBasis(){
   const idx={}; if(ROLLUP&&Array.isArray(ROLLUP.jobs)) for(const j of ROLLUP.jobs) idx[String(j.job_no)]=j;
   for(const r of ROWS){
+    /* If projects_pull.js already held phase 90 out at source it stamps cost_basis on
+       the row. Stripping again here would remove the fee TWICE — on Fox Run that reads
+       22,987,445 with a +1,467,352 margin, wrong in the opposite direction and plausible
+       enough to miss. Source wins; the page only corrects rows the pull has not. */
+    if(r.cost_basis==='ex-fee'||r.cost_basis==='no-fee-phase'){ r.fee_basis='source'; continue; }
     const j=idx[String(r.project_number)];
     if(!j){ r.fee_basis='unknown'; continue; }
     const feeB=num(j.fee_budget), feeE=num(j.fee_eac);
@@ -593,6 +625,7 @@ function applyFeeBasis(){
 }
 function r2c(n){ return Math.round(n*100)/100; }
 function feeNote(r){
+  if(r.fee_basis==='source') return 'Phase 90 was held out of cost by projects_pull.js at source'+(num(r.fee_budget)?' \u2014 fee '+money(r.fee_budget):'')+'. Budget and EAC are cost-only as pulled.';
   if(r.fee_basis==='stripped') return 'Procore’s fee of '+money(r.fee_budget||r.fee_eac)+' (phase 90) removed from budget and EAC — ComputerEase holds fee on the contract, never in cost.';
   if(r.fee_basis==='none')     return 'No phase 90 fee loaded in Procore for this job — budget and EAC are cost-only already.';
   return 'No budget-code rollup for this job yet, so any phase 90 fee is still inside its budget and EAC. Re-run the Budget snapshot LINES import.';
@@ -621,7 +654,10 @@ function wipRow(r){
   const pctC=eac>0?(ctd/eac):null;
   const earned=(pctC!=null)?contract*pctC:null;
   const profit=contract-eac;
-  return { job:r.project_number, name:r.project, contract:contract, eac:eac, profit:profit,
+  const gpEarned=(pctC!=null)?profit*pctC:null;   // % complete x estimated gross profit
+  return { job:r.project_number, name:r.project, contract:contract, eac:eac, profit:profit, gpEarned:gpEarned,
+           cie:(earned!=null?Math.max(0,earned-billed):null),   // underbilled  - ASSET
+           bie:(earned!=null?Math.max(0,billed-earned):null),   // overbilled   - LIABILITY
            pct: contract?(profit/contract*100):null, pctC:(pctC!=null?pctC*100:null),
            ctd:ctd, earned:earned, billed:billed,
            ou:(earned!=null?billed-earned:null),
@@ -632,62 +668,121 @@ function renderWip(list){
   const out=document.getElementById('wipSched'); if(!out) return;
   const rows=list.map(wipRow).filter(Boolean).sort((a,b)=>b.contract-a.contract);
   if(!rows.length){ out.innerHTML=''; return; }
+  const src=list.filter(r=>r.ce&&num(r.ce.ce_contract)>0);
+  const S=f=>src.reduce((a,r)=>a+num(r[f]),0);
   const T=k=>rows.reduce((a,r)=>a+(num(r[k])||0),0);
-  const tC=T('contract'), tE=T('eac'), tP=T('profit'), tCtd=T('ctd'), tEarn=T('earned'), tB=T('billed');
-  const tOU=tB-tEarn;
-  const over=rows.filter(r=>r.ou!=null&&r.ou>0), under=rows.filter(r=>r.ou!=null&&r.ou<0);
-  const dlt=r=>{ if(r.pcEac==null||!r.eac) return '<span style="color:#7a828f">&mdash;</span>';
-    const d=r.pcEac-r.eac; if(Math.abs(d)<1000) return '<span style="color:#1a7f37">agrees</span>';
-    return '<span style="color:'+(Math.abs(d)/r.eac>0.02?'#b3261e':'#8a5a00')+'" title="Procore EAC '+money(r.pcEac)+' vs CE '+money(r.eac)+'">'+smoney(d)+'</span>'; };
-  const body=rows.map(r=>'<tr>'
-    +'<td style="padding:6px 10px"><b>'+esc(r.job)+'</b><div style="color:#7a828f;font-size:11px">'+esc((r.name||'').slice(0,42))+'</div></td>'
-    +'<td class="num" style="padding:6px 10px">'+money(r.contract)+'</td>'
-    +'<td class="num" style="padding:6px 10px">'+money(r.eac)+'</td>'
-    +'<td class="num" style="padding:6px 10px">'+dlt(r)+'</td>'
-    +'<td class="num" style="padding:6px 10px;color:'+(r.profit<0?'#b3261e':'#1a7f37')+'"><b>'+smoney(r.profit)+'</b>'
-      +(r.pct!=null?'<div style="font-size:11px;color:#7a828f">'+r.pct.toFixed(1)+'%</div>':'')+'</td>'
-    +'<td class="num" style="padding:6px 10px">'+(r.pctC!=null?r.pctC.toFixed(1)+'%':'&mdash;')+'</td>'
-    +'<td class="num" style="padding:6px 10px">'+(r.earned!=null?money(r.earned):'&mdash;')+'</td>'
-    +'<td class="num" style="padding:6px 10px">'+money(r.billed)+'</td>'
-    +'<td class="num" style="padding:6px 10px;color:'+(r.ou==null?'#7a828f':(r.ou<0?'#8a5a00':'#1a7f37'))+'">'
-      +(r.ou==null?'&mdash;':((r.ou<0?'Under ':'Over ')+money(Math.abs(r.ou))))+'</td></tr>').join('');
+  /* Budget columns are Procore's, fee-stripped; cost/billing columns are CE's. That
+     split is deliberate - Procore owns the budget, CE is the accounting record - and
+     Savings/(Loss) is the statement ACROSS them: what the budget allowed, less what the
+     job is now forecast to cost. */
+  const oBud=S('budget_original'), rBud=S('budget_revised');
+  const tC=T('contract'), tEac=T('eac'), tCtd=T('ctd'), tEarn=T('earned'), tB=T('billed');
+  const tCom=src.reduce((a,r)=>a+num(r.ce.ce_committed),0);
+  const tOU=tB-tEarn, tSav=rBud-tEac;
+  const pctC=tEac?(tCtd/tEac*100):null;
+  const feeHeld=src.reduce((a,r)=>a+num(r.fee_budget),0);
+  const pc=(v,d)=>(v==null?'&mdash;':Number(v).toFixed(d==null?1:d)+'%');
+  /* Accounting convention: negatives in parentheses AND red - never colour alone. */
+  const acct=v=>{ v=num(v); const t=money(Math.abs(v));
+    return v<0 ? '<span class="wneg">('+t+')</span>' : '<span>'+t+'</span>'; };
+  const acctC=v=>{ v=num(v); const t=money(Math.abs(v));
+    return v<0 ? '<span class="wneg">('+t+')</span>' : '<span class="wpos">'+t+'</span>'; };
+  const k=(t,rowsHtml,acc)=>'<div class="kpi3'+(acc?' acc':'')+'"><div class="kt">'+t+'</div>'+rowsHtml+'</div>';
+  const m=(v,l,cls)=>'<div class="kv'+(cls?' '+cls:'')+'">'+v+'</div><div class="kl">'+l+'</div>';
+  /* Two column sets over the same numbers.
+       OPS  - what the budget allowed vs what it will cost (buyout, savings/loss).
+       CFO  - the schedule a CPA, surety or bank expects. Its point is the last two
+              columns: a job is EITHER underbilled (costs & estimated earnings in
+              excess of billings - an ASSET) OR overbilled (billings in excess -
+              a LIABILITY), never both, and each column totals to its own
+              balance-sheet line. Showing one signed column instead, as this tab
+              did, gives a net that ties to neither account. */
+  const isCfo = (WIPVIEW==='cfo');
+  const COLS = isCfo ? [
+    {h:'Contract',            get:r=>r.contract, f:money},
+    {h:'Est. Cost at Compl.', get:r=>r.eac,      f:money},
+    {h:'Est. Gross Profit',   get:r=>r.profit,   f:acctC},
+    {h:'% Compl',             get:r=>r.pctC,     f:v=>(v==null?'<span class="wmut">&mdash;</span>':v.toFixed(1)+'%'), t:()=>pc(pctC)},
+    {h:'Revenue Earned',      get:r=>r.earned,   f:money},
+    {h:'Cost Incurred',       get:r=>r.ctd,      f:money},
+    {h:'G.P. Earned',         get:r=>r.gpEarned, f:acctC},
+    {h:'Billed to Date',      get:r=>r.billed,   f:money},
+    {h:'Underbilled (asset)', get:r=>r.cie,      f:v=>(!v?'<span class="wmut">&mdash;</span>':'<span class="wpos">'+money(v)+'</span>')},
+    {h:'Overbilled (liab.)',  get:r=>r.bie,      f:v=>(!v?'<span class="wmut">&mdash;</span>':money(v))}
+  ] : [
+    {h:'Contract',            get:r=>r.contract, f:money},
+    {h:'Original Budget',     get:r=>bud(r).ob,  f:v=>(v?money(v):'<span class="wmut">&mdash;</span>'), t:()=>money(oBud)},
+    {h:'Revised Budget',      get:r=>bud(r).rb,  f:v=>(v?money(v):'<span class="wmut">&mdash;</span>'), t:()=>money(rBud)},
+    {h:'Committed',           get:r=>bud(r).com, f:money, t:()=>money(tCom)},
+    {h:'Job to Date',         get:r=>r.ctd,      f:money},
+    {h:'Cost at Completion',  get:r=>r.eac,      f:money},
+    {h:'Savings / (Loss)',    get:r=>bud(r).sav, f:v=>(v==null?'<span class="wmut">&mdash;</span>':acctC(v)), t:()=>acctC(tSav)},
+    {h:'% Compl',             get:r=>r.pctC,     f:v=>(v==null?'<span class="wmut">&mdash;</span>':v.toFixed(1)+'%'), t:()=>pc(pctC)},
+    {h:'Earned Rev',          get:r=>r.earned,   f:money},
+    {h:'Billed',              get:r=>r.billed,   f:money},
+    {h:'Over / (Under)',      get:r=>r.ou,       f:v=>(v==null?'<span class="wmut">&mdash;</span>':acct(v)), t:()=>acct(tOU)}
+  ];
+  function bud(r){ const jr=src.find(x=>x.project_number===r.job)||{};
+    const rb=num(jr.budget_revised), ob=num(jr.budget_original);
+    return {ob:ob, rb:rb, com:num(jr.ce&&jr.ce.ce_committed), sav:(rb?rb-r.eac:null)}; }
+  const SUM=g=>rows.reduce((a,r)=>a+(num(g(r))||0),0);
+  const tCie=SUM(r=>r.cie), tBie=SUM(r=>r.bie);
+  const tog=(v,t)=>'<button type="button" onclick="setWipView(\''+v+'\')" style="padding:7px 15px;border:1px solid '
+    +(WIPVIEW===v?'#1F3864':'#c7cfdb')+';background:'+(WIPVIEW===v?'#1F3864':'#fff')+';color:'+(WIPVIEW===v?'#fff':'#5b6472')
+    +';font-size:13px;font-weight:600;cursor:pointer;'+(v==='ops'?'border-radius:8px 0 0 8px':'border-radius:0 8px 8px 0;border-left:none')+'">'+t+'</button>';
   out.innerHTML =
-    '<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128203; <b>WIP schedule.</b> '
-    +rows.length+' job'+(rows.length===1?'':'s')+' with a ComputerEase contract. '
-    +'<b>'+under.length+'</b> under-billed ('+money(Math.abs(under.reduce((a,r)=>a+r.ou,0)))+'), '
-    +'<b>'+over.length+'</b> over-billed ('+money(over.reduce((a,r)=>a+r.ou,0))+'). '
-    +'Profit is contract &minus; EAC, so it falls out of cost rather than being typed in. '
-    +'The &Delta; column is Procore&rsquo;s fee-stripped EAC against CE&rsquo;s &mdash; two independent forecasts, so a small gap is healthy.</div>'
-    +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;margin-bottom:16px;overflow:auto">'
-    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
-    +'<thead><tr style="background:#f7f9fc;text-align:left">'
-    +'<th style="padding:8px 10px">Job</th><th style="padding:8px 10px;text-align:right">Contract</th>'
-    +'<th style="padding:8px 10px;text-align:right">EAC (CE)</th><th style="padding:8px 10px;text-align:right">&Delta; Procore</th>'
-    +'<th style="padding:8px 10px;text-align:right">Est. Profit</th><th style="padding:8px 10px;text-align:right">% Compl</th>'
-    +'<th style="padding:8px 10px;text-align:right">Earned Rev</th><th style="padding:8px 10px;text-align:right">Billed</th>'
-    +'<th style="padding:8px 10px;text-align:right">Over/(Under)</th></tr></thead>'
-    +'<tbody>'+body+'</tbody>'
-    +'<tfoot><tr style="background:#f7f9fc;font-weight:700;border-top:2px solid #c7cfdb">'
-    +'<td style="padding:9px 10px">TOTAL &mdash; '+rows.length+' jobs</td>'
-    +'<td class="num" style="padding:9px 10px">'+money(tC)+'</td>'
-    +'<td class="num" style="padding:9px 10px">'+money(tE)+'</td>'
-    +'<td class="num" style="padding:9px 10px"></td>'
-    +'<td class="num" style="padding:9px 10px;color:'+(tP<0?'#b3261e':'#1a7f37')+'">'+smoney(tP)+(tC?' · '+(tP/tC*100).toFixed(1)+'%':'')+'</td>'
-    +'<td class="num" style="padding:9px 10px">'+(tE?((tCtd/tE)*100).toFixed(1)+'%':'')+'</td>'
-    +'<td class="num" style="padding:9px 10px">'+money(tEarn)+'</td>'
-    +'<td class="num" style="padding:9px 10px">'+money(tB)+'</td>'
-    +'<td class="num" style="padding:9px 10px;color:'+(tOU<0?'#8a5a00':'#1a7f37')+'">'+(tOU<0?'Under ':'Over ')+money(Math.abs(tOU))+'</td>'
-    +'</tr></tfoot></table></div>'
-    +'<div style="margin:-8px 0 16px"><button type="button" id="wipCsv" style="padding:8px 14px;border:1px solid #c7cfdb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer">&#11123; Export WIP schedule (CSV)</button></div>';
+    '<div class="kpis">'
+    + k('Original Estimate', m(money(tC),'Contract')+m(money(oBud),'Original Budget')
+        +m(pc(oBud&&tC?((tC-oBud)/tC*100):null),'Original Margin'))
+    + k('Revised Estimate', m(money(tC),'Contract')+m(money(rBud),'Revised Budget')
+        +m(pc(rBud&&tC?((tC-rBud)/tC*100):null),'Estimated Margin'))
+    + k('Current Projection', m(money(tEac),'Cost at Completion')
+        +m(money(tC-tEac),'Projected Fee',(tC-tEac)<0?'neg':'pos')
+        +m(pc(tC?((tC-tEac)/tC*100):null),'Margin'), true)
+    + k('Cost Position', m(money(tCtd),'Job to Date Cost')+m(money(tCom),'Committed')
+        +m(pc(pctC),'Percent Complete'))
+    + k('Billing Position', m(money(tCie),'Underbilled &mdash; asset','pos')
+        +m(money(tBie),'Overbilled &mdash; liability')
+        +m(money(tB),'Billed to Date'))
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<div>'+tog('ops','Operations')+tog('cfo','CFO / WIP schedule')+'</div>'
+      + '<span style="color:#7a828f;font-size:12px">'+(isCfo
+          ? 'Balance-sheet format &mdash; the last two columns are the accounts a CPA, surety or bank reads.'
+          : 'Budget vs forecast &mdash; buyout, savings and overrun.')+'</span></div>'
+    + '<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128203; '
+      + (isCfo
+        ? '<b>WIP schedule, balance-sheet format.</b> Revenue Earned = % complete &times; contract; G.P. Earned = % complete &times; estimated gross profit. '
+          +'A job is <b>either</b> underbilled <b>or</b> overbilled, never both, so each column totals to its own account: '
+          +'<b>'+money(tCie)+'</b> in costs &amp; estimated earnings in excess of billings (asset), '
+          +'<b>'+money(tBie)+'</b> in billings in excess (liability). '
+          +'<b>Retainage is not included</b> &mdash; ComputerEase does not expose it on the endpoint we pull, so retention receivable has to come off the CE Job Center by hand.'
+        : '<b>WIP schedule.</b> <b>Savings / (Loss)</b> is Revised Budget less Cost at Completion. '
+          +'Budget columns are Procore&rsquo;s (fee-stripped'+(feeHeld?' &mdash; '+money(feeHeld)+' of phase 90 held out':'')+'); cost and billing columns are ComputerEase&rsquo;s.')
+      + ' '+rows.length+' job'+(rows.length===1?'':'s')+' with a ComputerEase contract. Profit falls out of cost rather than being typed in.</div>'
+    + '<div class="wrap-scroll" style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;margin-bottom:14px;overflow:auto">'
+    + '<table class="wtable"><thead><tr><th class="l">Job</th>'
+    + COLS.map(c=>'<th>'+c.h+'</th>').join('') + '</tr></thead><tbody>'
+    + rows.map(r=>'<tr><td class="l"><span class="wjob">'+esc(r.job)+'</span><div class="wsub">'+esc((r.name||'').slice(0,40))+'</div></td>'
+        + COLS.map(c=>'<td>'+c.f(c.get(r))+'</td>').join('') + '</tr>').join('')
+    + '</tbody><tfoot><tr><td class="l">Total &mdash; '+rows.length+' jobs</td>'
+    + COLS.map(c=>'<td>'+(c.t?c.t():c.f(SUM(c.get)))+'</td>').join('')
+    + '</tr></tfoot></table></div>'
+    + '<div style="margin:0 0 16px"><button type="button" id="wipCsv" style="padding:8px 14px;border:1px solid #c7cfdb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer">&#11123; Export '+(isCfo?'WIP schedule':'this view')+' (CSV)</button></div>';
   const btn=document.getElementById('wipCsv');
   if(btn) btn.onclick=function(){
-    const hdr=['Job','Name','Contract','EAC (CE)','Procore EAC','Est Profit','Profit %','% Complete','Cost to Date','Earned Revenue','Billed to Date','Over/(Under) Billed'];
+    const strip=h=>String(h).replace(/&mdash;/g,'-').replace(/&[a-z]+;/g,'').trim();
+    const plain=v=>{ if(v==null) return ''; if(typeof v==='number') return v; return String(v); };
     const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-    const lines=[hdr.map(q).join(',')].concat(rows.map(r=>[r.job,r.name,r.contract,r.eac,(r.pcEac==null?'':r.pcEac),r.profit,(r.pct==null?'':r.pct.toFixed(2)),(r.pctC==null?'':r.pctC.toFixed(2)),r.ctd,(r.earned==null?'':r.earned),r.billed,(r.ou==null?'':r.ou)].map(q).join(',')));
-    lines.push(['TOTAL','',tC,tE,'',tP,(tC?(tP/tC*100).toFixed(2):''),(tE?((tCtd/tE)*100).toFixed(2):''),tCtd,tEarn,tB,tOU].map(q).join(','));
-    const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+    const hdr=['Job','Name'].concat(COLS.map(c=>strip(c.h)));
+    const lines=[hdr.map(q).join(',')];
+    rows.forEach(r=>lines.push([r.job,r.name].concat(COLS.map(c=>plain(c.get(r)))).map(q).join(',')));
+    lines.push(['TOTAL','']. concat(COLS.map(c=>SUM(c.get))).map(q).join(','));
+    const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-    a.download='WIP_schedule_'+(ASOF==='live'?'current':ASOF)+'.csv'; a.click();
+    a.download='WIP_'+WIPVIEW+'_'+(ASOF==='live'?'current':ASOF)+'.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
   };
 }
 
@@ -716,7 +811,7 @@ function render(){
   populateAsof();
   const finRaw=finView(); const finA=(ASOF!=='live')?asofFin(finRaw):null;
   renderFin(finA||finRaw);
-  renderBuyout();
+  renderBuyout(finA||finRaw);
   const profA=(ASOF!=='live')?asofProf(list):null;
   renderProf(profA||list);
   renderWip(profA||list);
@@ -1649,7 +1744,10 @@ function renderFin(list){
         +loss.map(r=>'<a href="'+pcBase(r.procore_id)+'/tools/budgeting" target="_blank" style="color:#211E1E;text-decoration:none;font-weight:600">'+esc(r.project)+'</a> — <span class="fover">'+smoney(r.projected_margin)+'</span> <span style="color:#7a828f">(projected cost '+money(r.projected_cost)+' vs contract '+money(r.revised_contract||r.contract_amount)+')</span>').join('<br>')
         +'</div></div>'
     : '<div class="varbox clean"><b>&#10003; No projects projected to lose money</b> <span style="color:#7a828f">— Projected Cost (EAC) is within contract on all shown active jobs.</span></div>';
-  document.getElementById('finList').innerHTML = list.length ? list.map(fcard).join('') : '<div class="empty">No projects match.</div>';
+  document.getElementById('finList').innerHTML = list.length ? list.map(fcard).join('')
+    : (ASOF!=='live'
+        ? '<div class="empty"><b>No Procore snapshot captured any job for '+esc(monthName(ASOF))+'.</b><br>The zeros above are an empty month, not missing data. Switch <b>As of</b> back to <i>Live (current)</i>, or pick a month that has snapshots.</div>'
+        : '<div class="empty">No projects match the current filters.</div>');
 }
 function fcard(r){
   const hasCost=!!r.projected_cost;
