@@ -169,6 +169,8 @@
   .kcard.fer .fm{font-size:10px;color:var(--mut);line-height:1.6;margin-top:9px;
     padding-top:7px;border-top:1px dotted var(--line)}
   .kcard.fer .fm .xref{cursor:help;border-bottom:1px dotted var(--line)}
+  .csplit{font-size:11px;color:#7a828f;line-height:1.5;margin-top:3px}
+  .csplit b{color:#211E1E;font-weight:600}
   .kcard.fer.good{border-left-color:#1baf7a} .kcard.fer.good .kn{color:#12805a}
   .kcard.fer.warn{border-left-color:#d68910} .kcard.fer.warn .kn{color:#8a5a00}
   .kcard.fer.bad{border-left-color:#c0272d}  .kcard.fer.bad  .kn{color:#c0272d}
@@ -520,6 +522,20 @@ function updateMsBtn(){
 }
 /* ---------- render ---------- */
 
+/* Phase 50 is not one pot. import_snapshot_lines.js now writes contingency_cats, one
+   entry per category, because 50-010 Potential Fee and 50-020 Buyout are different
+   decisions: Potential Fee releases to profit once the job is bought out, Buyout is the
+   bid-versus-award spread. Reporting only the phase total made Fox Run read 145,249 when
+   the fee bucket alone was 125,730.
+   Tolerates the OLD rollup shape (no contingency_cats) so the tab keeps working until the
+   lines import has re-run - it just shows the total, as before. */
+function contSplit(j){
+  const cs=j&&j.contingency_cats;
+  if(!Array.isArray(cs)||cs.length<2) return '';
+  const nm=c=>esc(c.name||((ROLLUP&&ROLLUP.contingency_phase)||'50')+'-'+c.cat);
+  return '<div class="csplit">'+cs.filter(c=>c.eac||c.budget)
+    .map(c=>nm(c)+' <b>'+money(c.eac)+'</b>').join(' &middot; ')+'</div>';
+}
 /* ---------- Buyout status & contingency ----------
    Reads snapshot_lines/_rollup.json (written by import_snapshot_lines.js). Two numbers
    per job, both straight from Procore budget codes:
@@ -557,7 +573,7 @@ function renderBuyout(list){
   const totalLeft=rows.reduce((a,j)=>a+(j.contingency_eac||0),0);
   const dueLeft=due.reduce((a,j)=>a+(j.contingency_eac||0),0);
   const head='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#127919; <b>Buyout status &amp; contingency.</b> '
-    +'Coverage is committed &divide; budget excluding fee &mdash; a live stand-in for &ldquo;buyout complete&rdquo;, since no milestone date is pulled. '
+    +'Coverage is commitments &divide; budget excluding fee &mdash; a live stand-in for &ldquo;buyout complete&rdquo;, since no milestone date is pulled. '
     +'Contingency remaining is the phase '+esc(String((ROLLUP&&ROLLUP.contingency_phase)||'50'))+' <b>EAC</b>: still projected as cost, so it reaches profit only if released. '
     +'<b>'+due.length+' job'+(due.length===1?'':'s')+'</b> past '+BUYOUT_COVER_FLAG+'% bought out still '+(due.length===1?'holds':'hold')+' <b>'+money(dueLeft)+'</b> unreleased'
     +(rows.length>due.length?(' (portfolio total '+money(totalLeft)+')'):'')+'.</div>';
@@ -578,7 +594,7 @@ function renderBuyout(list){
       +'<td class="num">'+(j.buyout_pct==null?'&mdash;':(j.buyout_pct.toFixed(1)+'%'))+'</td>'
       +'<td class="num">'+money(j.contingency_budget)+'</td>'
       +'<td class="num">'+(rel?('<span style="color:#1a7f37">'+money(rel)+'</span>'):'&mdash;')+'</td>'
-      +'<td class="num"><b>'+money(j.contingency_eac)+'</b></td>'
+      +'<td class="num"><b>'+money(j.contingency_eac)+'</b>'+contSplit(j)+'</td>'
       +'<td>'+note(j)+'</td></tr>';
   }).join('');
   out.innerHTML=head
@@ -586,13 +602,16 @@ function renderBuyout(list){
     +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
     +'<thead><tr style="background:#f7f9fc;text-align:left">'
     +'<th style="padding:8px 10px">Job</th><th style="padding:8px 10px;text-align:right">Budget ex-fee</th>'
-    +'<th style="padding:8px 10px;text-align:right">Committed</th><th style="padding:8px 10px;text-align:right">Bought out</th>'
+    +'<th style="padding:8px 10px;text-align:right" title="Procore commitments \u2014 subcontracts and purchase orders. This is contract VALUE, not cost incurred, which is why it does not match ComputerEase\u2019s committed figure.">Commitments</th><th style="padding:8px 10px;text-align:right">Bought out</th>'
     +'<th style="padding:8px 10px;text-align:right">Contingency</th><th style="padding:8px 10px;text-align:right">Released</th>'
     +'<th style="padding:8px 10px;text-align:right">Remaining</th><th style="padding:8px 10px">What it means</th>'
     +'</tr></thead><tbody>'+body+'</tbody></table></div>'
     +'<div style="color:#7a828f;font-size:12px;margin:-8px 0 16px">Basis: '
     +esc(String((rows[0]&&(rows[0].basis_label||rows[0].basis))||''))
-    +'. Coverage is a proxy for buyout completion, not a milestone date.</div>';
+    +'. Coverage is a proxy for buyout completion, not a milestone date.'
+    +(rows.some(j=>Array.isArray(j.contingency_cats)&&j.contingency_cats.length)?''
+      :' Contingency is shown as a phase total &mdash; the per-category split (Potential Fee vs Buyout) appears after the next Budget snapshot LINES import.')
+    +'</div>';
 }
 
 
@@ -1215,7 +1234,7 @@ function renderDetail(){
       +dRow(money(r.approved_cos),'Approved COs')
       +dRow(money(r.contract_amount),'Original Contract')+'</div>'
     +'<div class="kcard"><div class="kt">Cost Position'+srcTag('Procore',SRC_PC)+'</div>'
-      +dRow(money(r.committed),'Committed')
+      +dRow(money(r.committed),'Commitments')
       +dRow(hasCost?money(r.cost_to_date):'',(hasCost?'Cost to Date':'Cost to Date'),{na:!hasCost})
       +dRow(smoney(r.over_under_budget),'Budget &minus; Projected',{raw:r.over_under_budget})+'</div>'
     +'<div class="kcard"><div class="kt">Billing &amp; CE Forecast'+srcTag('CE',SRC_CE)+'</div>'
