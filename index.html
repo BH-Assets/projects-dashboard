@@ -282,7 +282,7 @@ function buildUI(){
        +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Contract vs Cost vs Committed</div><div style="height:250px"><canvas id="cccChart"></canvas></div></div>'
        +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:#7a828f;text-transform:uppercase;letter-spacing:.03em;font-weight:700;margin-bottom:8px">Projected Margin % by Project (target '+TARGET_MARGIN+'%)</div><div style="height:250px"><canvas id="marginChart"></canvas></div></div>'
      +'</div>'
-     +'<div id="profList"></div></div>'
+     +'<div id="wipSched"></div><div id="profList"></div></div>'
    +'<div id="panRec" class="panel">'
      +'<div class="fnote" style="background:#fff7ef;border-color:#f0d9bf">&#128260; <b>Procore ↔ CE via Spark.</b> Procore is the source for contract &amp; change orders; <b>Spark</b> pushes them into CE. A <b>Contract Δ</b> means Spark didn\'t fully sync (e.g. CO markup not exported). Committed &amp; EAC are computed independently in each system, so small differences there are expected, not sync errors.</div>'
      +'<div class="cards" id="recCards"></div><div id="eacList"></div><div id="recList"></div></div>'
@@ -598,6 +598,99 @@ function feeNote(r){
   return 'No budget-code rollup for this job yet, so any phase 90 fee is still inside its budget and EAC. Re-run the Budget snapshot LINES import.';
 }
 
+
+/* ---------- WIP schedule ----------
+   The classic work-in-progress schedule: one row per job, a real total row, and the
+   four derived figures an accountant expects, computed the way BH's own projection FAQ
+   defines them:
+       estimated profit  = contract - projected cost at completion
+       % complete        = cost to date / projected cost at completion   (cost-based)
+       earned revenue    = % complete x contract
+       over/(under)      = billed - earned
+   COST is the input and FEE is what falls out. The VP's workbook does the reverse -
+   column X is =N-AF, projected cost derived FROM a typed fee - which is why erosion can
+   never appear there. This table cannot hide it.
+   ComputerEase is the source, because it is the accounting record revenue recognition
+   runs on. Procore's EAC (fee-stripped, per job) sits alongside it as a check: the two
+   are built from different data, so a small delta is healthy and a large one is a job
+   worth opening. */
+function wipRow(r){
+  const ce=r.ce; if(!ce) return null;
+  const contract=num(ce.ce_contract); if(contract<=0) return null;   // 15 CE jobs carry a zero contract; they'd read as a total loss
+  const eac=num(ce.ce_projected_cost), ctd=num(ce.ce_actual_cost), billed=num(ce.ce_billed);
+  const pctC=eac>0?(ctd/eac):null;
+  const earned=(pctC!=null)?contract*pctC:null;
+  const profit=contract-eac;
+  return { job:r.project_number, name:r.project, contract:contract, eac:eac, profit:profit,
+           pct: contract?(profit/contract*100):null, pctC:(pctC!=null?pctC*100:null),
+           ctd:ctd, earned:earned, billed:billed,
+           ou:(earned!=null?billed-earned:null),
+           pcEac: (r.fee_basis==='stripped'||r.fee_basis==='none')?num(r.projected_cost):null,
+           feeBasis:r.fee_basis };
+}
+function renderWip(list){
+  const out=document.getElementById('wipSched'); if(!out) return;
+  const rows=list.map(wipRow).filter(Boolean).sort((a,b)=>b.contract-a.contract);
+  if(!rows.length){ out.innerHTML=''; return; }
+  const T=k=>rows.reduce((a,r)=>a+(num(r[k])||0),0);
+  const tC=T('contract'), tE=T('eac'), tP=T('profit'), tCtd=T('ctd'), tEarn=T('earned'), tB=T('billed');
+  const tOU=tB-tEarn;
+  const over=rows.filter(r=>r.ou!=null&&r.ou>0), under=rows.filter(r=>r.ou!=null&&r.ou<0);
+  const dlt=r=>{ if(r.pcEac==null||!r.eac) return '<span style="color:#7a828f">&mdash;</span>';
+    const d=r.pcEac-r.eac; if(Math.abs(d)<1000) return '<span style="color:#1a7f37">agrees</span>';
+    return '<span style="color:'+(Math.abs(d)/r.eac>0.02?'#b3261e':'#8a5a00')+'" title="Procore EAC '+money(r.pcEac)+' vs CE '+money(r.eac)+'">'+smoney(d)+'</span>'; };
+  const body=rows.map(r=>'<tr>'
+    +'<td style="padding:6px 10px"><b>'+esc(r.job)+'</b><div style="color:#7a828f;font-size:11px">'+esc((r.name||'').slice(0,42))+'</div></td>'
+    +'<td class="num" style="padding:6px 10px">'+money(r.contract)+'</td>'
+    +'<td class="num" style="padding:6px 10px">'+money(r.eac)+'</td>'
+    +'<td class="num" style="padding:6px 10px">'+dlt(r)+'</td>'
+    +'<td class="num" style="padding:6px 10px;color:'+(r.profit<0?'#b3261e':'#1a7f37')+'"><b>'+smoney(r.profit)+'</b>'
+      +(r.pct!=null?'<div style="font-size:11px;color:#7a828f">'+r.pct.toFixed(1)+'%</div>':'')+'</td>'
+    +'<td class="num" style="padding:6px 10px">'+(r.pctC!=null?r.pctC.toFixed(1)+'%':'&mdash;')+'</td>'
+    +'<td class="num" style="padding:6px 10px">'+(r.earned!=null?money(r.earned):'&mdash;')+'</td>'
+    +'<td class="num" style="padding:6px 10px">'+money(r.billed)+'</td>'
+    +'<td class="num" style="padding:6px 10px;color:'+(r.ou==null?'#7a828f':(r.ou<0?'#8a5a00':'#1a7f37'))+'">'
+      +(r.ou==null?'&mdash;':((r.ou<0?'Under ':'Over ')+money(Math.abs(r.ou))))+'</td></tr>').join('');
+  out.innerHTML =
+    '<div class="fnote" style="background:#f0faf3;border-color:#b7e0c2">&#128203; <b>WIP schedule.</b> '
+    +rows.length+' job'+(rows.length===1?'':'s')+' with a ComputerEase contract. '
+    +'<b>'+under.length+'</b> under-billed ('+money(Math.abs(under.reduce((a,r)=>a+r.ou,0)))+'), '
+    +'<b>'+over.length+'</b> over-billed ('+money(over.reduce((a,r)=>a+r.ou,0))+'). '
+    +'Profit is contract &minus; EAC, so it falls out of cost rather than being typed in. '
+    +'The &Delta; column is Procore&rsquo;s fee-stripped EAC against CE&rsquo;s &mdash; two independent forecasts, so a small gap is healthy.</div>'
+    +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;margin-bottom:16px;overflow:auto">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="background:#f7f9fc;text-align:left">'
+    +'<th style="padding:8px 10px">Job</th><th style="padding:8px 10px;text-align:right">Contract</th>'
+    +'<th style="padding:8px 10px;text-align:right">EAC (CE)</th><th style="padding:8px 10px;text-align:right">&Delta; Procore</th>'
+    +'<th style="padding:8px 10px;text-align:right">Est. Profit</th><th style="padding:8px 10px;text-align:right">% Compl</th>'
+    +'<th style="padding:8px 10px;text-align:right">Earned Rev</th><th style="padding:8px 10px;text-align:right">Billed</th>'
+    +'<th style="padding:8px 10px;text-align:right">Over/(Under)</th></tr></thead>'
+    +'<tbody>'+body+'</tbody>'
+    +'<tfoot><tr style="background:#f7f9fc;font-weight:700;border-top:2px solid #c7cfdb">'
+    +'<td style="padding:9px 10px">TOTAL &mdash; '+rows.length+' jobs</td>'
+    +'<td class="num" style="padding:9px 10px">'+money(tC)+'</td>'
+    +'<td class="num" style="padding:9px 10px">'+money(tE)+'</td>'
+    +'<td class="num" style="padding:9px 10px"></td>'
+    +'<td class="num" style="padding:9px 10px;color:'+(tP<0?'#b3261e':'#1a7f37')+'">'+smoney(tP)+(tC?' · '+(tP/tC*100).toFixed(1)+'%':'')+'</td>'
+    +'<td class="num" style="padding:9px 10px">'+(tE?((tCtd/tE)*100).toFixed(1)+'%':'')+'</td>'
+    +'<td class="num" style="padding:9px 10px">'+money(tEarn)+'</td>'
+    +'<td class="num" style="padding:9px 10px">'+money(tB)+'</td>'
+    +'<td class="num" style="padding:9px 10px;color:'+(tOU<0?'#8a5a00':'#1a7f37')+'">'+(tOU<0?'Under ':'Over ')+money(Math.abs(tOU))+'</td>'
+    +'</tr></tfoot></table></div>'
+    +'<div style="margin:-8px 0 16px"><button type="button" id="wipCsv" style="padding:8px 14px;border:1px solid #c7cfdb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer">&#11123; Export WIP schedule (CSV)</button></div>';
+  const btn=document.getElementById('wipCsv');
+  if(btn) btn.onclick=function(){
+    const hdr=['Job','Name','Contract','EAC (CE)','Procore EAC','Est Profit','Profit %','% Complete','Cost to Date','Earned Revenue','Billed to Date','Over/(Under) Billed'];
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const lines=[hdr.map(q).join(',')].concat(rows.map(r=>[r.job,r.name,r.contract,r.eac,(r.pcEac==null?'':r.pcEac),r.profit,(r.pct==null?'':r.pct.toFixed(2)),(r.pctC==null?'':r.pctC.toFixed(2)),r.ctd,(r.earned==null?'':r.earned),r.billed,(r.ou==null?'':r.ou)].map(q).join(',')));
+    lines.push(['TOTAL','',tC,tE,'',tP,(tC?(tP/tC*100).toFixed(2):''),(tE?((tCtd/tE)*100).toFixed(2):''),tCtd,tEarn,tB,tOU].map(q).join(','));
+    const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='WIP_schedule_'+(ASOF==='live'?'current':ASOF)+'.csv'; a.click();
+  };
+}
+
 function render(){
   // ---- Summary tab (no project picker) ----
   const list=sumView();
@@ -626,6 +719,7 @@ function render(){
   renderBuyout();
   const profA=(ASOF!=='live')?asofProf(list):null;
   renderProf(profA||list);
+  renderWip(profA||list);
   { const fn=document.getElementById('finAsofNote'); if(fn) fn.innerHTML=(ASOF==='live')?'Live from Procore (current)':(finA?('&#128197; Procore approved snapshot &mdash; '+monthName(ASOF)+' ('+finA.length+' jobs)'):('&#9888; No Procore snapshot for '+monthName(ASOF)+' &mdash; showing live')); }
   { const pn=document.getElementById('profAsofNote'); if(pn) pn.innerHTML=(ASOF==='live')?'Live from ComputerEase (current)':(profA?('&#128197; CE month-end &mdash; '+monthName(ASOF)+' ('+profA.length+' jobs)'):('&#9888; No CE history for '+monthName(ASOF)+' yet (building monthly) &mdash; showing live')); }
   // ---- Forecasting tab (cost projection + monthly revenue forecast) ----
