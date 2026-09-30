@@ -148,7 +148,7 @@
   .dbox .dl{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
   .dbox .dv{font-size:15px;font-weight:bold;color:var(--ink);margin-top:2px}
   .dbox.na .dv{color:var(--mut);font-weight:normal}
-  .kstack{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px}
+  .kstack{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px;align-items:start}
   .kcard{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff}
   .kcard.hl{border-color:var(--s1);box-shadow:inset 3px 0 0 var(--s1)}
   .kcard .kt{font-size:12px;font-weight:bold;color:var(--s1);margin-bottom:7px}
@@ -159,6 +159,19 @@
   .kcard .kn.na{color:var(--mut);font-weight:normal;font-size:15px}
   .kcard .kn.neg{color:#c0272d}
   .kcard .kl{font-size:11px;color:var(--mut)}
+  .kcard .kt .src{float:right;font-size:9px;font-weight:normal;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--mut);border:1px solid var(--line);border-radius:3px;padding:0 4px;line-height:1.7;cursor:help}
+  /* Fee erosion card - planned fee vs forecast fee, stated rather than left to be subtracted.
+     Sits immediately after Current Projection, the card it is the difference against. */
+  .kcard.fer{border-left-width:4px}
+  .kcard.fer .kn{font-size:20px}
+  .kcard.fer .fp{font-size:12px;font-weight:bold;color:var(--mut);margin-top:-2px}
+  .kcard.fer .fm{font-size:10px;color:var(--mut);line-height:1.6;margin-top:9px;
+    padding-top:7px;border-top:1px dotted var(--line)}
+  .kcard.fer .fm .xref{cursor:help;border-bottom:1px dotted var(--line)}
+  .kcard.fer.good{border-left-color:#1baf7a} .kcard.fer.good .kn{color:#12805a}
+  .kcard.fer.warn{border-left-color:#d68910} .kcard.fer.warn .kn{color:#8a5a00}
+  .kcard.fer.bad{border-left-color:#c0272d}  .kcard.fer.bad  .kn{color:#c0272d}
   .vizgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:14px}
   .vizbox{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff;min-width:0}
   .vizbox .vt{font-size:13px;font-weight:bold;color:var(--ink);margin-bottom:2px}
@@ -1119,6 +1132,39 @@ function dEmpty(msg){ return '<div class="empty">'+msg+'</div>'; }
 function dBox(title,sub,id,empty){
   return '<div class="vizbox"><div class="vt">'+title+'</div><div class="vs">'+sub+'</div>'
     +(empty?empty:'<div class="cwrap"><canvas id="'+id+'"></canvas></div>')+'</div>'; }
+/* Which system a figure was read from. Procore and CE forecast independently and refresh
+   on different cycles, so a reader comparing two cards needs to know whether they are
+   watching one system disagree with itself or two systems disagree with each other. */
+const SRC_PC='Read from Procore \u2014 contract, budget and the PM\u2019s cost projection. Cost-to-date and '
+  +'committed originate in ComputerEase and flow to Procore, with burden already merged into labor.';
+const SRC_CE='Read from ComputerEase \u2014 billing, and CE\u2019s own projected cost from the last imported '
+  +'Revised Estimate. CE forecasts from the month-end line in the sand; Procore forecasts from the PM\u2019s latest snapshot.';
+const srcTag=(s,t)=>'<span class="src" title="'+t+'">'+s+'</span>';
+
+/* Fee erosion: what the job planned to earn against what it is now forecast to earn.
+   Planned = revised contract - revised budget (the Estimated Margin on the Revised Estimate
+   card). Forecast = Procore's projected margin. The page held both numbers and named the
+   difference nowhere, so the reader had to subtract. It is arithmetically identical to Cost
+   Position's "Budget - Projected" because the contract cancels out of both subtractions -
+   the footnote says so, so one movement is not read as two problems.
+   Thresholds are against PLANNED FEE, not contract: a 1% swing in contract can be a third
+   of the fee on this kind of work, so contract-relative bands would never fire. */
+function dFeeErosion(r,revMargin){
+  const planned=num(revMargin);
+  if(!(planned>0)||r.projected_margin==null||!num(r.budget_revised)) return '';
+  const fc=num(r.projected_margin), d=fc-planned, pct=100*d/planned, a=Math.abs(pct);
+  const cls=(d>=0)?' good':(a>=10?' bad':(a>=1?' warn':''));
+  const head=(d<0)?'Fee erosion since budget':(d>0?'Fee gain since budget':'Fee holding at budget');
+  return '<div class="kcard fer'+cls+'"><div class="kt">Fee Movement'+srcTag('Procore',SRC_PC)+'</div>'
+    +'<div class="kr"><div class="kn">'+smoney(d)+'</div>'
+      +'<div class="fp">'+(d>0?'+':'')+pct.toFixed(1)+'% of planned fee</div>'
+      +'<div class="kl">'+head+'</div></div>'
+    +'<div class="fm">'+smoney(planned)+' estimated margin &minus; '+smoney(fc)+' projected margin = '+smoney(d)+'<br>'
+      +'<span class="xref" title="Fee planned minus fee forecast equals budget minus projected cost: the contract '
+      +'cancels out of both subtractions. Cost Position states it as a cost variance, this card as a fee variance. '
+      +'One movement, not two.">= <b>Budget &minus; Projected</b> on Cost Position</span></div>'
+  +'</div>';
+}
 function renderDetail(){
   const body=document.getElementById('dBody'); if(!body) return;
   Object.keys(DCHARTS).forEach(k=>{ try{ DCHARTS[k].destroy(); }catch(e){} }); DCHARTS={};
@@ -1151,27 +1197,28 @@ function renderDetail(){
     +'<div class="dbox'+(r.office?'':' na')+'"><div class="dl">Office</div><div class="dv">'+esc(r.office||'—')+'</div></div>'
     +'</div>';
   const stack='<div class="kstack">'
-    +'<div class="kcard"><div class="kt">Original Estimate</div>'
+    +'<div class="kcard"><div class="kt">Original Estimate'+srcTag('Procore',SRC_PC)+'</div>'
       +dRow(money(r.contract_amount),'Original Contract')
       +dRow(money(r.budget_original),'Original Budget')
       +dRow(money(origMargin),'Original Margin &middot; '+dpct(origMargin,r.contract_amount),{raw:origMargin})+'</div>'
-    +'<div class="kcard"><div class="kt">Revised Estimate</div>'
+    +'<div class="kcard"><div class="kt">Revised Estimate'+srcTag('Procore',SRC_PC)+'</div>'
       +dRow(money(r.revised_contract),'Revised Contract')
       +dRow(money(r.budget_revised),'Revised Budget')
       +dRow(money(revMargin),'Estimated Margin &middot; '+dpct(revMargin,r.revised_contract),{raw:revMargin})+'</div>'
-    +'<div class="kcard hl"><div class="kt">Current Projection</div>'
+    +'<div class="kcard hl"><div class="kt">Current Projection'+srcTag('Procore',SRC_PC)+'</div>'
       +dRow(money(r.projected_cost),'Projected Cost')
       +dRow(money(r.projected_margin),'Projected Margin',{raw:r.projected_margin})
       +dRow((r.projected_margin_pct!=null?num(r.projected_margin_pct).toFixed(1)+'%':'&mdash;'),'Margin')+'</div>'
-    +'<div class="kcard"><div class="kt">Prime Contract</div>'
+    +dFeeErosion(r,revMargin)
+    +'<div class="kcard"><div class="kt">Prime Contract'+srcTag('Procore',SRC_PC)+'</div>'
       +dRow(money(r.revised_contract),'Total Contract')
       +dRow(money(r.approved_cos),'Approved COs')
       +dRow(money(r.contract_amount),'Original Contract')+'</div>'
-    +'<div class="kcard"><div class="kt">Cost Position</div>'
+    +'<div class="kcard"><div class="kt">Cost Position'+srcTag('Procore',SRC_PC)+'</div>'
       +dRow(money(r.committed),'Committed')
       +dRow(hasCost?money(r.cost_to_date):'',(hasCost?'Cost to Date':'Cost to Date'),{na:!hasCost})
-      +dRow(money(r.over_under_budget),'Budget &minus; Projected',{raw:r.over_under_budget})+'</div>'
-    +'<div class="kcard"><div class="kt">Billing (ComputerEase)</div>'
+      +dRow(smoney(r.over_under_budget),'Budget &minus; Projected',{raw:r.over_under_budget})+'</div>'
+    +'<div class="kcard"><div class="kt">Billing &amp; CE Forecast'+srcTag('CE',SRC_CE)+'</div>'
       +dRow(ce?money(ce.ce_billed):'','Billed to Date',{na:!ce})
       +dRow(ce&&ce.ce_over_under_billed!=null?money(ce.ce_over_under_billed):'','Over / (Under) Billed',{na:!(ce&&ce.ce_over_under_billed!=null),raw:ce&&ce.ce_over_under_billed})
       +dRow(ceOk?money(ce.ce_projected_margin):'','CE Projected Margin',{na:!ceOk,raw:ceOk&&ce.ce_projected_margin})+'</div>'
