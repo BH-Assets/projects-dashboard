@@ -249,13 +249,12 @@ async function load(){
     // CE WIP data (best-effort) — merge by job_code = project_number
     try{ const cr=await fetchFile(token, CE_PATH);
       if(cr.ok){ const cd=await cr.json(); const cem={}; for(const j of (cd.jobs||[])) cem[String(j.job_code)]=j;
-        for(const r of ROWS){ r.ce=cem[String(r.project_number)]||null;
-          const pc=num(r.revised_contract||r.contract_amount), cc=r.ce?num(r.ce.ce_contract):0;
-          r.markup_gap=(r.ce && (pc-cc)>1000)?(pc-cc):0;   // Procore contract > CE = fee/markup not synced (Spark) -> CE margin/projection understated
-          // EAC not synced: Procore Cost-Projections EAC vs CE's imported EAC (Enter Revised Estimates) differ materially
-          const pE=num(r.projected_cost), cE=r.ce?num(r.ce.ce_projected_cost):0, eacTol=Math.max(5000, pE*0.01);
-          r.eac_gap=(r.ce && pE>0 && cE>0 && Math.abs(pE-cE)>eacTol)?(pE-cE):0;
-        }
+        for(const r of ROWS){ r.ce=cem[String(r.project_number)]||null; }
+        /* Gaps are computed in computeGaps(), AFTER the phase 90 fee is taken out of
+           Procore's EAC. Computing them here used Procore's GROSS EAC against CE's
+           cost-only one and reported the fee itself as a sync failure — Fox Run read
+           "EAC not synced $749,039" when the real difference was $15,363 and the EAC
+           had in fact been imported that morning. */
         CE_GENERATED=cd.generated_at||''; }
     }catch(e){}
     // Monthly reviewed snapshots (best-effort; tab shows an empty state until the first month is imported)
@@ -264,6 +263,7 @@ async function load(){
     try{ const sx=await fetchFile(token, SNAPLINES_DIR+'/_index.json'); if(sx.ok){ SNAPIDX=await sx.json(); } }catch(e){ SNAPIDX=null; }
     try{ const rx=await fetchFile(token, SNAPLINES_DIR+'/_rollup.json'); if(rx.ok){ ROLLUP=await rx.json(); } }catch(e){ ROLLUP=null; }
     try{ applyFeeBasis(); }catch(e){ console.error('fee basis',e); }
+    try{ computeGaps(); }catch(e){ console.error('gaps',e); }
     try{ const ch=await fetchFile(token, COSTHIST_PATH); if(ch.ok){ COSTHIST=await ch.json(); } }catch(e){ COSTHIST=null; }
     try{ const hr=await fetchFile(token, CEHIST_PATH); if(hr.ok){ CEHIST=await hr.json(); } }catch(e){ CEHIST=null; }
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
@@ -784,6 +784,24 @@ function renderWip(list){
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },0);
   };
+}
+
+
+/* ---------- Procore vs CE gaps ----------
+   MUST run after applyFeeBasis(). Both sides have to be on the same basis: Procore
+   carries the fee as a budget line and CE never does, so comparing them raw reports
+   the fee as a sync failure on every job that has phase 90 loaded. */
+function computeGaps(){
+  for(const r of ROWS){
+    const pc=num(r.revised_contract||r.contract_amount), cc=r.ce?num(r.ce.ce_contract):0;
+    r.markup_gap=(r.ce && (pc-cc)>1000)?(pc-cc):0;   // Procore contract > CE = markup not synced by Spark
+    /* r.projected_cost is cost-only by this point — stripped here or at source by
+       projects_pull.js. Where neither applied (fee_basis 'unknown'), the fee is still
+       inside it and the gap will read high; the row says so on hover. */
+    const pE=num(r.projected_cost), cE=r.ce?num(r.ce.ce_projected_cost):0;
+    const eacTol=Math.max(5000, pE*0.01);
+    r.eac_gap=(r.ce && pE>0 && cE>0 && Math.abs(pE-cE)>eacTol)?(pE-cE):0;
+  }
 }
 
 function render(){
