@@ -241,6 +241,7 @@ async function load(){
     // Budget-code snapshot index (best-effort; the comparison shows an empty state until the lines import runs)
     try{ const sx=await fetchFile(token, SNAPLINES_DIR+'/_index.json'); if(sx.ok){ SNAPIDX=await sx.json(); } }catch(e){ SNAPIDX=null; }
     try{ const rx=await fetchFile(token, SNAPLINES_DIR+'/_rollup.json'); if(rx.ok){ ROLLUP=await rx.json(); } }catch(e){ ROLLUP=null; }
+    try{ applyFeeBasis(); }catch(e){ console.error('fee basis',e); }
     try{ const ch=await fetchFile(token, COSTHIST_PATH); if(ch.ok){ COSTHIST=await ch.json(); } }catch(e){ COSTHIST=null; }
     try{ const hr=await fetchFile(token, CEHIST_PATH); if(hr.ok){ CEHIST=await hr.json(); } }catch(e){ CEHIST=null; }
     document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
@@ -316,7 +317,9 @@ function buildUI(){
      +'<div id="cmpList"></div>'
    +'</div>'
    +'<div id="panDetail" class="panel">'
-     +'<div class="controls"><label>Project:</label> <select id="dSel" style="min-width:320px;max-width:100%"></select></div>'
+     +'<div class="controls"><label>Project:</label> <select id="dSel" style="min-width:320px;max-width:100%"></select>'
+       +' <label style="margin-left:14px">As of:</label> <select id="dAsof" style="padding:8px 12px;border:1px solid #c7cfdb;border-radius:8px;font-size:14px"></select>'
+       +' <span id="dAsofNote" style="color:#7a828f;font-size:12px;margin-left:8px"></span></div>'
      +'<div id="dBody"></div>'
    +'</div>'
    +'<div id="panTrends" class="panel">'
@@ -347,6 +350,7 @@ function buildUI(){
   { const cc=document.getElementById('cmpCsv'); if(cc) cc.addEventListener('click',cmpCsv); }
   { const fa=document.getElementById('finAsof'); if(fa) fa.addEventListener('change',function(){ setAsof(this.value); }); }
   { const pa=document.getElementById('profAsof'); if(pa) pa.addEventListener('change',function(){ setAsof(this.value); }); }
+  { const da=document.getElementById('dAsof'); if(da) da.addEventListener('change',function(){ setAsof(this.value); }); }
   { const tm=document.getElementById('trMetric'); if(tm) tm.addEventListener('change',function(){ TRMETRIC=this.value; renderTrends(); }); }
   { const tb=document.getElementById('trBasis'); if(tb) tb.addEventListener('change',function(){ TRBASIS=this.value; renderTrends(); }); }
   document.getElementById('tabDetail').addEventListener('click',()=>setTab('detail'));
@@ -549,6 +553,49 @@ function renderBuyout(){
     +'<div style="color:#7a828f;font-size:12px;margin:-8px 0 16px">Basis: '
     +esc(String((rows[0]&&(rows[0].basis_label||rows[0].basis))||''))
     +'. Coverage is a proxy for buyout completion, not a milestone date.</div>';
+}
+
+
+/* ---------- phase 90: take the FEE out of Procore's budget and EAC ----------
+   Procore carries the project fee as a budget line (phase 90). ComputerEase does not —
+   it holds phase 90 at 0.00 by design, because fee belongs to the CONTRACT side and is
+   never a cost. Comparing Procore's budget straight to its contract therefore subtracts
+   the fee from itself and reports 0% margin on a job earning 3%.
+     Fox Run: budget 24,454,797 incl. 733,676 fee -> margin read $0 instead of $733,676;
+              EAC    24,493,891 incl. 733,676 fee -> margin read -39,094 instead of +694,582.
+   The fee amount is PER JOB and comes from snapshot_lines/_rollup.json, never a blanket
+   percentage: most jobs never load phase 90 and must not be touched. Jobs with no rollup
+   entry are left exactly as they were and marked fee_basis:'unknown', so the page can say
+   so rather than implying it checked. Originals are kept for the tooltip. */
+function applyFeeBasis(){
+  const idx={}; if(ROLLUP&&Array.isArray(ROLLUP.jobs)) for(const j of ROLLUP.jobs) idx[String(j.job_no)]=j;
+  for(const r of ROWS){
+    const j=idx[String(r.project_number)];
+    if(!j){ r.fee_basis='unknown'; continue; }
+    const feeB=num(j.fee_budget), feeE=num(j.fee_eac);
+    r.fee_budget=feeB; r.fee_eac=feeE;
+    if(!feeB&&!feeE){ r.fee_basis='none'; continue; }   // phase 90 not loaded: nothing to strip
+    r.gross_budget_revised=num(r.budget_revised);
+    r.gross_budget_original=num(r.budget_original);
+    r.gross_projected_cost=num(r.projected_cost);
+    if(num(r.budget_revised))  r.budget_revised  = r2c(num(r.budget_revised)-feeB);
+    if(num(r.budget_original)) r.budget_original = r2c(num(r.budget_original)-feeB);
+    if(num(r.projected_cost))  r.projected_cost  = r2c(num(r.projected_cost)-feeE);
+    const contract=num(r.revised_contract||r.contract_amount);
+    if(num(r.projected_cost)){
+      r.projected_margin = r2c(contract-num(r.projected_cost));
+      r.projected_margin_pct = contract?((contract-num(r.projected_cost))/contract*100):null;
+      r.over_under_budget = r2c(num(r.budget_revised)-num(r.projected_cost));
+      r.pct_complete = num(r.projected_cost)?(num(r.cost_to_date)/num(r.projected_cost)*100):r.pct_complete;
+    }
+    r.fee_basis='stripped';
+  }
+}
+function r2c(n){ return Math.round(n*100)/100; }
+function feeNote(r){
+  if(r.fee_basis==='stripped') return 'Procore’s fee of '+money(r.fee_budget||r.fee_eac)+' (phase 90) removed from budget and EAC — ComputerEase holds fee on the contract, never in cost.';
+  if(r.fee_basis==='none')     return 'No phase 90 fee loaded in Procore for this job — budget and EAC are cost-only already.';
+  return 'No budget-code rollup for this job yet, so any phase 90 fee is still inside its budget and EAC. Re-run the Budget snapshot LINES import.';
 }
 
 function render(){
@@ -780,7 +827,29 @@ function dRow(v,label,opt){ const o=opt||{};
   if(o.na) return '<div class="kr"><div class="kn na">not captured</div><div class="kl">'+label+'</div></div>';
   const cls='kn'+((o.raw!=null&&num(o.raw)<0)?' neg':'');   // test the NUMBER, not the formatted string
   return '<div class="kr"><div class="'+cls+'">'+v+'</div><div class="kl">'+label+'</div></div>'; }
-function dProj(){ return ROWS.find(r=>String(r.procore_id)===String(DETAIL_ID))||null; }
+/* The selected project, restated to the chosen accounting month.
+   This is a MONTH selector, not a free date picker: the page reads monthly captures
+   (proj_snapshots.json for Procore, ce_history.json for CE), not a transaction ledger,
+   so it can only answer for months that were actually captured. A calendar control
+   would imply a precision the data does not have.
+   Procore side and CE side are restated independently - a job can have one and not the
+   other - and DETAIL_ASOF_NOTE records exactly which applied, so the page never shows a
+   month-labelled figure that is quietly still live. */
+var DETAIL_ASOF_NOTE='';
+function dProj(){
+  const live=ROWS.find(r=>String(r.procore_id)===String(DETAIL_ID))||null;
+  if(!live){ DETAIL_ASOF_NOTE=''; return null; }
+  if(ASOF==='live'){ DETAIL_ASOF_NOTE='Live — Procore current, ComputerEase current'; return live; }
+  let out=live, gotFin=false, gotCe=false;
+  const f=asofFin([live]); if(f&&f.length){ out=f[0]; gotFin=true; }
+  const c=asofProf([out]); if(c&&c.length){ out=c[0]; gotCe=true; }
+  const mn=monthName(ASOF);
+  DETAIL_ASOF_NOTE =
+      (gotFin?('&#128197; Procore approved snapshot &mdash; '+mn):('&#9888; No Procore snapshot for '+mn+' &mdash; Procore figures are live'))
+    + ' &nbsp;·&nbsp; '
+    + (gotCe ?('&#128197; CE month-end &mdash; '+mn):('&#9888; No CE month-end for '+mn+' &mdash; CE figures are live'));
+  return out;
+}
 function openDetail(id){ DETAIL_ID=String(id); DFILE=null; setTab('detail');
   const s=document.getElementById('dSel'); if(s) s.value=DETAIL_ID; }
 /* month series for one job out of a {months, snapshots:{m:{jobs:[]}}} file */
@@ -853,6 +922,7 @@ function renderDetail(){
     if(!DETAIL_ID||!ROWS.some(r=>String(r.procore_id)===String(DETAIL_ID))) DETAIL_ID=ROWS.length?String(ROWS[0].procore_id):null;
     sel.value=DETAIL_ID||''; }
   const r=dProj();
+  { const dn=document.getElementById('dAsofNote'); if(dn) dn.innerHTML=DETAIL_ASOF_NOTE||''; }
   if(!r){ body.innerHTML=dEmpty('No project selected.'); return; }
   const job=r.project_number, ce=r.ce||null;
   const origMargin=num(r.contract_amount)-num(r.budget_original);
@@ -1458,7 +1528,7 @@ function pcardSummary(r){
 // ---- As-of month overlay (accounting): Financials from Procore approved snapshots, WIP from CE history ----
 function asofMonths(){ const a=new Set(); if(MONTHLY&&MONTHLY.months) MONTHLY.months.forEach(m=>a.add(m)); if(CEHIST&&CEHIST.months) CEHIST.months.forEach(m=>a.add(m)); return [...a].sort(); }
 function populateAsof(){ const months=asofMonths(); const opts='<option value="live">Live (current)</option>'+months.slice().reverse().map(m=>'<option value="'+m+'">As of '+monthName(m)+'</option>').join('');
-  for(const id of ['finAsof','profAsof']){ const el=document.getElementById(id); if(!el) continue; if(el.options.length!==months.length+1) el.innerHTML=opts; el.value=(ASOF==='live'||months.includes(ASOF))?ASOF:'live'; } }
+  for(const id of ['finAsof','profAsof','dAsof']){ const el=document.getElementById(id); if(!el) continue; if(el.options.length!==months.length+1) el.innerHTML=opts; el.value=(ASOF==='live'||months.includes(ASOF))?ASOF:'live'; } }
 function setAsof(v){ ASOF=v; render(); }
 function asofFin(rows){ const s=MONTHLY&&MONTHLY.snapshots&&MONTHLY.snapshots[ASOF]; if(!s) return null; const m={}; for(const j of s.jobs) m[String(j.job_no)]=j;
   return rows.filter(r=>m[String(r.project_number)]).map(r=>{ const j=m[String(r.project_number)]; const contract=num(j.projected_contract), eac=num(j.eac);
