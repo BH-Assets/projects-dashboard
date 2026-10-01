@@ -991,9 +991,45 @@ function renderMonthly(){
   if(q) known=known.filter(r=>((r.project_number||'')+' '+(r.project||'')).toLowerCase().includes(q));
   const missing=known.filter(r=>!captured.has(String(r.project_number)))
                      .sort((a,b)=>num(b.revised_contract||b.contract_amount)-num(a.revised_contract||a.contract_amount));
+  /* A missing month is only a PROBLEM on a job that is mid-flight. A finished job has
+     nothing left to project and a job that has just started has nothing to project yet —
+     listing all three together made August 2026 read as 40 failures when the real number
+     was zero, with a $42.9M completed job at the top of the list. Classify, then show the
+     actionable ones first and fold the rest away. Nothing is hidden, only sorted. */
+  const pctOf=r=>{ const v=r.pct_complete; if(v==null||v==='') return null;
+    const n=num(v); return n<=1?n*100:n; };
+  const lifecycle=r=>{
+    const pc=pctOf(r);
+    if(!num(r.revised_contract||r.contract_amount) && !num(r.cost_to_date)) return 'shell';
+    if(r.group==='warranty') return 'closed';
+    if(pc!=null && pc>=95) return 'closed';
+    /* Bidding / On Hold / no stage: not a live job. Calling it "finished" would be wrong,
+       so it only reads as closed once it has actually spent money. */
+    if(r.group && r.group!=='active') return num(r.cost_to_date)?'closed':'starting';
+    if((pc!=null && pc<2) || (pc==null && !num(r.cost_to_date))) return 'starting';
+    return 'gap';
+  };
+  const missGap=missing.filter(r=>lifecycle(r)==='gap');
+  const missClosed=missing.filter(r=>lifecycle(r)==='closed');
+  const missStart=missing.filter(r=>lifecycle(r)==='starting');
+  const missShell=missing.filter(r=>lifecycle(r)==='shell');
+  const sumC=a=>a.reduce((t,r)=>t+num(r.revised_contract||r.contract_amount),0);
+  /* A month's projections are not DUE until the 10th of the following month. Before that
+     date an uncaptured job is not late, it is simply not collected yet - and a red chip
+     for the first ten days of every month is how people learn to ignore the chip. The
+     under-reporting is still stated, because it is true either way; only the demand for
+     action waits. Change PROJ_DUE_DAY if the cadence moves. */
+  const PROJ_DUE_DAY=10;
+  const dueOn=m=>{ const q=String(m).split('-'); const y=Number(q[0]), mo=Number(q[1]);
+    return (y&&mo)?new Date(y,mo,PROJ_DUE_DAY):null; };            // mo is 1-based -> index mo is the NEXT month
+  const DUE=dueOn(MPMONTH);
+  const pastDue=!DUE||Date.now()>=DUE.getTime();
+  const dueTxt=DUE?DUE.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
   const totalKnown=known.length||jobs.length;
   meta.innerHTML=(snap.costs_through?('Costs through '+esc(snap.costs_through)):'')+(snap.as_of?('  ·  submitted '+esc(snap.as_of)):'')+'  ·  '+jobs.length+' of '+totalKnown+' jobs captured'
-    +(missing.length?' <span class="chip" style="background:#fde8e8;color:#8a1f1f;border:1px solid #f0bcbc" title="'+missing.length+' job(s) on the dashboard have no budget snapshot for this month, so they are in none of the totals below.">&#9888; '+missing.length+' not captured</span>':'')
+    +((missGap.length&&pastDue)?' <span class="chip" style="background:#fde8e8;color:#8a1f1f;border:1px solid #f0bcbc" title="'+missGap.length+' job(s) in progress have no budget snapshot for this month, so they are in none of the totals below, and the month is past its '+esc(dueTxt)+' due date. Jobs that are finishing or have just started are counted separately — they are not expected to carry a projection.">&#9888; '+missGap.length+' in progress, not captured</span>':'')
+    +((missGap.length&&!pastDue)?' <span class="chip" style="background:#eef2f7;color:#3d4a5c;border:1px solid #c9d3e0" title="'+missGap.length+' job(s) in progress have not been captured yet, so the totals below cover only part of the company. These projections are not due until '+esc(dueTxt)+' — this is not a gap to chase yet.">&#8987; '+missGap.length+' still to come &middot; due '+esc(dueTxt)+'</span>':'')
+    +((!missGap.length&&missing.length)?' <span class="chip" style="background:#e7f6ec;color:#1a7f37;border:1px solid #b7e0c2" title="'+missing.length+' job(s) have no snapshot this month, but every one is finishing, just starting, or not a live job. Nothing to chase.">&#10003; no gaps in progress</span>':'')
     +(unappr.length?' <span class="chip" style="background:#FFE9C7;color:#8a5a00;border:1px solid #f0cf8e" title="'+unappr.length+' job(s) have no approved snapshot for this month yet — showing the latest available. Approve in Procore to lock the month.">&#9888; '+unappr.length+' unapproved</span>':(jobs.length?' <span class="chip" style="background:#e7f6ec;color:#1a7f37;border:1px solid #b7e0c2">&#10003; all approved</span>':''));
   const S=f=>jobs.reduce((a,j)=>a+num(j[f]),0);
   const totC=S('projected_contract'),totEac=S('eac'),totFee=S('projected_fee'),conVar=S('contract_variance'),feeVar=S('fee_variance');
@@ -1021,14 +1057,19 @@ function renderMonthly(){
     const everSnap=new Set();
     Object.keys(snaps).forEach(m=>((snaps[m]&&snaps[m].jobs)||[]).forEach(j=>everSnap.add(String(j.job_no))));
     const idxBy={}; ((SNAPIDX&&SNAPIDX.projects)||[]).forEach(p=>{ idxBy[String(p.job_no)]=p; });
-    miss='<div class="fnote" style="background:#fdf2f2;border-color:#f0bcbc;margin-top:14px">'
-      +'<b>&#9888; Not captured for '+esc(monthName(MPMONTH))+' &mdash; '+missing.length+' job'+(missing.length===1?'':'s')+', excluded from every total above.</b>'
+    miss='<div class="fnote" style="margin-top:14px;'+((missGap.length&&pastDue)?'background:#fdf2f2;border-color:#f0bcbc':'background:#f7f9fc;border-color:#d8e0ea')+'">'
+      +'<b>'+(missGap.length
+          ? (pastDue
+             ? '&#9888; In progress with no '+esc(monthName(MPMONTH))+' snapshot &mdash; '+missGap.length+' job'+(missGap.length===1?'':'s')+' ('+money(sumC(missGap))+'), excluded from every total above.'
+             : '&#8987; '+esc(monthName(MPMONTH))+' projections are due '+esc(dueTxt)+'. '+missGap.length+' job'+(missGap.length===1?'':'s')+' in progress ('+money(sumC(missGap))+') '+(missGap.length===1?'is':'are')+' not captured yet, so the totals above cover only part of the company.')
+          : '&#10003; Nothing to chase for '+esc(monthName(MPMONTH))+'. '+missing.length+' job'+(missing.length===1?' is':'s are')+' uncaptured, and every one is finishing, just starting, or not a live job.')
+        +'</b>'
       +'<div style="margin-top:8px;font-size:12px;line-height:1.7">'
       /* Say WHY, from evidence rather than inference. proj_snapshots.json only knows what
          the monthly import accepted; snapshot_lines/_index.json knows what actually exists
          in Procore. Reading both separates "Procore has nothing" from "Procore has one and
          the monthly import did not take it" - which are different jobs for different people. */
-      +missing.map(r=>{
+      +missGap.map(r=>{
           const ix=idxBy[String(r.project_number)];
           const inProcore=ix?(ix.snapshots||[]).length:null;
           const thisMonth=ix?(ix.snapshots||[]).some(s=>s.month===MPMONTH):false;
@@ -1042,7 +1083,23 @@ function renderMonthly(){
             +' <span class="muted">&mdash; '+why+'</span>'
             +' <span class="muted">('+money(r.revised_contract||r.contract_amount)+' contract)</span></div>';
         }).join('')
-      +'</div><div style="margin-top:8px;font-size:12px" class="muted">Take or approve a budget-view snapshot in Procore for these jobs to bring them into the month.</div></div>';
+      +'</div>'
+      +(missGap.length?'<div style="margin-top:8px;font-size:12px" class="muted">'+(pastDue?'Past due &mdash; take or approve a budget-view snapshot in Procore for these jobs to bring them into the month.':'Nothing to do yet. These come in by '+esc(dueTxt)+'; chase only what is still missing after that.')+'</div>':'')
+      /* Expected absences, folded away. A finished job stopped projecting because it
+         finished; a job at PSA stage has no cost to project yet. Both are shown so the
+         count reconciles, neither is presented as something to fix. */
+      +[['closed','finishing or finished &mdash; nothing left to project',missClosed],
+        ['starting','just started &mdash; nothing to project yet',missStart],
+        ['shell','no contract and no cost &mdash; templates and placeholders',missShell]]
+        .filter(g=>g[2].length)
+        .map(g=>'<details style="margin-top:8px;font-size:12px"><summary class="muted" style="cursor:pointer">'
+            +g[2].length+' '+g[1]+(g[0]==='shell'?'':' ('+money(sumC(g[2]))+')')+'</summary>'
+            +'<div style="margin-top:6px;line-height:1.7" class="muted">'
+            +g[2].map(r=>'<div><b>'+esc(r.project_number||'')+'</b> '+esc(r.project||'')
+                +' <span class="muted">&mdash; '+esc(r.stage||'')
+                +(pctOf(r)!=null?(', '+pctOf(r).toFixed(0)+'% complete'):'')+'</span></div>').join('')
+            +'</div></details>').join('')
+      +'</div>';
   }
   listEl.innerHTML='<div class="rwrap"><table class="rtable"><thead>'+head+'</thead><tbody>'+body+tot+'</tbody></table></div>'+miss;
 }
