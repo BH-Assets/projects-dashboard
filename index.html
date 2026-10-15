@@ -2167,9 +2167,11 @@ async function clLoad(){
 }
 function clStatus(c){
   if(c.executed) return '<span class="cl-st">Executed</span>';
-  if(/out for signature/i.test(c.status||'')) return '<span class="cl-st out">Out for signature</span>';
+  /* v2.0 lists write statuses in lower case and may use underscores (out_for_signature) */
+  if(/out[\s_-]*for[\s_-]*signature/i.test(c.status||'')) return '<span class="cl-st out">Out for signature</span>';
   if(/approved/i.test(c.status||'')) return '<span class="cl-st appr">Approved, not executed</span>';
-  return '<span class="cl-st">'+esc(c.status||'\u2014')+'</span>';
+  const st=String(c.status||'').replace(/_/g,' ');
+  return '<span class="cl-st">'+esc(st?st.charAt(0).toUpperCase()+st.slice(1):'\u2014')+'</span>';
 }
 function clHtml(job){
   if(CLERR) return '<div class="cl-note">'+esc(CLERR)+'</div>';
