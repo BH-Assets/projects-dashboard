@@ -359,6 +359,8 @@ body.bh-page{background:#fff}
 .bh-page .cl-toggle{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
 .bh-page .cl-toggle b::after{content:" \25B8";font-size:10px;color:var(--bh-ink-muted)}
 .bh-page .cl-toggle[aria-expanded="true"] b::after{content:" \25BE"}
+.bh-page .cl-toggle .cl-hint{display:block;font-size:11px;font-weight:700;color:var(--bh-maroon);margin-top:2px}
+.bh-page .cl-toggle:hover .cl-hint{text-decoration:underline}
 .bh-page tr.cl-row > td{background:#fafafa;padding:0 10px 14px!important}
 .bh-page .cl-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border:1px solid var(--bh-hairline)}
 .bh-page .cl-table th{background:var(--bh-surface-muted);color:var(--bh-ink-muted);font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-align:left;padding:7px 10px}
@@ -821,7 +823,7 @@ function renderBuyout(list){
   const body=sorted.map(j=>{
     const rel=j.contingency_released||0;
     return '<tr'+(flag(j)?' style="background:#fffbf0"':'')+'>'
-      +'<td><button type="button" class="cl-toggle" aria-expanded="false" data-job="'+esc(j.job_no)+'" title="Show this job\u2019s commitments and the cost codes they are tied to"><b>'+esc(j.job_no)+'</b></button><div style="color:#7a828f;font-size:12px">'+esc(j.job_name||'')+'</div></td>'
+      +'<td><button type="button" class="cl-toggle" aria-expanded="false" data-job="'+esc(j.job_no)+'" title="Show this job\u2019s commitments and the cost codes they are tied to"><b>'+esc(j.job_no)+'</b><span class="cl-hint">Commitments &amp; cost codes</span></button><div style="color:#7a828f;font-size:12px">'+esc(j.job_name||'')+'</div></td>'
       +'<td class="num">'+money(j.budget_ex_fee)+'</td>'
       +'<td class="num">'+money(j.committed)+'</td>'
       +'<td class="num">'+(j.buyout_pct==null?'&mdash;':(j.buyout_pct.toFixed(1)+'%'))+'</td>'
@@ -846,6 +848,8 @@ function renderBuyout(list){
     +(rows.some(j=>Array.isArray(j.contingency_cats)&&j.contingency_cats.length)?''
       :' Contingency is shown as a phase total &mdash; the per-category split (Potential Fee vs Buyout) appears after the next Budget snapshot LINES import.')
     +'</div>';
+  /* one job in view: open its commitments straight away rather than waiting for a click */
+  if(sorted.length===1){ const tg=out.querySelector('.cl-toggle'); if(tg&&tg.getAttribute('aria-expanded')!=='true') tg.click(); }
 }
 
 
