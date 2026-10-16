@@ -375,6 +375,14 @@ body.bh-page{background:#fff}
 .bh-page .cl-table .ctn{margin-left:6px;color:var(--bh-ink-muted);font-size:11px;white-space:nowrap}
 .bh-page .cl-table td.cn{color:var(--bh-ink-muted)}
 .bh-page .bo-table{margin-bottom:6px}
+.bh-page .by-table td.by-c{white-space:nowrap}
+.bh-page .by-table td.by-v{font-size:12px}
+.bh-page .by-table td.by-none{color:var(--bh-ink-muted);font-size:12px}
+.bh-page .by-table td.by-why{color:var(--bh-ink-muted);font-size:12px;background:#fafafa}
+.bh-page .cl-views{display:flex;gap:0;padding:12px 0 0;border-bottom:1px solid var(--bh-hairline)}
+.bh-page .cl-views button{font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px 7px;color:var(--bh-ink-muted);cursor:pointer;margin-bottom:-1px}
+.bh-page .cl-views button[aria-selected="true"]{color:var(--bh-ink);border-bottom-color:var(--bh-red)}
+.bh-page .cl-views button:hover{color:var(--bh-ink)}
 .bh-page .bo-table tfoot td{font-weight:700;border-top:2px solid var(--bh-hairline);background:var(--bh-surface-muted)}
 .bh-page .bo-table tr.bo-openrow td{background:#fbf8f2}
 .bh-page .bo-table .bo-sp{font-size:11px;color:var(--bh-ink-muted)}
@@ -776,7 +784,7 @@ function updateMsBtn(){
    lines import has re-run - it just shows the total, as before. */
 function contSplit(j){
   const cs=j&&j.contingency_cats;
-  if(!Array.isArray(cs)||cs.length<2) return '';
+  if(!Array.isArray(cs)||!cs.length) return '';
   const nm=c=>esc(c.name||((ROLLUP&&ROLLUP.contingency_phase)||'50')+'-'+c.cat);
   return '<div class="csplit">'+cs.filter(c=>c.eac||c.budget)
     .map(c=>nm(c)+' <b>'+money(c.eac)+'</b>').join(' &middot; ')+'</div>';
@@ -817,18 +825,19 @@ function renderBuyout(list){
   const due=sorted.filter(flag);
   const totalLeft=rows.reduce((a,j)=>a+(j.contingency_eac||0),0);
   const dueLeft=due.reduce((a,j)=>a+(j.contingency_eac||0),0);
-  const head='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#127919; <b>Buyout status &amp; contingency.</b> '
+  const head='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#127919; <b>Buyout status &amp; potential fee.</b> '
     +'Coverage is commitments &divide; budget excluding fee &mdash; a live stand-in for &ldquo;buyout complete&rdquo;, since no milestone date is pulled. '
-    +'Contingency remaining is the phase '+esc(String((ROLLUP&&ROLLUP.contingency_phase)||'50'))+' <b>EAC</b>: still projected as cost, so it reaches profit only if released. '
+    +'Phase '+esc(String((ROLLUP&&ROLLUP.contingency_phase)||'50'))+' is Bailey-Harris&rsquo;s own reserve &mdash; 50-010 Potential Fee and 50-020 Buyout &mdash; not the owner&rsquo;s contingency or allowances (phase 00). '
+    +'While its <b>EAC</b> stays on budget it is projected as cost and is <b>not</b> in projected margin; releasing it moves it into margin. '
     +'<b>'+due.length+' job'+(due.length===1?'':'s')+'</b> past '+BUYOUT_COVER_FLAG+'% bought out still '+(due.length===1?'holds':'hold')+' <b>'+money(dueLeft)+'</b> unreleased'
     +(rows.length>due.length?(' (portfolio total '+money(totalLeft)+')'):'')+'.</div>';
   const note=j=>{
     if(j.buyout_pct==null) return '<span style="color:#7a828f">no budget basis</span>';
     if(!j.contingency_eac) return (j.contingency_budget>0)
-      ? '<span style="color:#1a7f37">fully released &mdash; '+money(j.contingency_budget)+' moved to profit</span>'
-      : '<span style="color:#7a828f">no contingency carried</span>';
-    if(flag(j)) return '<b>'+j.buyout_pct.toFixed(1)+'% bought out with '+money(j.contingency_eac)+' unreleased</b> &mdash; due a release decision';
-    return j.buyout_pct.toFixed(1)+'% bought out &mdash; '+money(j.contingency_eac)+' still held against risk';
+      ? '<span style="color:#1a7f37">fully released &mdash; '+money(j.contingency_budget)+' now in projected margin</span>'
+      : '<span style="color:#7a828f">no phase 50 reserve carried</span>';
+    if(flag(j)) return '<b>'+j.buyout_pct.toFixed(1)+'% bought out with '+money(j.contingency_eac)+' still held</b> &mdash; due a release decision';
+    return j.buyout_pct.toFixed(1)+'% bought out &mdash; '+money(j.contingency_eac)+' held, not yet in margin';
   };
   const body=sorted.map(j=>{
     const rel=j.contingency_released||0;
@@ -849,14 +858,14 @@ function renderBuyout(list){
     +'<thead><tr style="background:#f7f9fc;text-align:left">'
     +'<th style="padding:8px 10px">Job</th><th style="padding:8px 10px;text-align:right">Budget ex-fee</th>'
     +'<th style="padding:8px 10px;text-align:right" title="Procore commitments \u2014 subcontracts and purchase orders. This is contract VALUE, not cost incurred, which is why it does not match ComputerEase\u2019s committed figure.">Commitments</th><th style="padding:8px 10px;text-align:right">Bought out</th>'
-    +'<th style="padding:8px 10px;text-align:right">Contingency</th><th style="padding:8px 10px;text-align:right">Released</th>'
-    +'<th style="padding:8px 10px;text-align:right">Remaining</th><th style="padding:8px 10px">What it means</th>'
+    +'<th style="padding:8px 10px;text-align:right" title="Phase 50: 50-010 Potential Fee and 50-020 Buyout. Bailey-Harris money inside the contract, not owner contingency.">Potential fee &amp; buyout reserve (50)</th><th style="padding:8px 10px;text-align:right">Released &rarr; in margin</th>'
+    +'<th style="padding:8px 10px;text-align:right">Still held (not in margin)</th><th style="padding:8px 10px">What it means</th>'
     +'</tr></thead><tbody>'+body+'</tbody></table></div>'
     +'<div style="color:#7a828f;font-size:12px;margin:-8px 0 16px">Basis: '
     +esc(String((rows[0]&&(rows[0].basis_label||rows[0].basis))||''))
     +'. Coverage is a proxy for buyout completion, not a milestone date. Click a job number to see its commitments and their cost codes.'
     +(rows.some(j=>Array.isArray(j.contingency_cats)&&j.contingency_cats.length)?''
-      :' Contingency is shown as a phase total &mdash; the per-category split (Potential Fee vs Buyout) appears after the next Budget snapshot LINES import.')
+      :' Phase 50 is shown as a total &mdash; the split into Potential Fee and Buyout appears after the next Budget snapshot LINES import.')
     +'</div>';
   /* one job in view: open its commitments straight away rather than waiting for a click */
   if(sorted.length===1){ const tg=out.querySelector('.cl-toggle'); if(tg&&tg.getAttribute('aria-expanded')!=='true') tg.click(); }
@@ -2236,7 +2245,7 @@ function clHtml(job){
 }
 /* ---- buyout by cost code (Financials & Buyout) -------------------------------------
    Budget vs committed per cost code, from the job's snapshot_lines file (Current = the live
-   budget). Left out: allowances (00), general conditions (01), contingency (50), fee (90)
+   budget). Left out: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)
    and self-performed work - labor cost types, read from the cost-type split the snapshot
    import writes on `current.types`. Until that split exists for a job, self-perform cannot
    be separated and the table says so. */
@@ -2304,10 +2313,110 @@ function boHtml(job){
       +'<span>'+((open.length||part.length)?'<b style="font-size:12px;color:var(--bh-maroon)">'+money(openAmt)+'</b> still to buy out'+(open.length?' &middot; '+open.length+' code'+(open.length===1?'':'s')+' with no commitment':''):'Every code has a commitment')+'</span></div>'
     +'<table class="cl-table bo-table"><thead><tr><th>Cost code</th><th>Description</th><th class="num">Buyout budget</th><th class="num">Committed</th><th class="num">Savings / (overrun)</th><th>Status</th><th>Commitments</th></tr></thead><tbody>'+body+'</tbody>'
     +'<tfoot><tr><td></td><td>Total &mdash; '+lines.length+' code'+(lines.length===1?'':'s')+'</td><td class="num">'+money(tb)+'</td><td class="num">'+money(tc)+'</td><td class="num">'+(savings>=0?money(savings):'<span class="bo-neg">('+money(-savings)+')</span>')+'</td><td colspan="2"></td></tr></tfoot></table>'
-    +'<div class="cl-note" style="padding-top:6px">Left out: allowances (00), general conditions (01), contingency (50), fee (90)'
+    +'<div class="cl-note" style="padding-top:6px">Left out: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)'
       +(types?' and self-performed labor.':'. <b>Self-performed labor is still included</b> &mdash; the cost-type split arrives with the next Budget snapshot LINES import.')
       +' Savings counts only fully bought-out codes; anything not yet committed is scope still to buy, not savings.</div>';
 }
+/* Two views of one job's buyout, one at a time: by cost code (default) and by commitment.
+   The choice carries over to the next job opened in this visit. */
+let CLVIEW='code';
+/* ONE view per job: every buyout cost code with the commitments that sit on it.
+   Code-level figures (budget, committed, savings, status) appear once per code; each
+   commitment on the code gets its own line with its trade partner, signature status and the
+   amount it carries on THAT code. A commitment's total value is in its tooltip, not repeated.
+   Commitments that sit on no code in the table (general conditions, self-perform, or line
+   items not read yet) are listed underneath, so nothing drops out of view. */
+function buyHtml(job){
+  const f=BOF[job];
+  if(!f||f.err||!f.current||!f.current.rows) return (f&&f.err?'<div class="cl-note">Buyout by cost code: '+esc(f.err)+'</div>':'')+clHtml(job);
+  if(CLERR) return boHtml(job)+'<div class="cl-note">'+esc(CLERR)+'</div>';
+  const cur=f.current, types=cur.types||null;
+  const j=CL&&CL.projects&&CL.projects[String(job)];
+  const list=((j&&j.commitments)||[]).slice().sort((a,b)=>String(a.number).localeCompare(String(b.number)));
+  const onCode={}, placed=new Set(), inTable=new Set(), names={};
+  for(const key of Object.keys(cur.rows)){ const b=boBase(key), ph=b.split('-')[0]; names[b]=key; if(/^\d{2}-/.test(b)&&!BO_EXCL_PHASE[ph]) inTable.add(b); }
+  for(const c of list) for(const x of (c.codes||[])){
+    const b=String(x.code||''), ph=b.split('-')[0];
+    if(!/^\d{2}-/.test(b)||BO_EXCL_PHASE[ph]) continue;
+    const arr=(onCode[b]=onCode[b]||[]); const hit=arr.find(e=>e.c===c);
+    if(hit) hit.amt+=(+x.amount||0); else arr.push({c,amt:+x.amount||0});
+  }
+  /* code lines: budget codes plus any code a commitment carries that has no budget line */
+  const lines=[];
+  for(const b of new Set([...inTable, ...Object.keys(onCode)])){
+    const key=names[b]; const v=key?cur.rows[key]:[0,0,0,0];
+    let budget=+v[0]||0, sp=0, committed=+v[2]||0;
+    if(!key) committed=(onCode[b]||[]).reduce((t,e)=>t+e.amt,0);
+    if(types&&key&&types[key]) for(const t in types[key]) if(BO_SP_TYPES.has(t)) sp+=(+types[key][t][0]||0);
+    budget-=sp;
+    const who=onCode[b]||[];
+    if(Math.abs(budget)<0.005&&Math.abs(committed)<0.005&&!who.length) continue;
+    let st;
+    if(committed<0.005) st=['open','Not bought out'];
+    else if(committed>budget+0.5) st=['over', key?'Over budget':'No budget line'];
+    else if(committed<budget*0.95) st=['part','Partly bought out'];
+    else st=['done','Bought out'];
+    who.forEach(e=>placed.add(e.c));
+    lines.push({base:b,name:key?boName(key):'(not in the budget)',budget,committed,sp,st,who});
+  }
+  lines.sort((a,b)=>a.base.localeCompare(b.base));
+  const S=(arr,k)=>arr.reduce((a,x)=>a+x[k],0);
+  const tb=S(lines,'budget'), tc=S(lines,'committed');
+  const done=lines.filter(x=>x.st[0]==='done'||x.st[0]==='over');
+  const savings=done.reduce((a,x)=>a+(x.budget-x.committed),0);
+  const open=lines.filter(x=>x.st[0]==='open'), part=lines.filter(x=>x.st[0]==='part');
+  const toBuy=S(open,'budget')+part.reduce((a,x)=>a+(x.budget-x.committed),0);
+  const ne=list.filter(c=>!c.executed && !/draft|void|terminat/i.test(String(c.status||'')));
+  const neAmt=ne.reduce((t,c)=>t+(+c.value||0),0);
+  const pct=tb>0?(tc/tb*100):null;
+  const sv=v=>v>=0?money(v):'<span class="bo-neg">('+money(-v)+')</span>';
+  const cmt=e=>{ const c=e.c;
+    return '<td class="by-c" title="'+esc((c.kind==='PO'?'Purchase order':'Subcontract')+' · total value '+money(c.value)+(c.title?' · '+c.title:''))+'"><b>'+esc(c.number||'')+'</b></td>'
+      +'<td class="by-v">'+esc(c.vendor||'')+'</td><td>'+clStatus(c)+'</td><td class="num">'+money(e.amt)+'</td>'; };
+  const body=lines.map(x=>{
+    const n=Math.max(1,x.who.length), rs=n>1?' rowspan="'+n+'"':'';
+    const vc= x.committed<0.005 ? '<span style="color:var(--bh-ink-muted)">&mdash;</span>'
+        : x.st[0]==='part' ? '<span style="color:var(--bh-ink-muted)">'+money(x.budget-x.committed)+' to buy</span>' : sv(x.budget-x.committed);
+    const lead='<td class="cc"'+rs+'>'+esc(x.base)+'</td><td class="cn"'+rs+'>'+esc(x.name)
+        +(x.sp>0.005?'<div class="bo-sp">'+money(x.sp)+' self-perform left out</div>':'')+'</td>'
+        +'<td class="num"'+rs+'>'+money(x.budget)+'</td><td class="num"'+rs+'>'+money(x.committed)+'</td><td class="num"'+rs+'>'+vc+'</td>'
+        +'<td'+rs+'><span class="bo-st '+x.st[0]+'">'+x.st[1]+'</span></td>';
+    if(!x.who.length) return '<tr class="cl-first'+(x.st[0]==='open'?' bo-openrow':'')+'">'+lead+'<td colspan="4" class="by-none">'+(x.committed>=0.005?'Committed in Procore &mdash; commitment not matched yet (its line items are read on the next commitment pull)':'No commitment')+'</td></tr>';
+    return x.who.map((e,i)=>'<tr'+(i?'':' class="cl-first"')+'>'+(i?'':lead)+cmt(e)+'</tr>').join('');
+  }).join('');
+  /* commitments that sit on no code above */
+  const rest=list.filter(c=>!placed.has(c));
+  const why=c=>!Array.isArray(c.codes)?'Line items not read yet':(!c.codes.length?'No line items in Procore':'General conditions or self-perform codes only');
+  const restRows=rest.map((c,i)=>'<tr class="cl-first">'
+      +'<td colspan="6" class="by-why">'+(i?'':'<b>Not on a code above</b> &middot; ')+esc(why(c))
+        +(Array.isArray(c.codes)&&c.codes.length?' ('+c.codes.map(x=>esc(x.code)).join(', ')+')':'')+'</td>'
+      +cmt({c,amt:+c.value||0})+'</tr>').join('');
+  return '<div class="cl-head"><b>Buyout</b>'
+      +'<span>'+(pct==null?'':pct.toFixed(1)+'% of '+money(tb)+' bought out')+'</span>'
+      +'<span>Savings on bought-out codes <b style="font-size:12px">'+(savings>=0?money(savings):'('+money(-savings)+')')+'</b></span>'
+      +'<span>'+((open.length||part.length)?'<b style="font-size:12px;color:var(--bh-maroon)">'+money(toBuy)+'</b> still to buy out':'Every code has a commitment')+'</span>'
+      +'<span>'+(ne.length?'<b style="font-size:12px;color:var(--bh-maroon)">'+ne.length+' not signed</b> &middot; '+money(neAmt):'All commitments signed')+'</span>'
+      +'<span style="margin-left:auto">Commitments as of '+esc(CL&&CL.generated_at?new Date(CL.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+'</span></div>'
+    +'<table class="cl-table bo-table by-table"><thead><tr><th>Cost code</th><th>Description</th><th class="num">Buyout budget</th><th class="num">Committed</th><th class="num">Savings / (overrun)</th><th>Status</th>'
+      +'<th>Commitment</th><th>Trade partner</th><th>Signed?</th><th class="num">On this code</th></tr></thead><tbody>'+body+restRows+'</tbody>'
+    +'<tfoot><tr><td></td><td>Total &mdash; '+lines.length+' code'+(lines.length===1?'':'s')+'</td><td class="num">'+money(tb)+'</td><td class="num">'+money(tc)+'</td><td class="num">'+sv(savings)+'</td><td colspan="5"></td></tr></tfoot></table>'
+    +'<div class="cl-note" style="padding-top:6px">Left out of the code lines: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)'
+      +(types?' and self-performed labor.':'. <b>Self-performed labor is still included</b> &mdash; the cost-type split arrives with the next Budget snapshot LINES import.')
+      +' Savings counts only fully bought-out codes. Hover a commitment number for its total value.</div>';
+}
+function clViews(job){
+  const tab=(k,label)=>'<button type="button" role="tab" data-clview="'+k+'" aria-selected="'+(CLVIEW===k)+'">'+label+'</button>';
+  return '<div class="cl-views" role="tablist" aria-label="Buyout view">'+tab('code','By cost code')+tab('cmt','By commitment')+'</div>'
+    +'<div class="cl-pane" data-pane="code"'+(CLVIEW==='code'?'':' hidden')+'>'+boHtml(job)+'</div>'
+    +'<div class="cl-pane" data-pane="cmt"'+(CLVIEW==='cmt'?'':' hidden')+'>'+clHtml(job)+'</div>';
+}
+document.addEventListener('click', e=>{
+  const t=e.target.closest('[data-clview]'); if(!t) return;
+  const box=t.closest('td'); if(!box) return;
+  CLVIEW=t.dataset.clview;
+  box.querySelectorAll('[data-clview]').forEach(b=>b.setAttribute('aria-selected', String(b===t)));
+  box.querySelectorAll('.cl-pane').forEach(p=>{ p.hidden = p.dataset.pane!==CLVIEW; });
+});
 document.addEventListener('click', async e=>{
   const b=e.target.closest('.cl-toggle'); if(!b) return;
   const job=b.dataset.job, row=document.querySelector('tr.cl-row[data-job="'+CSS.escape(job)+'"]'); if(!row) return;
@@ -2316,7 +2425,7 @@ document.addEventListener('click', async e=>{
   if(!open) return;
   row.firstElementChild.innerHTML='<div class="cl-note">Loading buyout and commitments&hellip;</div>';
   await Promise.all([clLoad(), boLoad(job)]);
-  row.firstElementChild.innerHTML=boHtml(job)+clHtml(job);
+  row.firstElementChild.innerHTML=buyHtml(job);
 });
 
 /* ---- side menu drives the existing tabs (preview) ---- */
