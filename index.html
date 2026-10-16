@@ -395,7 +395,30 @@ body.bh-page{background:#fff}
 .bh-page .jstrip .js-k:last-child{border-right:0}
 .bh-page .jstrip span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted)}
 .bh-page .jstrip b{font-size:15px;font-weight:800}
-@media (max-width:960px){.bh-page .jstrip{grid-template-columns:repeat(3,minmax(0,1fr))}.bh-page .pf-grid{grid-template-columns:1fr}}
+.bh-page #pfKpi{grid-template-columns:repeat(6,minmax(0,1fr))}
+.bh-page #pfKpi .card{cursor:default;min-width:0}
+.bh-page #pfKpi .card .n{white-space:nowrap;font-size:21px}
+.bh-page .pf-g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.bh-page .bm{margin-top:3px;font-size:12.5px;font-weight:600}
+.bh-page .bm a.bm-name{color:var(--bh-ink,#211E1E);text-decoration:none;border-bottom:1px solid var(--bh-hairline)}
+.bh-page .bm a.bm-name:hover{color:var(--bh-red,#ED2B30);border-bottom-color:currentColor}
+.bh-page .bm-sub{font-size:11.5px;color:var(--bh-ink-muted);margin-top:3px;line-height:1.7}
+.bh-page a.cmp-a{text-decoration:none;white-space:nowrap}
+.bh-page a.cmp-a:hover{outline:1px solid currentColor}
+.bh-page .jinfo{background:#fff;border:1px solid var(--bh-hairline);border-top:3px solid var(--bh-black);margin:12px 0 0}
+.bh-page .ji-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bh-hairline)}
+.bh-page .ji-name{font-size:15px;font-weight:800;color:var(--bh-ink,#211E1E);text-decoration:none}
+.bh-page a.ji-name:hover{color:var(--bh-red,#ED2B30)}
+.bh-page .ji-num{font-size:12px;color:var(--bh-ink-muted);font-weight:700}
+.bh-page .ji-comp{margin-left:auto}
+.bh-page .ji-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.bh-page .ji-grid>div{padding:8px 12px;border-right:1px solid var(--bh-hairline);min-width:0}
+.bh-page .ji-grid>div:last-child{border-right:0}
+.bh-page .ji-grid span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted)}
+.bh-page .ji-grid b{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.bh-page .jinfo+.jstrip{margin-top:0;border-top:0}
+@media (max-width:1200px){.bh-page #pfKpi{grid-template-columns:repeat(4,minmax(0,1fr))}.bh-page .ji-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.bh-page .ji-grid>div{border-bottom:1px solid var(--bh-hairline)}}
+@media (max-width:960px){.bh-page .jstrip{grid-template-columns:repeat(3,minmax(0,1fr))}.bh-page .pf-grid,.bh-page .pf-g2{grid-template-columns:1fr}.bh-page #pfKpi{grid-template-columns:repeat(2,minmax(0,1fr))}.bh-page .ji-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bh-page .chg-table tr.chg-det > td{background:#fafafa;padding:6px 10px 12px}
 .bh-page .by-filter{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 8px}
 .bh-page .by-filter input{font:inherit;font-size:13px;width:min(380px,100%);padding:7px 10px;border:1px solid var(--bh-slate);border-radius:0;background:#fff}
@@ -867,7 +890,7 @@ function renderBuyout(list){
   const body=sorted.map(j=>{
     const rel=j.contingency_released||0;
     return '<tr'+(flag(j)?' style="background:#fffbf0"':'')+'>'
-      +'<td><button type="button" class="cl-toggle" aria-expanded="false" data-job="'+esc(j.job_no)+'" title="Show this job\u2019s commitments and the cost codes they are tied to"><b>'+esc(j.job_no)+'</b><span class="cl-hint">Commitments &amp; cost codes</span></button><div style="color:#7a828f;font-size:12px">'+esc(j.job_name||'')+'</div></td>'
+      +'<td><button type="button" class="cl-toggle" aria-expanded="false" data-job="'+esc(j.job_no)+'" title="Show this job\u2019s commitments and the cost codes they are tied to"><b>'+esc(j.job_no)+'</b><span class="cl-hint">Commitments &amp; cost codes</span></button>'+buyMeta(j.job_no,j.job_name)+'</td>'
       +'<td class="num">'+money(j.budget_ex_fee)+'</td>'
       +'<td class="num">'+money(j.committed)+'</td>'
       +'<td class="num">'+(j.buyout_pct==null?'&mdash;':(j.buyout_pct.toFixed(1)+'%'))+'</td>'
@@ -2535,7 +2558,19 @@ function restructure(){
   const fc=document.getElementById('finCards'); if(fc) sum.insertBefore(fc, sum.firstChild);
   const band=document.createElement('div'); band.id='pfBand';
   const sc=document.getElementById('sumCards'); if(sc&&sc.nextSibling) sum.insertBefore(band, sc.nextSibling); else sum.appendChild(band);
-  if(det){ const h=document.createElement('div'); h.className='pf-h'; h.innerHTML='<b>Job detail</b><span>Pick a job for its contract, cost, projection and billing charts.</span>';
+  /* executive view: one KPI row replaces the financial + operations cards; the per-job
+     overview tiles moved to Buyout (project facts above each job's buyout) */
+  const kp=document.createElement('div'); kp.id='pfKpi'; kp.className='cards'; sum.insertBefore(kp, sum.firstChild);
+  [fc, sc, document.getElementById('sumList')].forEach(el=>{ if(el) el.style.display='none'; });
+  if(det){ const h=document.createElement('div'); h.className='pf-h'; h.id='pfDetH'; h.innerHTML='<b>Job detail</b><span>Pick one job in <b>Projects</b> at the top.</span>';
+    /* one job filter, not two: the detail follows the Projects picker at the top, and its
+       As of selector sits beside that picker */
+    const dc=det.querySelector('.controls'), ds=document.getElementById('dSel'), msb=document.getElementById('msBtn');
+    const top=msb&&msb.closest('.controls');
+    if(dc&&top){ const w=document.createElement('span'); w.id='pfAsof'; w.style.cssText='display:inline-flex;align-items:center;gap:8px;margin-left:8px';
+      ['dAsof','dAsofNote'].forEach(id=>{ const el=document.getElementById(id); if(el){ const lb=el.previousSibling; if(id==='dAsof'&&lb&&lb.nodeName==='LABEL'){ lb.style.marginLeft='0'; w.appendChild(lb); } w.appendChild(el); } });
+      top.appendChild(w); }
+    if(dc) dc.style.display='none';
     sum.appendChild(h); det.classList.remove('panel'); det.classList.add('pf-detail'); sum.appendChild(det); }
   /* Buyout: the per-job financial cards are replaced by the strip inside each opened job */
   const fl=document.getElementById('finList'); if(fl) fl.style.display='none';
@@ -2581,38 +2616,167 @@ function renderPortfolio(){
   if(TAB!=='summary') return;
   const list=finView().filter(r=>r.group==='active'||String(r.stage||'').toLowerCase().includes('construction'));
   const lab=r=>String(r.project_number||'');
-  /* 1. projected margin % (worst first) */
-  const mg=list.filter(r=>r.projected_margin_pct!=null&&isFinite(r.projected_margin_pct)).sort((a,b)=>a.projected_margin_pct-b.projected_margin_pct);
-  /* 2. bought out % */
+  const now=new Date(), todayMs=now.getTime();
   const inView=new Set(list.map(r=>String(r.project_number)));
-  const bo=((ROLLUP&&ROLLUP.jobs)||[]).filter(j=>inView.has(String(j.job_no))&&j.buyout_pct!=null).sort((a,b)=>a.buyout_pct-b.buyout_pct);
-  /* 3. over / under billing (ComputerEase) */
-  const ob=list.filter(r=>r.ce&&r.ce.ce_over_under_billed!=null&&Math.abs(num(r.ce.ce_over_under_billed))>0.5).sort((a,b)=>num(a.ce.ce_over_under_billed)-num(b.ce.ce_over_under_billed));
-  /* 4. pending change on the revenue side (PCCOs awaiting the owner + PCOs) */
-  const pend=list.map(r=>{ const c=CHG&&CHG.projects&&CHG.projects[String(r.project_number)];
-      const v=c?chgSum(c.pcco):num(r.pending_cos); return {r,v}; }).filter(x=>Math.abs(x.v)>0.5).sort((a,b)=>b.v-a.v);
-  /* 5. forecast freshness: latest projection snapshot per active job */
+  const roll=((ROLLUP&&ROLLUP.jobs)||[]).filter(j=>inView.has(String(j.job_no)));
+  const rollOf={}; roll.forEach(j=>{ rollOf[String(j.job_no)]=j; });
+  const chgOf=r=>CHG&&CHG.projects&&CHG.projects[String(r.project_number)];
+  /* backlog per job: ComputerEase when matched (cost-to-cost % complete), else Procore cost to date / EAC */
+  const pj=r=>{ const p=projOf(r); if(p) return Object.assign({src:'CE'},p);
+    const contract=num(r.revised_contract||r.contract_amount), eac=num(r.projected_cost), cost=num(r.cost_to_date);
+    if(!contract) return null; const pct=eac?Math.min(1,cost/eac):0; const remaining=contract*(1-pct);
+    let months=null; const compl=r.completion_date?new Date(r.completion_date):null;
+    if(compl&&!isNaN(compl.getTime())) months=Math.max(0,(compl.getFullYear()-now.getFullYear())*12+(compl.getMonth()-now.getMonth()));
+    return {src:'Procore',contract,remaining,months,monthly:months!=null?remaining/(months+1):null,pct:pct*100,compl}; };
+  const P=list.map(r=>({r,p:pj(r)}));
+
+  /* ---- headline numbers ---- */
+  const totC=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
+  const withEac=list.filter(r=>num(r.projected_cost)>0);
+  const mC=withEac.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0), mM=withEac.reduce((a,r)=>a+num(r.projected_margin),0);
+  const mPct=mC?mM/mC*100:null;
+  const backlog=P.reduce((a,x)=>a+(x.p?num(x.p.remaining):0),0);
+  const held=roll.reduce((a,j)=>a+num(j.contingency_eac),0);
+  const boB=roll.reduce((a,j)=>a+num(j.budget_ex_fee),0), boC=roll.reduce((a,j)=>a+num(j.committed),0);
+  const ce=list.filter(r=>r.ce&&r.ce.ce_over_under_billed!=null);
+  const ou=ce.reduce((a,r)=>a+num(r.ce.ce_over_under_billed),0);
+  const pend=list.reduce((a,r)=>{ const c=chgOf(r); return a+(c?chgSum(c.pcco):num(r.pending_cos)); },0);
+  const below=withEac.filter(r=>r.projected_margin_pct!=null&&r.projected_margin_pct<TARGET_MARGIN);
+  const loss=withEac.filter(r=>num(r.projected_margin)<0);
+  const ncJobs=list.filter(r=>r.compliance&&r.compliance.noncompliant>0).length;
+  const rfis=list.reduce((a,r)=>a+(r.rfis_open||0),0);
+  const in90=list.filter(r=>{ const t=Date.parse(r.completion_date||''); return t&&t>=todayMs-864e5&&t<=todayMs+90*864e5; });
+  const constr=list.filter(r=>/^construction$/i.test(String(r.stage||''))).length;
+  const cm=v=>{ v=num(v); const a=Math.abs(v); return (v<0?'-':'')+(a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e4?'$'+Math.round(a/1e3)+'K':money(a)); };
+  const ex=v=>' — '+money(v);
+  const kpi=document.getElementById('pfKpi');
+  if(kpi) kpi.innerHTML=
+     card('total',list.length,'Active jobs',null,constr+' in construction')
+    +card('total',cm(totC),'Contract value (rev.)',null,'Revised contract: original plus approved prime change orders'+ex(totC))
+    +card('co',cm(backlog),'Backlog to earn',null,'Contract not yet earned: ComputerEase % complete where the job is in CE, otherwise Procore cost to date ÷ EAC'+ex(backlog))
+    +card(mPct!=null&&mPct<TARGET_MARGIN?'nc':'ok',cm(mM)+(mPct!=null?' &middot; '+mPct.toFixed(1)+'%':''),'Projected margin',null,'Contract minus Procore EAC (fee held out), jobs with a projection. Target '+TARGET_MARGIN+'%'+ex(mM))
+    +card('soon',cm(held),'Phase 50 still held',null,'Potential fee & buyout reserve not yet released into margin — upside if buyout holds'+ex(held))
+    +card('rfi',boB?(boC/boB*100).toFixed(0)+'%':'—','Bought out',null,'Commitments ÷ budget without fee, across the jobs in view')
+    +card(ou<0?'nc':'co',ce.length?cm(ou):'—','Net over / (under) billed',null,'ComputerEase: billed minus earned. Negative = earned but not billed'+ex(ou))
+    +card('co',cm(pend),'COs awaiting owner',null,(CHG?'Prime change orders submitted and not yet approved (changes pull)':'Pending prime change orders (project pull)')+ex(pend))
+    +card(below.length?'nc':'ok',below.length+(loss.length?' <small style="font-size:12px;font-weight:600">('+loss.length+' loss)</small>':''),'Below '+TARGET_MARGIN+'% margin',null,'Active jobs projected under the target margin; in brackets, jobs projected to lose money')
+    +card(ncJobs?'nc':'ok',ncJobs,'Jobs with non-compliant subs',null,'Billy compliance rollup')
+    +card('rfi',rfis,'Open RFIs',null,'Open RFIs across the jobs in view')
+    +card('soon',in90.length,'Completing in 90 days',null,'Scheduled completion within the next 90 days');
+
+  /* ---- series ---- */
+  const H=12, months=monthLabels(H);
+  const secs=[...new Set(P.map(x=>x.r.sector||'Unclassified'))].sort();
+  const runway=secs.map(s=>months.map((m,i)=>P.reduce((a,x)=>a+(((x.r.sector||'Unclassified')===s)&&x.p&&x.p.months!=null&&x.p.remaining>1&&i<=x.p.months?x.p.monthly:0),0)));
+  const runwayOk=runway.some(a=>a.some(v=>v>0));
+  const secTot=secs.map(s=>P.reduce((a,x)=>a+((x.r.sector||'Unclassified')===s&&x.p?num(x.p.remaining):0),0));
+  const mg=withEac.filter(r=>r.projected_margin_pct!=null&&isFinite(r.projected_margin_pct)).sort((a,b)=>a.projected_margin_pct-b.projected_margin_pct);
+  const fee=withEac.map(r=>({r,m:num(r.projected_margin),h:num((rollOf[String(r.project_number)]||{}).contingency_eac)})).filter(x=>Math.abs(x.m)+x.h>0.5).sort((a,b)=>(b.m+b.h)-(a.m+a.h));
+  const bo=roll.filter(j=>j.buyout_pct!=null).sort((a,b)=>a.buyout_pct-b.buyout_pct);
+  const ob=ce.filter(r=>Math.abs(num(r.ce.ce_over_under_billed))>0.5).sort((a,b)=>num(a.ce.ce_over_under_billed)-num(b.ce.ce_over_under_billed));
+  const pe=list.map(r=>{ const c=chgOf(r); return {r,v:c?chgSum(c.pcco):num(r.pending_cos)}; }).filter(x=>Math.abs(x.v)>0.5).sort((a,b)=>b.v-a.v);
+  /* completions by quarter, next 6 quarters */
+  const q0=Math.floor(now.getMonth()/3), qs=[...Array(6)].map((_,i)=>{ const y=now.getFullYear()+Math.floor((q0+i)/4), q=(q0+i)%4; return {y,q,l:'Q'+(q+1)+" '"+String(y).slice(2),v:0,n:0}; });
+  list.forEach(r=>{ const d=new Date(r.completion_date||''); if(isNaN(d.getTime())) return;
+    const k=(d.getFullYear()-qs[0].y)*4+Math.floor(d.getMonth()/3)-qs[0].q; if(k>=0&&k<6){ qs[k].v+=num(r.revised_contract||r.contract_amount); qs[k].n++; } });
+  /* largest jobs */
+  const big=list.slice().sort((a,b)=>num(b.revised_contract||b.contract_amount)-num(a.revised_contract||a.contract_amount)).slice(0,10);
+  /* forecast freshness (unchanged) */
   const idx={}; ((SNAPIDX&&SNAPIDX.projects)||[]).forEach(p=>{ idx[String(p.job_no)]=p; });
-  const today=Date.now();
   const stale=list.map(r=>{ const p=idx[String(r.project_number)]; const s=p&&p.snapshots&&p.snapshots.length?p.snapshots[p.snapshots.length-1]:null;
-      const t=s?Date.parse(s.created||''):0; return {r, s, days:t?Math.floor((today-t)/86400000):null}; })
+      const t=s?Date.parse(s.created||''):0; return {r, s, days:t?Math.floor((todayMs-t)/86400000):null}; })
     .filter(x=>x.days==null||x.days>35).sort((a,b)=>(b.days==null?1e9:b.days)-(a.days==null?1e9:a.days));
-  band.innerHTML='<div class="pf-grid">'
-    +pfBox('pfMargin','Projected margin by job','Contract &minus; Procore EAC (fee held out), worst first. Red = projected loss.', mg.length, mg.length?null:'No active jobs with a projection.')
-    +pfBox('pfBuy','Bought out by job','Committed &divide; budget without fee. Low = scope still to buy.', bo.length, bo.length?null:'Needs the Budget snapshot LINES import.')
-    +pfBox('pfBill','Over / under billed by job','ComputerEase. Blue = billed ahead of earned (liability); orange = earned but not billed.', ob.length, ob.length?null:'No ComputerEase billing figures for these jobs.')
-    +pfBox('pfPend','Change orders awaiting the owner', CHG?'Prime change orders (PCCOs) submitted and not yet approved, from the changes pull.':'Pending prime change orders from the project pull.', pend.length, pend.length?null:'Nothing pending on the jobs in view.')
+  const pbox=(id,t,s,h,empty)=>'<div class="pf-box"><div class="pf-t">'+t+'</div><div class="pf-s">'+s+'</div>'+(empty?'<div class="pf-empty">'+empty+'</div>':'<div style="height:'+h+'px;position:relative"><canvas id="'+id+'"></canvas></div>')+'</div>';
+  const hh=n=>Math.min(520,Math.max(150,n*17+40));
+  const pcLink=r=>r.procore_id?'<a href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||r.project_number)+'</a>':esc(r.project||'');
+
+  band.innerHTML='<div class="pf-h"><b>Revenue &amp; backlog</b><span>What is left to earn, when it lands, and where it comes from.</span></div>'
+    +'<div class="pf-grid pf-g2">'
+    +pbox('pfRun','Revenue runway &mdash; next 12 months','Backlog spread straight-line to each job&rsquo;s completion date, by sector. A planning view, not a billing schedule.',260, runwayOk?null:'No jobs with backlog and a completion date.')
+    +pbox('pfMix','Backlog by sector','Contract still to earn on the jobs in view.',260, secTot.some(v=>v>0)?null:'No backlog figures.')
     +'</div>'
+    +'<div class="pf-h"><b>Margin &amp; fee</b><span>Projected margin against the '+TARGET_MARGIN+'% target, and the reserve still sitting in cost.</span></div>'
+    +'<div class="pf-grid">'
+    +pbox('pfMargin','Projected margin % by job','Contract &minus; Procore EAC (fee held out), worst first. Red = loss, orange = under '+TARGET_MARGIN+'%, blue = at or above.', hh(mg.length), mg.length?null:'No active jobs with a projection.')
+    +pbox('pfFee','Fee picture by job','Blue = projected margin in the forecast. Grey = phase 50 still held &mdash; becomes margin if it is released.', hh(fee.length), fee.length?null:'No margin or phase 50 figures.')
+    +'</div>'
+    +'<div class="pf-h"><b>Buyout, billing &amp; change</b><span>Risk still open on the jobs in view.</span></div>'
+    +'<div class="pf-grid">'
+    +pbox('pfBuy','Bought out by job','Committed &divide; budget without fee. Low = scope still to buy.', hh(bo.length), bo.length?null:'Needs the Budget snapshot LINES import.')
+    +pbox('pfBill','Over / under billed by job','ComputerEase. Blue = billed ahead of earned; orange = earned but not billed.', hh(ob.length), ob.length?null:'No ComputerEase billing figures for these jobs.')
+    +pbox('pfPend','Change orders awaiting the owner', CHG?'Prime change orders (PCCOs) submitted and not yet approved, from the changes pull.':'Pending prime change orders from the project pull.', hh(pe.length), pe.length?null:'Nothing pending on the jobs in view.')
+    +pbox('pfQtr','Completions by quarter','Contract value of jobs scheduled to finish each quarter (job count in the tooltip).', 220, qs.some(q=>q.n)?null:'No completion dates in the next six quarters.')
+    +'</div>'
+    +'<div class="pf-box pf-stale"><div class="pf-t">Largest jobs</div><div class="pf-s">Top ten by revised contract. Job name opens Procore.</div>'
+    +(big.length?'<div style="overflow:auto"><table class="cl-table"><thead><tr><th>Job</th><th>Owner</th><th>Stage</th><th class="num">Contract</th><th class="num">% complete</th><th class="num">Margin</th><th class="num">Bought out</th><th>Completion</th></tr></thead><tbody>'
+      +big.map(r=>{ const p=pj(r), j=rollOf[String(r.project_number)], mp=r.projected_margin_pct;
+        return '<tr><td><b>'+esc(r.project_number)+'</b> '+pcLink(r)+'</td><td>'+esc(r.owner||'—')+'</td><td>'+esc(r.stage||'')+'</td>'
+          +'<td class="num">'+money(r.revised_contract||r.contract_amount)+'</td><td class="num">'+(p&&p.pct!=null?p.pct.toFixed(0)+'%':'&mdash;')+'</td>'
+          +'<td class="num">'+(mp!=null&&num(r.projected_cost)>0?'<span class="'+(mp<0?'bo-neg':'')+'">'+mp.toFixed(1)+'%</span>':'&mdash;')+'</td>'
+          +'<td class="num">'+(j&&j.buyout_pct!=null?j.buyout_pct.toFixed(0)+'%':'&mdash;')+'</td><td>'+esc(r.completion_date||'—')+'</td></tr>'; }).join('')+'</tbody></table></div>'
+      :'<div class="pf-empty">No active jobs in view.</div>')+'</div>'
     +'<div class="pf-box pf-stale"><div class="pf-t">Forecast freshness</div><div class="pf-s">Active jobs whose latest projection snapshot in Procore is more than 35 days old, or that have none. A strong margin on an old projection is not a strong margin.</div>'
     +(stale.length?'<table class="cl-table"><thead><tr><th>Job</th><th>Latest projection snapshot</th><th class="num">Days old</th><th class="num">Projected margin</th></tr></thead><tbody>'
       +stale.map(x=>'<tr><td><b>'+esc(x.r.project_number)+'</b> <span style="color:var(--bh-ink-muted)">'+esc(x.r.project||'')+'</span></td><td>'+(x.s?esc(x.s.label||'')+' &middot; '+esc(x.s.created||''):'<span class="bo-neg">none</span>')+'</td>'
         +'<td class="num">'+(x.days==null?'&mdash;':x.days)+'</td><td class="num">'+(x.r.projected_margin_pct!=null?x.r.projected_margin_pct.toFixed(1)+'%':'&mdash;')+'</td></tr>').join('')+'</tbody></table>'
       :'<div class="pf-empty">Every active job in view has a projection snapshot from the last 35 days.</div>')+'</div>';
+
   const pct=v=>(+v).toFixed(1)+'%';
-  pfBar('pfMargin', mg.map(lab), mg.map(r=>+r.projected_margin_pct.toFixed(1)), mg.map(r=>r.projected_margin_pct<0?PF_RED:PF_BLUE), pct);
-  pfBar('pfBuy', bo.map(j=>String(j.job_no)), bo.map(j=>j.buyout_pct), bo.map(()=>PF_BLUE), pct);
+  const kfmt=v=>{ v=+v; const a=Math.abs(v); return (v<0?'-':'')+'$'+(a>=1e6?(a/1e6).toFixed(1)+'M':a>=1e3?Math.round(a/1e3)+'K':Math.round(a)); };
+  const SEC_COL=['#211E1E','#ED2B30','#2a78d6','#8a92a1','#eb6834','#6b2737','#4f9d69','#c9a227'];
+  const mk=(id,cfg)=>{ const el=document.getElementById(id); if(!el||typeof Chart==='undefined') return; try{ if(PFCHARTS[id]) PFCHARTS[id].destroy(); }catch(e){} PFCHARTS[id]=new Chart(el.getContext('2d'),cfg); };
+  const grid={color:'#eef0f3'}, f10={size:10};
+  if(runwayOk) mk('pfRun',{type:'bar',data:{labels:months,datasets:secs.map((s,i)=>({label:s,data:runway[i].map(v=>Math.round(v)),backgroundColor:SEC_COL[i%SEC_COL.length],borderRadius:0,maxBarThickness:34}))},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.y),footer:it=>'Month total '+money(it.reduce((a,c)=>a+c.parsed.y,0))}}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:f10}},y:{stacked:true,grid,ticks:{callback:kfmt,font:f10}}}}});
+  if(secTot.some(v=>v>0)) mk('pfMix',{type:'doughnut',data:{labels:secs,datasets:[{data:secTot.map(Math.round),backgroundColor:secs.map((s,i)=>SEC_COL[i%SEC_COL.length]),borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'58%',plugins:{legend:{position:'right',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.label+': '+money(c.parsed)+' ('+(backlog?(c.parsed/backlog*100).toFixed(0):0)+'%)'}}}}});
+  pfBar('pfMargin', mg.map(lab), mg.map(r=>+r.projected_margin_pct.toFixed(1)), mg.map(r=>r.projected_margin_pct<0?PF_RED:(r.projected_margin_pct<TARGET_MARGIN?PF_ORANGE:PF_BLUE)), pct);
+  if(fee.length) mk('pfFee',{type:'bar',data:{labels:fee.map(x=>lab(x.r)),datasets:[{label:'Projected margin',data:fee.map(x=>Math.round(x.m)),backgroundColor:fee.map(x=>x.m<0?PF_RED:PF_BLUE),maxBarThickness:16},{label:'Phase 50 still held',data:fee.map(x=>Math.round(x.h)),backgroundColor:'#c3c8d1',maxBarThickness:16}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.x)}}},
+      scales:{x:{stacked:true,grid,ticks:{callback:kfmt,font:f10}},y:{stacked:true,grid:{display:false},ticks:{font:f10,autoSkip:false}}}}});
+  pfBar('pfBuy', bo.map(j=>String(j.job_no)), bo.map(j=>j.buyout_pct), bo.map(j=>j.buyout_pct<50?PF_ORANGE:PF_BLUE), pct);
   pfBar('pfBill', ob.map(lab), ob.map(r=>Math.round(num(r.ce.ce_over_under_billed))), ob.map(r=>num(r.ce.ce_over_under_billed)>=0?PF_BLUE:PF_ORANGE), money);
-  pfBar('pfPend', pend.map(x=>lab(x.r)), pend.map(x=>Math.round(x.v)), pend.map(()=>PF_BLUE), money);
+  pfBar('pfPend', pe.map(x=>lab(x.r)), pe.map(x=>Math.round(x.v)), pe.map(()=>PF_BLUE), money);
+  if(qs.some(q=>q.n)) mk('pfQtr',{type:'bar',data:{labels:qs.map(q=>q.l),datasets:[{data:qs.map(q=>Math.round(q.v)),backgroundColor:'#211E1E',maxBarThickness:40}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.parsed.y)+' · '+qs[c.dataIndex].n+' job'+(qs[c.dataIndex].n===1?'':'s')}}},
+      scales:{x:{grid:{display:false},ticks:{font:f10}},y:{grid,ticks:{callback:kfmt,font:f10}}}}});
+}
+
+
+/* ---------- project facts for the Buyout tab (moved off the Portfolio job tiles) ---------- */
+const COMP_URL=job=>'https://compliance.baileyharris.com/?job='+encodeURIComponent(String(job||''));
+function compLink(r){
+  const c=r&&r.compliance, cls=compClass(r||{});
+  const t=!c?'No compliance data':(cls==='r'?c.noncompliant+' non-compliant':(cls==='y'?(c.expiring+' expiring'):(cls==='g'?'Compliant':'Compliance')));
+  const tip=c?(c.compliant+' of '+c.vendors+' vendors compliant'+(c.gcl_gaps?' · '+c.gcl_gaps+' GC licence gap'+(c.gcl_gaps===1?'':'s'):'')+' — open the Compliance dashboard for this job'):'Open the Compliance dashboard for this job';
+  return '<a class="pill '+cls+' cmp-a" href="'+esc(COMP_URL(r.project_number))+'" target="_blank" rel="noopener" title="'+esc(tip)+'">'+esc(t)+'</a>';
+}
+function teamPick(r, re, roleRe){ const t=(r.team||[]).find(x=>x&&x.name&&re.test(String(x.title||''))&&(!roleRe||roleRe.test(String(x.role||'')))); return t?t.name:''; }
+function fmtDate(d){ const t=new Date(String(d||'')+(String(d||'').length===10?'T12:00:00':'')); return isNaN(t.getTime())?'':t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function buyMeta(jobNo, jobName){
+  const r=ROWS.find(x=>String(x.project_number)===String(jobNo));
+  if(!r) return '<div style="color:#7a828f;font-size:12px">'+esc(jobName||'')+'</div>';
+  const nm=r.procore_id?'<a class="bm-name" href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||jobName||'')+'</a>':esc(r.project||jobName||'');
+  const bits=[r.owner?esc(r.owner):'', r.completion_date?'Completes '+esc(fmtDate(r.completion_date)):''].filter(Boolean).join(' &middot; ');
+  return '<div class="bm">'+nm+'</div><div class="bm-sub">'+(bits?bits+' ':'')+compLink(r)+'</div>';
+}
+function jobInfo(r){
+  const pm=teamPick(r,/project manager/i,/project management/i)||teamPick(r,/project manager/i);
+  const sup=teamPick(r,/superintendent/i);
+  const a0=String(r.address||''); const addr=[a0].concat([r.city,r.state].filter(x=>x&&!a0.toLowerCase().includes(String(x).toLowerCase()))).filter(Boolean).join(', ');
+  const k=(l,v)=>'<div><span>'+l+'</span><b>'+(v||'&mdash;')+'</b></div>';
+  return '<div class="jinfo"><div class="ji-h">'
+    +(r.procore_id?'<a class="ji-name" href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||'')+' &#8599;</a>':'<b class="ji-name">'+esc(r.project||'')+'</b>')
+    +'<span class="ji-num">'+esc(r.project_number||'')+'</span>'
+    +(r.stage?'<span class="chip stage">'+esc(r.stage)+'</span>':'')+(r.sector?'<span class="chip sect">'+esc(r.sector)+'</span>':'')
+    +'<span class="ji-comp">'+compLink(r)+'</span></div>'
+    +'<div class="ji-grid">'
+    +k('Owner',esc(r.owner||''))+k('Architect',esc(r.architect||''))
+    +k('Completion',esc(fmtDate(r.completion_date)))+k('Address',esc(addr))
+    +k('Project manager',esc(pm))+k('Superintendent',esc(sup))
+    +k('Open RFIs',(r.rfis_open||0)?(r.rfis_open+(r.procore_id?' <a href="'+esc(pcBase(r.procore_id)+'/tools/rfis')+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:600">view</a>':'')):'0')
+    +'</div></div>';
 }
 
 /* ---------- Buyout: one strip of the job's own figures above its buyout table ---------- */
@@ -2621,7 +2785,7 @@ function jobStrip(job){
   const contract=r.revised_contract||r.contract_amount;
   const m=r.projected_margin, mp=r.projected_margin_pct;
   const k=(l,v,t)=>'<div class="js-k" title="'+esc(t)+'"><span>'+l+'</span><b>'+v+'</b></div>';
-  return '<div class="jstrip">'
+  return jobInfo(r)+'<div class="jstrip">'
     +k('Contract (rev.)',money(contract),'Original contract plus approved prime change orders')
     +k('Projected cost (EAC)',money(r.projected_cost),'Procore estimate at completion, fee held out')
     +k('Projected margin','<span'+(m<0?' class="bo-neg"':'')+'>'+money(m)+(mp!=null?' &middot; '+mp.toFixed(1)+'%':'')+'</span>','Contract minus EAC')
@@ -2699,8 +2863,24 @@ document.addEventListener('click', e=>{ const b=e.target.closest('.chg-t'); if(!
     const pc=document.getElementById('panChg');
     if(pc){ pc.classList.toggle('active',t==='changes'); if(t==='changes'){ TAB='changes'; renderChanges(); } }
     if(t==='summary'){ chgLoad().then(()=>{ if(TAB==='summary') renderPortfolio(); }); renderPortfolio(); }
+    { const pa=document.getElementById('pfAsof'); if(pa) pa.style.display=(t==='summary')?'inline-flex':'none'; }
     try{ syncNav(); }catch(e){}
     return r; }; }
+{ const __d=renderDetail; renderDetail=function(){
+    const body=document.getElementById('dBody'); if(!body) return;
+    const one=(SELECTED&&SELECTED.size===1)?[...SELECTED][0]:null;
+    const r1=one!=null?ROWS.find(x=>String(x.procore_id)===String(one)):null;
+    const h=document.getElementById('pfDetH');
+    if(!r1){ Object.keys(DCHARTS).forEach(k=>{ try{ DCHARTS[k].destroy(); }catch(e){} }); DCHARTS={};
+      if(h) h.innerHTML='<b>Job detail</b><span>Pick one job in <b>Projects</b> at the top.</span>';
+      body.innerHTML='<div class="pf-empty" style="background:#fff;border:1px solid var(--bh-hairline);padding:18px">Select a single job in the <b>Projects</b> filter at the top to see its original and revised estimate, current projection, prime contract, cost position, billing and CE forecast. <b>As of</b> beside the filter sets the month.</div>';
+      return; }
+    if(h) h.innerHTML='<b>Job detail &mdash; '+esc(r1.project_number)+'</b><span>'+esc(r1.project||'')+'</span>';
+    if(String(DETAIL_ID)!==String(r1.procore_id)){ DETAIL_ID=String(r1.procore_id); DFILE=null; }
+    return __d.apply(this,arguments); }; }
+openDetail=function(id){ const r=ROWS.find(x=>String(x.procore_id)===String(id)); if(!r) return;
+  SELECTED=new Set([r.procore_id]); msRebuild(); updateMsBtn(); setTab('summary'); render();
+  setTimeout(()=>{ const h=document.getElementById('pfDetH'); if(h) h.scrollIntoView({behavior:'smooth',block:'start'}); },50); };
 { const __r=render; render=function(){ const r=__r.apply(this,arguments); try{ if(TAB==='summary') renderPortfolio(); if(TAB==='changes') renderChanges(); }catch(e){ console.error(e); } return r; }; }
 
 load();
