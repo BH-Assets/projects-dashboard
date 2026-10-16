@@ -2649,6 +2649,7 @@ async function renderChanges(){
       (c.pcco||[]).forEach(x=>items.push(Object.assign({kind:'PCCO',side:'Revenue'},x)));
       (c.pco||[]).forEach(x=>items.push(Object.assign({kind:'PCO',side:'Revenue'},x)));
       (c.cco||[]).forEach(x=>items.push(Object.assign({kind:'Sub CO',side:'Cost'},x)));
+      (c.spco||[]).forEach(x=>items.push(Object.assign({kind:'Sub PCO',side:'Cost'},x)));
       (c.ce||[]).forEach(x=>items.push(Object.assign({kind:'Change event',side:'Both'},x)));
     }
     rf.forEach(x=>items.push({kind:'RFI',side:'—',number:x.number,title:x.subject,status:x.status,ball:x.ball,due:x.due?String(x.due).slice(0,10):'',days_open:null,link:x.link}));
@@ -2677,7 +2678,7 @@ async function renderChanges(){
     const main='<tr class="cl-first chg-row" data-job="'+esc(x.job)+'"><td><button type="button" class="cl-toggle chg-t" data-job="'+esc(x.job)+'" aria-expanded="'+open+'"><b>'+esc(x.job)+'</b></button><div style="color:var(--bh-ink-muted);font-size:12px">'+esc(x.r.project||'')+'</div></td>'
       +'<td class="num">'+(haveChg?cell(x.pcco,x.pccoN):(x.pend?money(x.pend):'<span style="color:var(--bh-ink-muted)">&mdash;</span>'))+'</td>'
       +'<td class="num">'+cell(x.pco,x.pcoN)+'</td><td class="num">'+cell(x.cco,x.ccoN)+'</td>'
-      +'<td class="num">'+(x.ceN?(x.ce?money(x.ce):'')+' <span class="bo-sp" style="display:inline">('+x.ceN+')</span>':(haveChg?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':'&mdash;'))+'</td>'
+      +'<td class="num" title="Change events: revenue ROM, with cost ROM in the item list">'+(x.ceN?(x.ce?money(x.ce):'')+' <span class="bo-sp" style="display:inline">('+x.ceN+')</span>':(haveChg?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':'&mdash;'))+'</td>'
       +'<td class="num">'+(x.rf.length?x.rf.length+(x.rfOver?' <span class="bo-st over">'+x.rfOver+' overdue</span>':''):'<span style="color:var(--bh-ink-muted)">&mdash;</span>')+'</td>'
       +'<td class="num">'+(x.aged?'<b>'+x.aged+'</b>':'<span style="color:var(--bh-ink-muted)">&mdash;</span>')+'</td></tr>';
     const det=open?('<tr class="chg-det"><td colspan="7">'+(x.items.length?'<table class="cl-table"><thead><tr><th>Type</th><th>#</th><th>Title</th><th>Status</th><th>Ball in court</th><th class="num">Amount</th><th>Due</th><th class="num">Open</th></tr></thead><tbody>'
