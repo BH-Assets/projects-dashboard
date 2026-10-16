@@ -374,6 +374,16 @@ body.bh-page{background:#fff}
 .bh-page .cl-table .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap}
 .bh-page .cl-table .ctn{margin-left:6px;color:var(--bh-ink-muted);font-size:11px;white-space:nowrap}
 .bh-page .cl-table td.cn{color:var(--bh-ink-muted)}
+.bh-page .bo-table{margin-bottom:6px}
+.bh-page .bo-table tfoot td{font-weight:700;border-top:2px solid var(--bh-hairline);background:var(--bh-surface-muted)}
+.bh-page .bo-table tr.bo-openrow td{background:#fbf8f2}
+.bh-page .bo-table .bo-sp{font-size:11px;color:var(--bh-ink-muted)}
+.bh-page .bo-table .bo-who{font-size:11.5px;color:var(--bh-ink-muted)}
+.bh-page .bo-neg{color:var(--bh-maroon);font-weight:600}
+.bh-page .bo-st{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;white-space:nowrap;background:var(--bh-light-gray)}
+.bh-page .bo-st.open{background:var(--bh-cream);color:var(--bh-maroon)}
+.bh-page .bo-st.part{background:#fff;border:1px solid var(--bh-slate)}
+.bh-page .bo-st.over{background:#FFC7CE;color:#9C0006}
 .bh-page .cl-codes .cc{font-weight:700;white-space:nowrap}
 .bh-page .cl-codes .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap;align-self:start}
 .bh-page .cl-codes .cn{color:var(--bh-ink-muted)}
@@ -2216,10 +2226,87 @@ function clHtml(job){
   }).join('');
   return '<div class="cl-head"><b>'+list.length+' commitment'+(list.length===1?'':'s')+'</b>'
     +'<span>'+coded+' with cost codes read</span>'
+    +(()=>{ const ne=list.filter(c=>!c.executed && !/draft|void|terminat/i.test(String(c.status||'')));
+            const amt=ne.reduce((t,c)=>t+(+c.value||0),0);
+            return ne.length?'<span><b style="font-size:12px;color:var(--bh-maroon)">'+ne.length+' not executed</b> &middot; '+money(amt)+' committed without a signed contract</span>':'<span>All executed</span>'; })()
     +(j.list_error?'<span>'+esc(j.list_error)+'</span>':'')
     +'<span style="margin-left:auto">As of '+esc(CL.generated_at?new Date(CL.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+'</span></div>'
     +(list.length?'<table class="cl-table"><thead><tr><th>Commitment</th><th>Trade partner / title</th><th>Status</th><th class="num">Value</th><th>Cost code</th><th>Type</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'
                  :'<div class="cl-note">No subcontracts or purchase orders on this job.</div>');
+}
+/* ---- buyout by cost code (Financials & Buyout) -------------------------------------
+   Budget vs committed per cost code, from the job's snapshot_lines file (Current = the live
+   budget). Left out: allowances (00), general conditions (01), contingency (50), fee (90)
+   and self-performed work - labor cost types, read from the cost-type split the snapshot
+   import writes on `current.types`. Until that split exists for a job, self-perform cannot
+   be separated and the table says so. */
+const BO_EXCL_PHASE={'00':'allowances','01':'general conditions','50':'contingency','90':'fee'};
+const BO_SP_TYPES=new Set(['L','T','P']);   // labor, temp labor, overtime labor = self-perform
+const BOF={}, BOBUSY={};
+async function boLoad(job){
+  if(BOF[job]!==undefined) return; if(BOBUSY[job]) return BOBUSY[job];
+  BOBUSY[job]=(async()=>{ try{ const token=await getToken(); if(!token){ BOF[job]={err:'Not signed in.'}; return; }
+      const res=await fetchFile(token, SNAPLINES_DIR+'/'+job+'.json');
+      BOF[job]= res.ok ? await res.json() : {err: res.status===404 ? 'No budget-code file for this job yet.' : 'Could not read the budget codes (HTTP '+res.status+').'};
+    }catch(e){ BOF[job]={err:'Could not read the budget codes: '+((e&&e.message)||e)}; } })();
+  return BOBUSY[job];
+}
+const boBase=k=>String(k).split(' - ')[0].trim();
+const boName=k=>{ const i=String(k).indexOf(' - '); return i>=0?String(k).slice(i+3).trim():''; };
+function boHtml(job){
+  const f=BOF[job];
+  if(!f) return '';
+  if(f.err) return '<div class="cl-note">Buyout by cost code: '+esc(f.err)+'</div>';
+  const cur=f.current; if(!cur||!cur.rows) return '<div class="cl-note">Buyout by cost code: the live budget has not been read for this job yet.</div>';
+  const types=cur.types||null;
+  /* which commitments sit on each code, from commitment_lines.json */
+  const byCode={}; const j=CL&&CL.projects&&CL.projects[String(job)];
+  for(const c of ((j&&j.commitments)||[])) for(const x of (c.codes||[])){ const k=String(x.code||''); (byCode[k]=byCode[k]||new Set()).add(c.number); }
+  const lines=[];
+  for(const key of Object.keys(cur.rows)){
+    const base=boBase(key), ph=base.split('-')[0];
+    if(!/^\d{2}-/.test(base) || BO_EXCL_PHASE[ph]) continue;
+    const v=cur.rows[key]||[0,0,0,0];
+    let budget=+v[0]||0, sp=0; const committed=+v[2]||0;
+    if(types&&types[key]) for(const t in types[key]) if(BO_SP_TYPES.has(t)) sp+=(+types[key][t][0]||0);
+    budget-=sp;
+    if(Math.abs(budget)<0.005 && Math.abs(committed)<0.005) continue;
+    let st;
+    if(committed<0.005) st=['open','Not bought out'];
+    else if(committed>budget+0.5) st=['over','Over budget'];
+    else if(committed<budget*0.95) st=['part','Partly bought out'];
+    else st=['done','Bought out'];
+    lines.push({base,name:boName(key),budget,committed,sp,st,who:Array.from(byCode[base]||[])});
+  }
+  lines.sort((a,b)=>a.base.localeCompare(b.base));
+  if(!lines.length) return '<div class="cl-note">Buyout by cost code: no subcontract or material scope on this job outside general conditions and self-perform.</div>';
+  const S=(arr,k)=>arr.reduce((a,x)=>a+x[k],0);
+  const tb=S(lines,'budget'), tc=S(lines,'committed');
+  /* savings only on codes that are fully bought out (or over): on a partly bought-out code
+     the remainder is scope still to buy, not money saved */
+  const done=lines.filter(x=>x.st[0]==='done'||x.st[0]==='over');
+  const savings=done.reduce((a,x)=>a+(x.budget-x.committed),0);
+  const open=lines.filter(x=>x.st[0]==='open'), part=lines.filter(x=>x.st[0]==='part');
+  const openAmt=S(open,'budget')+part.reduce((a,x)=>a+(x.budget-x.committed),0);
+  const pct=tb>0?(tc/tb*100):null;
+  const vcell=x=> x.committed<0.005 ? '<span style="color:var(--bh-ink-muted)">&mdash;</span>'
+      : x.st[0]==='part' ? '<span style="color:var(--bh-ink-muted)">'+money(x.budget-x.committed)+' to buy</span>'
+      : (x.budget-x.committed>=0 ? money(x.budget-x.committed) : '<span class="bo-neg">('+money(x.committed-x.budget)+')</span>');
+  const body=lines.map(x=>'<tr'+(x.st[0]==='open'?' class="bo-openrow"':'')+'>'
+      +'<td class="cc">'+esc(x.base)+'</td><td class="cn">'+esc(x.name)
+        +(x.sp>0.005?'<div class="bo-sp">'+money(x.sp)+' self-perform left out</div>':'')+'</td>'
+      +'<td class="num">'+money(x.budget)+'</td><td class="num">'+money(x.committed)+'</td><td class="num">'+vcell(x)+'</td>'
+      +'<td><span class="bo-st '+x.st[0]+'">'+x.st[1]+'</span></td>'
+      +'<td class="bo-who">'+(x.who.length?x.who.map(esc).join(', '):'')+'</td></tr>').join('');
+  return '<div class="cl-head"><b>Buyout by cost code</b>'
+      +'<span>'+(pct==null?'':pct.toFixed(1)+'% of '+money(tb)+' bought out')+'</span>'
+      +'<span>Savings on bought-out codes <b style="font-size:12px">'+(savings>=0?money(savings):'('+money(-savings)+')')+'</b></span>'
+      +'<span>'+((open.length||part.length)?'<b style="font-size:12px;color:var(--bh-maroon)">'+money(openAmt)+'</b> still to buy out'+(open.length?' &middot; '+open.length+' code'+(open.length===1?'':'s')+' with no commitment':''):'Every code has a commitment')+'</span></div>'
+    +'<table class="cl-table bo-table"><thead><tr><th>Cost code</th><th>Description</th><th class="num">Buyout budget</th><th class="num">Committed</th><th class="num">Savings / (overrun)</th><th>Status</th><th>Commitments</th></tr></thead><tbody>'+body+'</tbody>'
+    +'<tfoot><tr><td></td><td>Total &mdash; '+lines.length+' code'+(lines.length===1?'':'s')+'</td><td class="num">'+money(tb)+'</td><td class="num">'+money(tc)+'</td><td class="num">'+(savings>=0?money(savings):'<span class="bo-neg">('+money(-savings)+')</span>')+'</td><td colspan="2"></td></tr></tfoot></table>'
+    +'<div class="cl-note" style="padding-top:6px">Left out: allowances (00), general conditions (01), contingency (50), fee (90)'
+      +(types?' and self-performed labor.':'. <b>Self-performed labor is still included</b> &mdash; the cost-type split arrives with the next Budget snapshot LINES import.')
+      +' Savings counts only fully bought-out codes; anything not yet committed is scope still to buy, not savings.</div>';
 }
 document.addEventListener('click', async e=>{
   const b=e.target.closest('.cl-toggle'); if(!b) return;
@@ -2227,9 +2314,9 @@ document.addEventListener('click', async e=>{
   const open=b.getAttribute('aria-expanded')!=='true';
   b.setAttribute('aria-expanded', open?'true':'false'); row.hidden=!open;
   if(!open) return;
-  row.firstElementChild.innerHTML='<div class="cl-note">Loading commitments&hellip;</div>';
-  await clLoad();
-  row.firstElementChild.innerHTML=clHtml(job);
+  row.firstElementChild.innerHTML='<div class="cl-note">Loading buyout and commitments&hellip;</div>';
+  await Promise.all([clLoad(), boLoad(job)]);
+  row.firstElementChild.innerHTML=boHtml(job)+clHtml(job);
 });
 
 /* ---- side menu drives the existing tabs (preview) ---- */
