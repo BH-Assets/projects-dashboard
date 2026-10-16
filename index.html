@@ -348,8 +348,14 @@ body.bh-page{background:#fff}
 .bh-page button[style*="border-radius:8px"]{border-radius:0!important}
 .bh-page footer{border-top:1px solid var(--bh-hairline)}
 /* buyout: a job opens its commitments */
-.bh-page #buyWrap thead tr{background:var(--bh-slate)!important}
-.bh-page #buyWrap thead th{color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.bh-page #buyWrap > div > table > thead tr{background:var(--bh-slate)!important}
+.bh-page #buyWrap > div > table > thead th{color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+/* the Buyout table set its headings right-aligned inline but gave its number cells no
+   rule, so figures sat left under right-aligned headings */
+.bh-page #buyWrap > div > table > tbody > tr:not(.cl-row) > td{padding:8px 10px;vertical-align:top;border-top:1px solid var(--bh-hairline)}
+.bh-page #buyWrap td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* any heading with no alignment of its own reads left, like its data (browsers centre th) */
+.bh-page :where(th){text-align:left}
 .bh-page .cl-toggle{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
 .bh-page .cl-toggle b::after{content:" \25B8";font-size:10px;color:var(--bh-ink-muted)}
 .bh-page .cl-toggle[aria-expanded="true"] b::after{content:" \25BE"}
@@ -359,6 +365,13 @@ body.bh-page{background:#fff}
 .bh-page .cl-table th.num,.bh-page .cl-table td.num{text-align:right}
 .bh-page .cl-table td{padding:8px 10px;border-top:1px solid var(--bh-hairline);vertical-align:top}
 .bh-page .cl-codes{display:grid;grid-template-columns:auto auto 1fr auto;gap:2px 10px;font-size:12px}
+/* codes in their own columns: rows inside one commitment get a hairline, a new commitment a full rule */
+.bh-page .cl-table td{border-top-color:#f1f0f0}
+.bh-page .cl-table tr.cl-first > td{border-top:1px solid var(--bh-hairline)}
+.bh-page .cl-table td.cc{font-weight:700;white-space:nowrap}
+.bh-page .cl-table .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap}
+.bh-page .cl-table .ctn{margin-left:6px;color:var(--bh-ink-muted);font-size:11px;white-space:nowrap}
+.bh-page .cl-table td.cn{color:var(--bh-ink-muted)}
 .bh-page .cl-codes .cc{font-weight:700;white-space:nowrap}
 .bh-page .cl-codes .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap;align-self:start}
 .bh-page .cl-codes .cn{color:var(--bh-ink-muted)}
@@ -2179,19 +2192,29 @@ function clHtml(job){
   if(!j) return '<div class="cl-note">No commitments for '+esc(job)+' in commitment_lines.json (it covers active and warranty jobs).</div>';
   const list=(j.commitments||[]).slice().sort((a,b)=>String(a.number).localeCompare(String(b.number)));
   const coded=list.filter(c=>Array.isArray(c.codes)).length;
+  /* One row per cost code + type. A commitment on several codes spans that many rows,
+     so codes, types and amounts sit in their own aligned columns. */
   const rows=list.map(c=>{
-    const codes=!Array.isArray(c.codes) ? '<span class="cl-note">Line items not read yet; the next pull picks them up.</span>'
-      : (!c.codes.length ? '<span class="cl-note">No line items in Procore.</span>'
-      : '<div class="cl-codes">'+c.codes.map(x=>'<span class="cc">'+esc(x.code||'(no code)')+'</span><span class="ct" title="'+esc(x.type_name||'')+'">'+esc(x.type||'\u2014')+'</span><span class="cn">'+esc(x.name||'')+'</span><span class="ca">'+money(x.amount)+'</span>').join('')+'</div>');
-    return '<tr><td><b>'+esc(c.number||'')+'</b><div style="color:var(--bh-ink-muted);font-size:11px">'+(c.kind==='PO'?'Purchase order':'Subcontract')+'</div></td>'
-      +'<td>'+esc(c.vendor||'')+'<div style="color:var(--bh-ink-muted);font-size:11px">'+esc(c.title||'')+'</div></td>'
-      +'<td>'+clStatus(c)+'</td><td class="num">'+money(c.value)+'</td><td>'+codes+'</td></tr>';
+    const head=(span)=>{
+      const rs=span>1?' rowspan="'+span+'"':'';
+      return '<td'+rs+'><b>'+esc(c.number||'')+'</b><div style="color:var(--bh-ink-muted);font-size:11px">'+(c.kind==='PO'?'Purchase order':'Subcontract')+'</div></td>'
+        +'<td'+rs+'>'+esc(c.vendor||'')+'<div style="color:var(--bh-ink-muted);font-size:11px">'+esc(c.title||'')+'</div></td>'
+        +'<td'+rs+'>'+clStatus(c)+'</td><td class="num"'+rs+'>'+money(c.value)+'</td>';
+    };
+    if(!Array.isArray(c.codes)||!c.codes.length)
+      return '<tr class="cl-first">'+head(1)+'<td colspan="4"><span class="cl-note">'
+        +(!Array.isArray(c.codes)?'Line items not read yet; the next pull picks them up.':'No line items in Procore.')+'</span></td></tr>';
+    return c.codes.map((x,i)=>'<tr'+(i?'':' class="cl-first"')+'>'+(i?'':head(c.codes.length))
+      +'<td class="cc">'+esc(x.code||'(no code)')+'</td>'
+      +'<td><span class="ct" title="'+esc(x.type_name||'')+'">'+esc(x.type||'\u2014')+'</span>'+(x.type_name?'<span class="ctn">'+esc(x.type_name)+'</span>':'')+'</td>'
+      +'<td class="cn">'+esc(x.name||'')+'</td>'
+      +'<td class="num">'+money(x.amount)+'</td></tr>').join('');
   }).join('');
   return '<div class="cl-head"><b>'+list.length+' commitment'+(list.length===1?'':'s')+'</b>'
     +'<span>'+coded+' with cost codes read</span>'
     +(j.list_error?'<span>'+esc(j.list_error)+'</span>':'')
     +'<span style="margin-left:auto">As of '+esc(CL.generated_at?new Date(CL.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+'</span></div>'
-    +(list.length?'<table class="cl-table"><thead><tr><th>Commitment</th><th>Trade partner / title</th><th>Status</th><th class="num">Value</th><th>Cost codes &amp; types</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +(list.length?'<table class="cl-table"><thead><tr><th>Commitment</th><th>Trade partner / title</th><th>Status</th><th class="num">Value</th><th>Cost code</th><th>Type</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'
                  :'<div class="cl-note">No subcontracts or purchase orders on this job.</div>');
 }
 document.addEventListener('click', async e=>{
