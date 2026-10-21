@@ -182,6 +182,19 @@
   .vizbox .empty{margin:0;padding:22px 10px;text-align:center}
   @media (max-width:720px){ .vizgrid{grid-template-columns:1fr} .vizbox .cwrap{height:190px} }
   @media (max-width:420px){ .cards{grid-template-columns:1fr 1fr}.pgrid{grid-template-columns:1fr} }
+.bh-page .chg-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+.bh-page .chg-seg{min-height:34px;padding:0 14px;font-size:12px}
+.bh-page .chg-seg.on{background:var(--bh-black)!important;color:#fff!important;border-color:var(--bh-black)}
+.bh-page .chg-q{min-height:34px;width:280px;max-width:100%;margin-left:auto;font-size:13px}
+.bh-page .chg-chip{border:1px solid var(--bh-hairline);background:#fff;padding:6px 10px;font:600 12px var(--bh-font,inherit);cursor:pointer;color:var(--bh-ink)}
+.bh-page .chg-chip span{color:var(--bh-ink-muted);font-weight:500;margin-left:2px}
+.bh-page .chg-chip.on{border-color:var(--bh-black);background:var(--bh-cream)}
+.bh-page .chg-ck{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin-left:8px}
+.bh-page .chg-bar select{min-height:34px;font-size:13px}
+.bh-page .chg-sort{border:0;background:none;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.bh-page .chg-lnk{border:0;background:none;padding:0;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;color:inherit}
+.bh-page .card.clk.sel{outline:2px solid var(--bh-black);outline-offset:-2px}
+@media (max-width:760px){ .bh-page .chg-items,.bh-page .chg-recon{display:block;overflow-x:auto} .bh-page .chg-q{margin-left:0;width:100%} }
 </style>
 <style>/* bh-shell.css, inlined for the preview */
 /* bh-shell.css — Bailey-Harris dashboard shell.
@@ -396,6 +409,7 @@ body.bh-page{background:#fff}
 .bh-page .jstrip span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted)}
 .bh-page .jstrip b{font-size:15px;font-weight:800}
 .bh-page #pfKpi{grid-template-columns:repeat(6,minmax(0,1fr))}
+.pf-team #pfKpi,.pf-team #pfBand{display:none!important}
 .bh-page #pfKpi .card{cursor:default;min-width:0}
 .bh-page #pfKpi .card .n{white-space:nowrap;font-size:21px}
 .bh-page .pf-g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
@@ -546,7 +560,25 @@ function projOf(r){
   return {contract,eac,cost,margin,marginPct:contract?margin/contract*100:null,pct:pct*100,revRec,remaining,months,monthly,compl};
 }
 function monthLabels(n){ const out=[]; const t=new Date(); for(let i=0;i<n;i++){ const d=new Date(t.getFullYear(),t.getMonth()+i,1); out.push(d.toLocaleString(undefined,{month:'short',year:'2-digit'})); } return out; }
+/* Project data comes through the Dashboard Worker (data.baileyharris.com), which sends
+   leadership every job and everyone else only the jobs whose Procore team lists them.
+   Direct Graph is the fallback only while the Worker is unreachable (before it is
+   deployed); once the files are locked down that fallback simply gets no access. */
+const DATA_API='https://data.baileyharris.com';
+let DATA_ME=null, DATA_VIA='', DATA_DOWN=false;
+async function idTok(force){ const acct=msalApp.getActiveAccount()||msalApp.getAllAccounts()[0]; if(!acct) return null;
+  try{ const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct,forceRefresh:!!force}); return t.idToken||null; }catch(e){ return null; } }
+async function apiGet(route){
+  for(let i=0;i<2;i++){ const t=await idTok(i>0); if(!t) return null;
+    if(DATA_DOWN) return null;
+    let r; try{ r=await fetch(DATA_API+route,{headers:{Authorization:'Bearer '+t},cache:'no-store'}); }catch(e){ DATA_DOWN=true; return null; }   // unreachable: stop trying this page load
+    if(r.status===401&&i===0) continue;   // stale ID token: refresh once
+    return r; }
+  return null;
+}
 async function fetchFile(token, path){
+  if(DATA_API){ const r=await apiGet('/file?path='+encodeURIComponent(path)); if(r){ DATA_VIA='worker'; return r; } }
+  DATA_VIA='graph';
   const H={Authorization:'Bearer '+token};
   try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
     if(s.ok){ const sid=(await s.json()).id;
@@ -558,7 +590,8 @@ async function load(){
   try{
     const token=await getToken(); if(!token) return;
     const res=await fetchFile(token, PROJECTS_PATH);
-    if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
+    if(res.status===403) throw new Error(DATA_VIA==='worker'?'Project financials are shown to leadership and to each job\u2019s Procore team. Your account is not on the team of any job. If that is wrong, ask the PM to add you to the job in Procore; access follows on the next project data pull.':'You do not have access to the project data.');
+    if(!res.ok) throw new Error('Data HTTP '+res.status+' (could not read projects_data.json)');
     const data=await res.json();
     ROWS=(data.projects||[]).filter(r=>!/\bFY\s?\d{2,4}\b/i.test((r.project||'')+' '+(r.project_number||'')));  // drop internal FY-tracking projects
     GENERATED=data.generated_at||'';
@@ -2591,8 +2624,24 @@ function restructure(){
   });
   const ts=document.getElementById('tabSum'); if(ts) ts.textContent='Portfolio';
   const tf=document.getElementById('tabFin'); if(tf) tf.textContent='Buyout';
+  applyAccess();
   /* the first render ran before the band existed */
   setTimeout(()=>{ if(TAB==='summary'){ renderPortfolio(); chgLoad().then(()=>{ if(TAB==='summary') renderPortfolio(); }); } try{ syncNav(); }catch(e){} },0);
+}
+
+/* ---------- who is looking: leadership sees Portfolio, everyone else their own jobs ---------- */
+async function applyAccess(){
+  if(DATA_VIA!=='worker') return;            // direct Graph: SharePoint decides, nothing to tailor
+  const r=await apiGet('/me'); if(!r||!r.ok) return;
+  try{ DATA_ME=await r.json(); }catch(e){ return; }
+  if(DATA_ME.full) return;
+  document.body.classList.add('pf-team');
+  document.querySelectorAll('.bh-side-item[data-tab="summary"]').forEach(b=>b.textContent='Job detail');
+  const ts=document.getElementById('tabSum'); if(ts) ts.textContent='Job detail';
+  const sum=document.getElementById('panSum');
+  if(sum&&!document.getElementById('pfTeamNote')){ const n=document.createElement('div'); n.id='pfTeamNote'; n.className='fnote';
+    n.innerHTML='&#128274; Showing the <b>'+DATA_ME.jobs.length+' job'+(DATA_ME.jobs.length===1?'':'s')+'</b> where you are on the Procore team. Company-wide figures are for leadership.';
+    sum.insertBefore(n, sum.firstChild); }
 }
 
 /* ---------- Portfolio chart band ---------- */
@@ -2795,66 +2844,167 @@ function jobStrip(job){
     +'</div>';
 }
 
-/* ---------- Changes & Open Items ---------- */
+/* ---------- Changes & Open Items (rebuilt 21 Oct 2026) ----------
+   Three views over the jobs picked at the top:
+     Items    - one flat list, filtered by type / status / age / search, sortable by any column.
+                Change events are kept out of "All" (they are early pricing, not commitments)
+                and get their own filter, which can narrow to events carried into nothing.
+     By job   - the per-job totals table (the previous layout), click a job for its list.
+     CE sync  - per commitment, Procore approved / pending sub change orders against CE's
+                approved and pending RFCs (changes_pull.js `recon`, joined from APData).
+   No figure on any other tab changes. */
 const chgSum=a=>(a||[]).reduce((t,x)=>t+(+x.amount||0),0);
 const chgCost=a=>(a||[]).reduce((t,x)=>t+(+((x.cost!=null)?x.cost:0)||0),0);
+const chgM=n=>n==null||isNaN(n)?'&mdash;':(n<0?'-$':'$')+Math.abs(+n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const CHGV={view:'items',type:'all',status:'',aged:false,unl:false,q:'',sort:'days_open',dir:-1,rs:'attn',rsort:'diff',rdir:-1};
+const CHG_TYPES=[['all','All'],['PCCO','PCCOs'],['PCO','PCOs'],['Sub CO','Sub COs'],['Sub PCO','Sub PCOs'],['RFI','RFIs'],['Change event','Change events']];
+const RECON_ATTN=['approve_in_ce','enter_in_ce','ce_short','not_in_ce','ce_ahead','ce_pending_extra'];
+const RECON_LBL={approve_in_ce:['Approve in CE','over'],enter_in_ce:['Enter in CE','over'],ce_short:['CE short','over'],not_in_ce:['Not in CE','over'],ce_ahead:['CE ahead','open'],ce_pending_extra:['Pending only in CE','open'],pending:['Pending','part'],match:['In sync',''],ce_unavailable:['No CE data','']};
 function chgAge(d){ return d==null?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':(d>60?'<span class="bo-st over">'+d+' d</span>':(d>30?'<span class="bo-st open">'+d+' d</span>':d+' d')); }
+function chgRows(){
+  const list=finView().filter(r=>r.group==='active');
+  const today=new Date().toISOString().slice(0,10);
+  return list.map(r=>{
+    const job=String(r.project_number), c=CHG&&CHG.projects&&CHG.projects[job];
+    const rf=(r.rfis_open_list||[]); const rfOver=rf.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
+    const items=[]; const add=(kind,side,a)=>(a||[]).forEach(x=>items.push(Object.assign({kind,side,job,jobName:r.project||''},x)));
+    if(c){ add('PCCO','Revenue',c.pcco); add('PCO','Revenue',c.pco); add('Sub CO','Cost',c.cco); add('Sub PCO','Cost',c.spco); add('Change event','Both',c.ce); }
+    rf.forEach(x=>items.push({kind:'RFI',side:'—',job,jobName:r.project||'',number:x.number,title:x.subject,status:x.status,ball:x.ball,due:x.due?String(x.due).slice(0,10):'',days_open:null,link:x.link}));
+    const ceL=c?(c.ce||[]):[];
+    return {r,job,c,rf,rfOver,items,aged:items.filter(x=>x.kind!=='Change event'&&x.days_open!=null&&x.days_open>30).length,
+      pcco:c?chgSum(c.pcco):null, pccoN:c?(c.pcco||[]).length:0, pco:c?chgSum(c.pco):null, pcoN:c?(c.pco||[]).length:0,
+      cco:c?chgSum(c.cco):null, ccoN:c?(c.cco||[]).length:0, ce:c?chgSum(c.ce):null, ceN:ceL.length,
+      ceUnl:ceL.filter(x=>Array.isArray(x.links)&&!x.links.length).length, recon:(c&&c.recon)||null, pend:num(r.pending_cos)};
+  });
+}
+/* change-event linkage is only claimed when the pull saw link keys on line items */
+function chgLinkKnown(rows){
+  if(CHG&&CHG.summary&&Array.isArray(CHG.summary.ce_link_keys)) return CHG.summary.ce_link_keys.length>0;
+  return rows.some(x=>x.c&&(x.c.ce||[]).some(e=>Array.isArray(e.links)&&e.links.length));
+}
 async function renderChanges(){
   const cards=document.getElementById('chgCards'), body=document.getElementById('chgBody'); if(!body) return;
   if(!CHG&&!CHGERR){ body.innerHTML='<div class="loading">Loading changes&hellip;</div>'; await chgLoad(); }
   if(TAB!=='changes') return;
-  const list=finView().filter(r=>r.group==='active');
-  const today=new Date().toISOString().slice(0,10);
-  const rows=list.map(r=>{
-    const job=String(r.project_number), c=CHG&&CHG.projects&&CHG.projects[job];
-    const rf=(r.rfis_open_list||[]); const rfOver=rf.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
-    const items=[];
-    if(c){
-      (c.pcco||[]).forEach(x=>items.push(Object.assign({kind:'PCCO',side:'Revenue'},x)));
-      (c.pco||[]).forEach(x=>items.push(Object.assign({kind:'PCO',side:'Revenue'},x)));
-      (c.cco||[]).forEach(x=>items.push(Object.assign({kind:'Sub CO',side:'Cost'},x)));
-      (c.spco||[]).forEach(x=>items.push(Object.assign({kind:'Sub PCO',side:'Cost'},x)));
-      (c.ce||[]).forEach(x=>items.push(Object.assign({kind:'Change event',side:'Both'},x)));
-    }
-    rf.forEach(x=>items.push({kind:'RFI',side:'—',number:x.number,title:x.subject,status:x.status,ball:x.ball,due:x.due?String(x.due).slice(0,10):'',days_open:null,link:x.link}));
-    const aged=items.filter(x=>x.days_open!=null&&x.days_open>30).length;
-    return {r,job,c,rf,rfOver,items,aged,
-      pcco:c?chgSum(c.pcco):null, pccoN:c?(c.pcco||[]).length:0,
-      pco:c?chgSum(c.pco):null, pcoN:c?(c.pco||[]).length:0,
-      cco:c?chgSum(c.cco):null, ccoN:c?(c.cco||[]).length:0,
-      ce:c?chgSum(c.ce):null, ceCost:c?chgCost(c.ce):null, ceN:c?(c.ce||[]).length:0,
-      pend:num(r.pending_cos)};
-  });
+  const rows=chgRows(), haveChg=!!CHG, linkKnown=chgLinkKnown(rows);
   const T=k=>rows.reduce((t,x)=>t+(+x[k]||0),0);
-  const haveChg=!!CHG;
-  cards.innerHTML=card('co',money(haveChg?T('pcco'):T('pend')),'PCCOs awaiting owner',null,'Prime change orders submitted to the owner and not yet approved')
-    +card('co',haveChg?money(T('pco')):'&mdash;','Pending PCOs',null,'Potential change orders not yet approved; shown apart from PCCOs because a PCO can sit inside one')
-    +card('nc',money(haveChg?T('cco'):0),'Pending sub COs (cost)',null,'Commitment change orders not yet approved')
-    +card('soon',haveChg?T('ceN'):'—','Open change events',null,'Change events still being priced')
-    +card('rfi',rows.reduce((t,x)=>t+x.rf.length,0),'Open RFIs',null,'Open RFIs across the jobs in view')
-    +card('total',rows.reduce((t,x)=>t+x.aged,0),'Items open > 30 days',null,'Change items open more than 30 days');
+  const recon=rows.flatMap(x=>(x.recon||[]).map(y=>Object.assign({job:x.job,jobName:x.r.project||''},y)));
+  const haveRecon=rows.some(x=>x.recon);
+  const attn=recon.filter(y=>RECON_ATTN.includes(y.state));
+  const ck=(n,label,tip,act,sel)=>'<div class="card clk'+(sel?' sel':'')+'" data-chgcard="'+act+'" title="'+esc(tip)+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+  const isT=t=>CHGV.view==='items'&&CHGV.type===t;
+  cards.innerHTML=ck(money(haveChg?T('pcco'):T('pend'))+' <span class="bo-sp" style="display:inline">('+T('pccoN')+')</span>','PCCOs awaiting owner','Prime change orders submitted to the owner and not yet approved','PCCO',isT('PCCO'))
+    +ck(haveChg?money(T('pco'))+' <span class="bo-sp" style="display:inline">('+T('pcoN')+')</span>':'&mdash;','Pending PCOs','Potential change orders on the prime contract not yet approved. Shown apart from PCCOs because a PCO can sit inside one','PCO',isT('PCO'))
+    +ck(money(haveChg?T('cco'):0)+' <span class="bo-sp" style="display:inline">('+T('ccoN')+')</span>','Sub COs pending approval','Commitment change orders not yet approved in Procore','Sub CO',isT('Sub CO'))
+    +ck(haveRecon?attn.length:'&mdash;','CE sync to fix','Commitments whose approved / pending change orders in Procore and CE do not agree','recon',CHGV.view==='recon')
+    +ck(rows.reduce((t,x)=>t+x.rf.length,0)+(T('rfOver')?' <span class="bo-st over">'+T('rfOver')+' overdue</span>':''),'Open RFIs','Open RFIs across the jobs in view','RFI',isT('RFI'));
   const note = CHGERR==='notyet' ? '<div class="cl-note">Itemized change events, PCOs, PCCOs and sub COs appear once the <b>Changes and open items pull</b> has run. Until then this tab shows the pending prime CO total and open RFIs from the project pull.</div>'
-    : (CHGERR?'<div class="cl-note">'+esc(CHGERR)+'</div>':'<div class="cl-note">Changes as of '+esc(new Date(CHG.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'. PCO and PCCO totals are shown separately and not added together, because a PCO can sit inside a PCCO.</div>');
-  const head='<thead><tr><th>Job</th><th class="num">PCCOs awaiting owner</th><th class="num">PCOs</th><th class="num">Pending sub COs</th><th class="num">Open change events</th><th class="num">Open RFIs</th><th class="num">Open &gt; 30 days</th></tr></thead>';
-  const cell=(v,n)=>v==null?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':(n?money(v)+' <span class="bo-sp" style="display:inline">('+n+')</span>':'<span style="color:var(--bh-ink-muted)">&mdash;</span>');
-  const tb=rows.sort((a,b)=>(b.aged-a.aged)||((b.pcco||0)+(b.pco||0)-((a.pcco||0)+(a.pco||0)))).map(x=>{
-    const open=CHGOPEN.has(x.job);
+    : (CHGERR?'<div class="cl-note">'+esc(CHGERR)+'</div>':'<div class="cl-note">Changes as of '+esc(new Date(CHG.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'. PCO and PCCO totals are not added together, because a PCO can sit inside a PCCO.</div>');
+  const seg=(v,l)=>'<button type="button" class="bh-btn-outline chg-seg'+(CHGV.view===v?' on':'')+'" data-chgview="'+v+'" aria-pressed="'+(CHGV.view===v)+'">'+l+'</button>';
+  let h=note+'<div class="chg-bar">'+seg('items','Items')+seg('job','By job')+seg('recon','CE sync'+(haveRecon&&attn.length?' · '+attn.length:''))
+    +'<input class="bh-input chg-q" id="chgQ" type="search" placeholder="Search number, title, vendor, job" value="'+esc(CHGV.q)+'"></div>';
+  if(CHGV.view==='job') h+=chgByJob(rows,haveChg);
+  else if(CHGV.view==='recon') h+=chgRecon(recon,haveRecon);
+  else h+=chgItems(rows,linkKnown);
+  body.innerHTML=h;
+}
+function chgSortHead(cols,cur,dir,attr){
+  return '<thead><tr>'+cols.map(c=>'<th'+(c[2]?' class="num"':'')+'><button type="button" class="chg-sort" '+attr+'="'+c[0]+'">'+c[1]+(cur===c[0]?(dir>0?' &#9650;':' &#9660;'):'')+'</button></th>').join('')+'</tr></thead>';
+}
+function chgCmp(k,dir){ return (a,b)=>{ let x=a[k],y=b[k]; if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+  if(typeof x==='number'&&typeof y==='number') return (x-y)*dir; return String(x).localeCompare(String(y),undefined,{numeric:true})*dir; }; }
+function chgItems(rows,linkKnown){
+  const all=rows.flatMap(x=>x.items);
+  const ceAll=all.filter(i=>i.kind==='Change event'), ceUnl=ceAll.filter(i=>Array.isArray(i.links)&&!i.links.length);
+  let v=CHGV.type==='all'?all.filter(i=>i.kind!=='Change event'):all.filter(i=>i.kind===CHGV.type);
+  const statuses=[...new Set(v.map(i=>i.status||'').filter(Boolean))].sort();
+  if(CHGV.status&&!statuses.includes(CHGV.status)) CHGV.status='';
+  if(CHGV.status) v=v.filter(i=>(i.status||'')===CHGV.status);
+  if(CHGV.aged) v=v.filter(i=>i.days_open!=null&&i.days_open>30);
+  if(CHGV.type==='Change event'&&CHGV.unl) v=v.filter(i=>Array.isArray(i.links)&&!i.links.length);
+  const q=CHGV.q.toLowerCase(); if(q) v=v.filter(i=>[i.job,i.jobName,i.kind,i.number,i.title,i.contract,i.status,i.ball].join(' ').toLowerCase().includes(q));
+  v.sort(chgCmp(CHGV.sort,CHGV.dir));
+  const cnt=t=>t==='all'?all.filter(i=>i.kind!=='Change event').length:all.filter(i=>i.kind===t).length;
+  let h='<div class="chg-bar">'+CHG_TYPES.map(t=>'<button type="button" class="chg-chip'+(CHGV.type===t[0]?' on':'')+'" data-chgtype="'+esc(t[0])+'">'+t[1]+' <span>'+cnt(t[0])+'</span></button>').join('')+'</div>'
+    +'<div class="chg-bar"><label class="bh-label" for="chgSt">Status</label><select class="bh-select" id="chgSt"><option value="">Any</option>'+statuses.map(s=>'<option'+(s===CHGV.status?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>'
+    +'<label class="chg-ck"><input type="checkbox" id="chgAged"'+(CHGV.aged?' checked':'')+'> Open more than 30 days</label>'
+    +(CHGV.type==='Change event'&&linkKnown?'<label class="chg-ck"><input type="checkbox" id="chgUnl"'+(CHGV.unl?' checked':'')+'> Not on a PCO, PCCO or budget change ('+ceUnl.length+')</label>':'')
+    +'<span class="bo-sp" style="margin-left:auto">'+v.length+' item'+(v.length===1?'':'s')+' · '+money(v.reduce((t,i)=>t+(+i.amount||0),0))+'</span></div>';
+  if(CHGV.type==='all'&&ceAll.length) h+='<div class="cl-note" style="margin-top:0">'+ceAll.length+' open change event'+(ceAll.length===1?'':'s')+' left out of All'+(linkKnown?' &mdash; <b>'+ceUnl.length+'</b> not carried into a PCO, PCCO or budget change':'')+'. <button type="button" class="chg-lnk" data-chgtype="Change event">Show change events</button></div>';
+  if(CHGV.type==='Change event'&&!linkKnown) h+='<div class="cl-note" style="margin-top:0">Whether a change event is on a PCO, PCCO or budget change shows once the changes pull has run with the link check (21 Oct). If Procore carries no link field on change event line items, this stays unknown rather than calling every event unlinked.</div>';
+  const cols=[['job','Job'],['kind','Type'],['number','#'],['title','Title'],['status','Status'],['ball','Ball in court'],['amount','Amount',1],['due','Due'],['days_open','Open',1]];
+  const lk=i=>{ if(i.kind!=='Change event'||!Array.isArray(i.links)) return ''; if(!linkKnown) return '';
+    return i.links.length?'<div class="bo-sp">on '+i.links.map(k=>({pco:'PCO',pcco:'PCCO',sub:'sub CO',budget:'budget change'})[k]||k).join(', ')+'</div>':'<div><span class="bo-st open">not on a PCO / PCCO / budget change</span></div>'; };
+  h+=v.length?'<table class="cl-table chg-items">'+chgSortHead(cols,CHGV.sort,CHGV.dir,'data-chgsort')+'<tbody>'+v.map(i=>'<tr><td><b>'+esc(i.job)+'</b><div class="bo-sp">'+esc(i.jobName)+'</div></td><td>'+esc(i.kind)+'</td><td>'+esc(i.number||'')+'</td>'
+      +'<td>'+(i.link&&/^https:/.test(i.link)?'<a href="'+esc(i.link)+'" target="_blank" rel="noopener">'+esc(i.title||'')+'</a>':esc(i.title||''))+(i.contract?'<div class="bo-sp">'+esc(i.contract)+'</div>':'')+lk(i)+'</td>'
+      +'<td>'+esc(i.status||'')+'</td><td>'+esc(i.ball||'')+'</td><td class="num">'+(i.amount!=null?money(i.amount):'&mdash;')+(i.cost!=null?'<div class="bo-sp">cost '+money(i.cost)+'</div>':'')+'</td>'
+      +'<td>'+esc(i.due||'')+'</td><td class="num">'+chgAge(i.days_open)+'</td></tr>').join('')+'</tbody></table>'
+    :'<div class="cl-note">Nothing matches.</div>';
+  return h;
+}
+function chgRecon(recon,haveRecon){
+  if(!haveRecon){ const e=CHG&&CHG.summary&&CHG.summary.recon_error;
+    return '<div class="cl-note">CE sync appears once the changes pull has run with the CE check (added 21 Oct).'+(e?' Last run: '+esc(e)+'.':'')+'</div>'; }
+  const asof=CHG.summary&&CHG.summary.recon_as_of;
+  let v=CHGV.rs==='attn'?recon.filter(y=>RECON_ATTN.includes(y.state)):CHGV.rs==='pending'?recon.filter(y=>y.state==='pending'||y.pc_pending||y.ce_pending):recon;
+  const q=CHGV.q.toLowerCase(); if(q) v=v.filter(y=>[y.job,y.jobName,y.commitment,y.vendor,y.ce_pending_rfcs,(y.ccos||[]).map(c=>c.number+' '+c.title).join(' ')].join(' ').toLowerCase().includes(q));
+  v=v.map(y=>Object.assign({diff:(y.ce_approved==null?null:Math.round((y.pc_approved-y.ce_approved)*100)/100)},y)).sort(chgCmp(CHGV.rsort,CHGV.rdir));
+  const n=s=>recon.filter(y=>s==='attn'?RECON_ATTN.includes(y.state):s==='pending'?(y.state==='pending'||y.pc_pending||y.ce_pending):true).length;
+  let h='<div class="chg-bar">'+[['attn','Needs attention'],['pending','Pending in either'],['all','All with change orders']].map(t=>'<button type="button" class="chg-chip'+(CHGV.rs===t[0]?' on':'')+'" data-chgrs="'+t[0]+'">'+t[1]+' <span>'+n(t[0])+'</span></button>').join('')+'</div>'
+    +'<div class="cl-note" style="margin-top:0">Procore approved / pending change orders on each commitment against CE’s approved and pending RFCs on the matching subcontract. '
+    +'CE RFC numbers are CE’s own sequence and are listed beside the Procore CCO numbers, not matched to them.'
+    +(asof?' Procore commitments as of '+esc(asof.commitments?new Date(asof.commitments).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—')+'; CE as of '+esc(asof.ce?new Date(asof.ce).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—')+'. A CCO approved after those times will not show yet.':'')+'</div>';
+  const cols=[['job','Job'],['commitment','Commitment'],['pc_approved','Procore approved',1],['ce_approved','CE approved',1],['diff','Difference',1],['pc_pending','Procore pending',1],['ce_pending','CE pending',1],['state','What to do']];
+  const cc=y=>{ const a=(y.ccos||[]).slice().sort((p,q)=>String(q.date).localeCompare(String(p.date)));
+    return a.length?'<div class="bo-sp">'+a.slice(0,5).map(c=>'CCO '+esc(c.number)+' '+esc(c.status)+' '+chgM(c.amount)+(c.date?' · '+esc(c.date.slice(5).replace('-','/')):'')).join('<br>')+(a.length>5?'<br>+'+(a.length-5)+' more':'')+'</div>':''; };
+  h+=v.length?'<table class="cl-table chg-recon">'+chgSortHead(cols,CHGV.rsort,CHGV.rdir,'data-chgrsort')+'<tbody>'+v.map(y=>{ const L=RECON_LBL[y.state]||[y.state,''];
+      return '<tr><td><b>'+esc(y.job)+'</b><div class="bo-sp">'+esc(y.jobName)+'</div></td><td><b>'+esc(y.commitment)+'</b><div class="bo-sp">'+esc(y.vendor)+'</div>'+cc(y)+'</td>'
+      +'<td class="num">'+chgM(y.pc_approved)+'</td><td class="num">'+chgM(y.ce_approved)+'</td><td class="num">'+(y.diff?'<b>'+chgM(y.diff)+'</b>':'&mdash;')+'</td>'
+      +'<td class="num">'+(y.pc_pending?chgM(y.pc_pending):'&mdash;')+'</td><td class="num">'+(y.ce_pending?chgM(y.ce_pending)+(y.ce_pending_rfcs?'<div class="bo-sp">RFC '+esc(y.ce_pending_rfcs)+'</div>':''):'&mdash;')+'</td>'
+      +'<td><span class="bo-st '+L[1]+'">'+esc(L[0])+'</span>'+(y.action?'<div class="bo-sp" style="margin-top:4px;max-width:340px">'+esc(y.action)+'</div>':'')
+      +(y.contract_gap?'<div class="bo-sp">Contract: Procore '+chgM(y.pc_revised)+' vs CE '+chgM(y.ce_sov)+'</div>':'')+'</td></tr>'; }).join('')+'</tbody></table>'
+    :'<div class="cl-note">'+(CHGV.rs==='attn'?'Every commitment with change orders agrees between Procore and CE.':'Nothing matches.')+'</div>';
+  return h;
+}
+function chgByJob(rows,haveChg){
+  const head='<thead><tr><th>Job</th><th class="num">PCCOs awaiting owner</th><th class="num">PCOs</th><th class="num">Sub COs pending</th><th class="num">CE sync to fix</th><th class="num">Open RFIs</th><th class="num">Open &gt; 30 days</th><th class="num">Change events</th></tr></thead>';
+  const dash='<span style="color:var(--bh-ink-muted)">&mdash;</span>';
+  const cell=(v,n)=>v==null?dash:(n?money(v)+' <span class="bo-sp" style="display:inline">('+n+')</span>':dash);
+  const q=CHGV.q.toLowerCase(); const rs=rows.filter(x=>!q||(x.job+' '+(x.r.project||'')).toLowerCase().includes(q));
+  const tb=rs.sort((a,b)=>(b.aged-a.aged)||((b.pcco||0)+(b.pco||0)-((a.pcco||0)+(a.pco||0)))).map(x=>{
+    const open=CHGOPEN.has(x.job), fix=(x.recon||[]).filter(y=>RECON_ATTN.includes(y.state)).length;
     const main='<tr class="cl-first chg-row" data-job="'+esc(x.job)+'"><td><button type="button" class="cl-toggle chg-t" data-job="'+esc(x.job)+'" aria-expanded="'+open+'"><b>'+esc(x.job)+'</b></button><div style="color:var(--bh-ink-muted);font-size:12px">'+esc(x.r.project||'')+'</div></td>'
-      +'<td class="num">'+(haveChg?cell(x.pcco,x.pccoN):(x.pend?money(x.pend):'<span style="color:var(--bh-ink-muted)">&mdash;</span>'))+'</td>'
-      +'<td class="num">'+cell(x.pco,x.pcoN)+'</td><td class="num">'+cell(x.cco,x.ccoN)+'</td>'
-      +'<td class="num" title="Change events: revenue ROM, with cost ROM in the item list">'+(x.ceN?(x.ce?money(x.ce):'')+' <span class="bo-sp" style="display:inline">('+x.ceN+')</span>':(haveChg?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':'&mdash;'))+'</td>'
-      +'<td class="num">'+(x.rf.length?x.rf.length+(x.rfOver?' <span class="bo-st over">'+x.rfOver+' overdue</span>':''):'<span style="color:var(--bh-ink-muted)">&mdash;</span>')+'</td>'
-      +'<td class="num">'+(x.aged?'<b>'+x.aged+'</b>':'<span style="color:var(--bh-ink-muted)">&mdash;</span>')+'</td></tr>';
-    const det=open?('<tr class="chg-det"><td colspan="7">'+(x.items.length?'<table class="cl-table"><thead><tr><th>Type</th><th>#</th><th>Title</th><th>Status</th><th>Ball in court</th><th class="num">Amount</th><th>Due</th><th class="num">Open</th></tr></thead><tbody>'
-        +x.items.slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0)).map(i=>'<tr><td>'+esc(i.kind)+'</td><td>'+esc(i.number||'')+'</td><td>'+(i.link&&/^https:/.test(i.link)?'<a href="'+esc(i.link)+'" target="_blank" rel="noopener">'+esc(i.title||'')+'</a>':esc(i.title||''))+(i.contract?'<div class="bo-sp">'+esc(i.contract)+'</div>':'')+'</td>'
-          +'<td>'+esc(i.status||'')+'</td><td>'+esc(i.ball||'')+'</td><td class="num">'+(i.amount!=null?money(i.amount):'&mdash;')+(i.cost!=null?'<div class="bo-sp">cost '+money(i.cost)+'</div>':'')+'</td>'
-          +'<td>'+esc(i.due||'')+'</td><td class="num">'+chgAge(i.days_open)+'</td></tr>').join('')+'</tbody></table>':'<div class="cl-note">Nothing open on this job.</div>')+'</td></tr>'):'';
+      +'<td class="num">'+(haveChg?cell(x.pcco,x.pccoN):(x.pend?money(x.pend):dash))+'</td><td class="num">'+cell(x.pco,x.pcoN)+'</td><td class="num">'+cell(x.cco,x.ccoN)+'</td>'
+      +'<td class="num">'+(x.recon?(fix?'<span class="bo-st over">'+fix+'</span>':dash):dash)+'</td>'
+      +'<td class="num">'+(x.rf.length?x.rf.length+(x.rfOver?' <span class="bo-st over">'+x.rfOver+' overdue</span>':''):dash)+'</td>'
+      +'<td class="num">'+(x.aged?'<b>'+x.aged+'</b>':dash)+'</td>'
+      +'<td class="num bo-sp">'+(x.ceN?x.ceN+(x.ceUnl?' · '+x.ceUnl+' unlinked':''):dash)+'</td></tr>';
+    const its=x.items.filter(i=>i.kind!=='Change event');
+    const det=open?('<tr class="chg-det"><td colspan="8">'+(its.length?'<table class="cl-table"><thead><tr><th>Type</th><th>#</th><th>Title</th><th>Status</th><th>Ball in court</th><th class="num">Amount</th><th>Due</th><th class="num">Open</th></tr></thead><tbody>'
+        +its.slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0)).map(i=>'<tr><td>'+esc(i.kind)+'</td><td>'+esc(i.number||'')+'</td><td>'+(i.link&&/^https:/.test(i.link)?'<a href="'+esc(i.link)+'" target="_blank" rel="noopener">'+esc(i.title||'')+'</a>':esc(i.title||''))+(i.contract?'<div class="bo-sp">'+esc(i.contract)+'</div>':'')+'</td>'
+          +'<td>'+esc(i.status||'')+'</td><td>'+esc(i.ball||'')+'</td><td class="num">'+(i.amount!=null?money(i.amount):'&mdash;')+'</td>'
+          +'<td>'+esc(i.due||'')+'</td><td class="num">'+chgAge(i.days_open)+'</td></tr>').join('')+'</tbody></table>':'<div class="cl-note">Nothing open on this job.</div>')
+        +(x.ceN?'<div class="cl-note">'+x.ceN+' open change event'+(x.ceN===1?'':'s')+' &mdash; see Items &rsaquo; Change events.</div>':'')+'</td></tr>'):'';
     return '<tbody>'+main+det+'</tbody>';
   }).join('');
-  body.innerHTML=note+(rows.length?'<table class="cl-table chg-table">'+head+tb+'</table>':'<div class="empty">No active jobs in view.</div>');
+  return rs.length?'<table class="cl-table chg-table">'+head+tb+'</table>':'<div class="empty">No active jobs in view.</div>';
 }
-document.addEventListener('click', e=>{ const b=e.target.closest('.chg-t'); if(!b) return;
-  const j=b.dataset.job; if(CHGOPEN.has(j)) CHGOPEN.delete(j); else CHGOPEN.add(j); renderChanges(); });
+document.addEventListener('click', e=>{
+  const b=e.target.closest('.chg-t'); if(b){ const j=b.dataset.job; if(CHGOPEN.has(j)) CHGOPEN.delete(j); else CHGOPEN.add(j); renderChanges(); return; }
+  const cc=e.target.closest('[data-chgcard]'); if(cc){ const a=cc.dataset.chgcard; if(a==='recon'){ CHGV.view='recon'; CHGV.rs='attn'; } else { CHGV.view='items'; CHGV.type=(CHGV.type===a&&CHGV.view==='items')?'all':a; CHGV.status=''; } renderChanges(); return; }
+  const v=e.target.closest('[data-chgview]'); if(v){ CHGV.view=v.dataset.chgview; renderChanges(); return; }
+  const t=e.target.closest('[data-chgtype]'); if(t){ CHGV.view='items'; CHGV.type=t.dataset.chgtype; CHGV.status=''; CHGV.unl=false; renderChanges(); return; }
+  const rs=e.target.closest('[data-chgrs]'); if(rs){ CHGV.rs=rs.dataset.chgrs; renderChanges(); return; }
+  const s=e.target.closest('[data-chgsort]'); if(s){ const k=s.dataset.chgsort; if(CHGV.sort===k) CHGV.dir=-CHGV.dir; else { CHGV.sort=k; CHGV.dir=(k==='amount'||k==='days_open')?-1:1; } renderChanges(); return; }
+  const r=e.target.closest('[data-chgrsort]'); if(r){ const k=r.dataset.chgrsort; if(CHGV.rsort===k) CHGV.rdir=-CHGV.rdir; else { CHGV.rsort=k; CHGV.rdir=/pc_|ce_|diff/.test(k)?-1:1; } renderChanges(); return; }
+});
+document.addEventListener('change', e=>{
+  if(e.target.id==='chgSt'){ CHGV.status=e.target.value; renderChanges(); }
+  if(e.target.id==='chgAged'){ CHGV.aged=e.target.checked; renderChanges(); }
+  if(e.target.id==='chgUnl'){ CHGV.unl=e.target.checked; renderChanges(); }
+});
+document.addEventListener('input', e=>{ if(e.target.id==='chgQ'){ CHGV.q=e.target.value; clearTimeout(renderChanges.t);
+  renderChanges.t=setTimeout(()=>{ renderChanges().then(()=>{ const q=document.getElementById('chgQ'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }); },200); } });
 
 /* wire it in: after the UI is built, and on every tab change */
 { const __b=buildUI; buildUI=function(){ const r=__b.apply(this,arguments); try{ restructure(); }catch(e){ console.error('restructure',e); } return r; }; }
