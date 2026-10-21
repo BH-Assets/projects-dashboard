@@ -2856,8 +2856,12 @@ function jobStrip(job){
 const chgSum=a=>(a||[]).reduce((t,x)=>t+(+x.amount||0),0);
 const chgCost=a=>(a||[]).reduce((t,x)=>t+(+((x.cost!=null)?x.cost:0)||0),0);
 const chgM=n=>n==null||isNaN(n)?'&mdash;':(n<0?'-$':'$')+Math.abs(+n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const CHGV={view:'items',type:'all',status:'',aged:false,unl:false,q:'',sort:'days_open',dir:-1,rs:'attn',rsort:'diff',rdir:-1};
-const CHG_TYPES=[['all','All'],['PCCO','PCCOs'],['PCO','PCOs'],['Sub CO','Sub COs'],['Sub PCO','Sub PCOs'],['RFI','RFIs'],['Change event','Change events']];
+const CHGV={view:'items',type:'all',status:'',aged:false,unl:false,q:'',sort:'days_open',dir:-1,rs:'open',rsort:'job',rdir:1};
+const CHGSUBOPEN=new Set();
+/* Sub PCOs (PCOs on a commitment) are not listed: on this company's Procore a commitment PCO is the
+   same record as its commitment CO (25AU003 probe, 16 Oct: the PCO id equals the CCO id), so they
+   only repeated the Sub COs. */
+const CHG_TYPES=[['all','All'],['PCCO','PCCOs'],['PCO','PCOs'],['Sub CO','Sub COs'],['RFI','RFIs'],['Change event','Change events']];
 const RECON_ATTN=['approve_in_ce','enter_in_ce','ce_short','not_in_ce','ce_ahead','ce_pending_extra'];
 const RECON_LBL={approve_in_ce:['Approve in CE','over'],enter_in_ce:['Enter in CE','over'],ce_short:['CE short','over'],not_in_ce:['Not in CE','over'],ce_ahead:['CE ahead','open'],ce_pending_extra:['Pending only in CE','open'],pending:['Pending','part'],match:['In sync',''],ce_unavailable:['No CE data','']};
 function chgAge(d){ return d==null?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':(d>60?'<span class="bo-st over">'+d+' d</span>':(d>30?'<span class="bo-st open">'+d+' d</span>':d+' d')); }
@@ -2868,7 +2872,7 @@ function chgRows(){
     const job=String(r.project_number), c=CHG&&CHG.projects&&CHG.projects[job];
     const rf=(r.rfis_open_list||[]); const rfOver=rf.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
     const items=[]; const add=(kind,side,a)=>(a||[]).forEach(x=>items.push(Object.assign({kind,side,job,jobName:r.project||''},x)));
-    if(c){ add('PCCO','Revenue',c.pcco); add('PCO','Revenue',c.pco); add('Sub CO','Cost',c.cco); add('Sub PCO','Cost',c.spco); add('Change event','Both',c.ce); }
+    if(c){ add('PCCO','Revenue',c.pcco); add('PCO','Revenue',c.pco); add('Sub CO','Cost',c.cco); add('Change event','Both',c.ce); }
     rf.forEach(x=>items.push({kind:'RFI',side:'—',job,jobName:r.project||'',number:x.number,title:x.subject,status:x.status,ball:x.ball,due:x.due?String(x.due).slice(0,10):'',days_open:null,link:x.link}));
     const ceL=c?(c.ce||[]):[];
     return {r,job,c,rf,rfOver,items,aged:items.filter(x=>x.kind!=='Change event'&&x.days_open!=null&&x.days_open>30).length,
@@ -2895,16 +2899,15 @@ async function renderChanges(){
   const isT=t=>CHGV.view==='items'&&CHGV.type===t;
   cards.innerHTML=ck(money(haveChg?T('pcco'):T('pend'))+' <span class="bo-sp" style="display:inline">('+T('pccoN')+')</span>','PCCOs awaiting owner','Prime change orders submitted to the owner and not yet approved','PCCO',isT('PCCO'))
     +ck(haveChg?money(T('pco'))+' <span class="bo-sp" style="display:inline">('+T('pcoN')+')</span>':'&mdash;','Pending PCOs','Potential change orders on the prime contract not yet approved. Shown apart from PCCOs because a PCO can sit inside one','PCO',isT('PCO'))
-    +ck(money(haveChg?T('cco'):0)+' <span class="bo-sp" style="display:inline">('+T('ccoN')+')</span>','Sub COs pending approval','Commitment change orders not yet approved in Procore','Sub CO',isT('Sub CO'))
-    +ck(haveRecon?attn.length:'&mdash;','CE sync to fix','Commitments whose approved / pending change orders in Procore and CE do not agree','recon',CHGV.view==='recon')
+    +ck(money(haveChg?T('cco'):0)+' <span class="bo-sp" style="display:inline">('+T('ccoN')+')</span>','Sub COs pending approval','Commitment change orders not yet approved in Procore - opens Sub COs by commitment','subpend',CHGV.view==='sub'&&CHGV.rs==='open')
+    +ck(haveRecon?attn.length:'&mdash;','CE sync to fix','Commitments whose approved / pending change orders in Procore and CE do not agree','recon',CHGV.view==='sub'&&CHGV.rs==='attn')
     +ck(rows.reduce((t,x)=>t+x.rf.length,0)+(T('rfOver')?' <span class="bo-st over">'+T('rfOver')+' overdue</span>':''),'Open RFIs','Open RFIs across the jobs in view','RFI',isT('RFI'));
   const note = CHGERR==='notyet' ? '<div class="cl-note">Itemized change events, PCOs, PCCOs and sub COs appear once the <b>Changes and open items pull</b> has run. Until then this tab shows the pending prime CO total and open RFIs from the project pull.</div>'
     : (CHGERR?'<div class="cl-note">'+esc(CHGERR)+'</div>':'<div class="cl-note">Changes as of '+esc(new Date(CHG.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'. PCO and PCCO totals are not added together, because a PCO can sit inside a PCCO.</div>');
   const seg=(v,l)=>'<button type="button" class="bh-btn-outline chg-seg'+(CHGV.view===v?' on':'')+'" data-chgview="'+v+'" aria-pressed="'+(CHGV.view===v)+'">'+l+'</button>';
-  let h=note+'<div class="chg-bar">'+seg('items','Items')+seg('job','By job')+seg('recon','CE sync'+(haveRecon&&attn.length?' · '+attn.length:''))
+  let h=note+'<div class="chg-bar">'+seg('items','Items')+seg('sub','Sub COs by commitment'+(haveRecon&&attn.length?' · '+attn.length+' CE to fix':''))
     +'<input class="bh-input chg-q" id="chgQ" type="search" placeholder="Search number, title, vendor, job" value="'+esc(CHGV.q)+'"></div>';
-  if(CHGV.view==='job') h+=chgByJob(rows,haveChg);
-  else if(CHGV.view==='recon') h+=chgRecon(recon,haveRecon);
+  if(CHGV.view==='sub') h+=chgSubs(recon,haveRecon);
   else h+=chgItems(rows,linkKnown);
   body.innerHTML=h;
 }
@@ -2942,61 +2945,54 @@ function chgItems(rows,linkKnown){
     :'<div class="cl-note">Nothing matches.</div>';
   return h;
 }
-function chgRecon(recon,haveRecon){
+/* Sub COs by commitment: Procore's commitment list with its change orders underneath (as on the
+   Commitments tool), plus CE's approved / pending RFCs on the matching subcontract. Built from
+   changes_pull.js `recon`, which carries every non-void CCO of every commitment with change activity. */
+const ccoKind=st=>/void|delet/i.test(st)?'void':/approved|executed/i.test(st)?'approved':/draft/i.test(st)?'draft':'pending';
+function chgSubs(recon,haveRecon){
   if(!haveRecon){ const e=CHG&&CHG.summary&&CHG.summary.recon_error;
-    return '<div class="cl-note">CE sync appears once the changes pull has run with the CE check (added 21 Oct).'+(e?' Last run: '+esc(e)+'.':'')+'</div>'; }
-  const asof=CHG.summary&&CHG.summary.recon_as_of;
-  let v=CHGV.rs==='attn'?recon.filter(y=>RECON_ATTN.includes(y.state)):CHGV.rs==='pending'?recon.filter(y=>y.state==='pending'||y.pc_pending||y.ce_pending):recon;
+    return '<div class="cl-note">Sub COs by commitment appear once the changes pull has run with the commitment check (added 21 Oct).'+(e?' Last run: '+esc(e)+'.':'')+'</div>'; }
+  const asof=CHG.summary&&CHG.summary.recon_as_of, dt=x=>x?new Date(x).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+  const R=recon.map(y=>{ const cs=(y.ccos||[]), sum=k=>cs.filter(c=>ccoKind(c.status)===k).reduce((t,c)=>t+(+c.amount||0),0);
+    const has=cs.length>0;
+    return Object.assign({},y,{appr:has?sum('approved'):y.pc_approved, pend:has?sum('pending'):y.pc_pending, draft:has?sum('draft'):0,
+      nPend:cs.filter(c=>ccoKind(c.status)==='pending').length, nDraft:cs.filter(c=>ccoKind(c.status)==='draft').length,
+      diff:(y.ce_approved==null?null:Math.round((y.pc_approved-y.ce_approved)*100)/100), fix:RECON_ATTN.includes(y.state)}); });
+  const F={open:y=>y.pend>0.005||y.draft>0.005||y.nPend||y.nDraft, attn:y=>y.fix, all:()=>true};
+  let v=R.filter(F[CHGV.rs]||F.all);
   const q=CHGV.q.toLowerCase(); if(q) v=v.filter(y=>[y.job,y.jobName,y.commitment,y.vendor,y.ce_pending_rfcs,(y.ccos||[]).map(c=>c.number+' '+c.title).join(' ')].join(' ').toLowerCase().includes(q));
-  v=v.map(y=>Object.assign({diff:(y.ce_approved==null?null:Math.round((y.pc_approved-y.ce_approved)*100)/100)},y)).sort(chgCmp(CHGV.rsort,CHGV.rdir));
-  const n=s=>recon.filter(y=>s==='attn'?RECON_ATTN.includes(y.state):s==='pending'?(y.state==='pending'||y.pc_pending||y.ce_pending):true).length;
-  let h='<div class="chg-bar">'+[['attn','Needs attention'],['pending','Pending in either'],['all','All with change orders']].map(t=>'<button type="button" class="chg-chip'+(CHGV.rs===t[0]?' on':'')+'" data-chgrs="'+t[0]+'">'+t[1]+' <span>'+n(t[0])+'</span></button>').join('')+'</div>'
-    +'<div class="cl-note" style="margin-top:0">Procore approved / pending change orders on each commitment against CE’s approved and pending RFCs on the matching subcontract. '
-    +'CE RFC numbers are CE’s own sequence and are listed beside the Procore CCO numbers, not matched to them.'
-    +(asof?' Procore commitments as of '+esc(asof.commitments?new Date(asof.commitments).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—')+'; CE as of '+esc(asof.ce?new Date(asof.ce).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—')+'. A CCO approved after those times will not show yet.':'')+'</div>';
-  const cols=[['job','Job'],['commitment','Commitment'],['pc_approved','Procore approved',1],['ce_approved','CE approved',1],['diff','Difference',1],['pc_pending','Procore pending',1],['ce_pending','CE pending',1],['state','What to do']];
-  const cc=y=>{ const a=(y.ccos||[]).slice().sort((p,q)=>String(q.date).localeCompare(String(p.date)));
-    return a.length?'<div class="bo-sp">'+a.slice(0,5).map(c=>'CCO '+esc(c.number)+' '+esc(c.status)+' '+chgM(c.amount)+(c.date?' · '+esc(c.date.slice(5).replace('-','/')):'')).join('<br>')+(a.length>5?'<br>+'+(a.length-5)+' more':'')+'</div>':''; };
-  h+=v.length?'<table class="cl-table chg-recon">'+chgSortHead(cols,CHGV.rsort,CHGV.rdir,'data-chgrsort')+'<tbody>'+v.map(y=>{ const L=RECON_LBL[y.state]||[y.state,''];
-      return '<tr><td><b>'+esc(y.job)+'</b><div class="bo-sp">'+esc(y.jobName)+'</div></td><td><b>'+esc(y.commitment)+'</b><div class="bo-sp">'+esc(y.vendor)+'</div>'+cc(y)+'</td>'
-      +'<td class="num">'+chgM(y.pc_approved)+'</td><td class="num">'+chgM(y.ce_approved)+'</td><td class="num">'+(y.diff?'<b>'+chgM(y.diff)+'</b>':'&mdash;')+'</td>'
-      +'<td class="num">'+(y.pc_pending?chgM(y.pc_pending):'&mdash;')+'</td><td class="num">'+(y.ce_pending?chgM(y.ce_pending)+(y.ce_pending_rfcs?'<div class="bo-sp">RFC '+esc(y.ce_pending_rfcs)+'</div>':''):'&mdash;')+'</td>'
-      +'<td><span class="bo-st '+L[1]+'">'+esc(L[0])+'</span>'+(y.action?'<div class="bo-sp" style="margin-top:4px;max-width:340px">'+esc(y.action)+'</div>':'')
-      +(y.contract_gap?'<div class="bo-sp">Contract: Procore '+chgM(y.pc_revised)+' vs CE '+chgM(y.ce_sov)+'</div>':'')+'</td></tr>'; }).join('')+'</tbody></table>'
-    :'<div class="cl-note">'+(CHGV.rs==='attn'?'Every commitment with change orders agrees between Procore and CE.':'Nothing matches.')+'</div>';
+  v.sort(chgCmp(CHGV.rsort,CHGV.rdir));
+  const n=k=>R.filter(F[k]).length, tot=k=>v.reduce((t,y)=>t+(+y[k]||0),0);
+  let h='<div class="chg-bar">'+[['open','Pending or draft COs'],['attn','CE sync to fix'],['all','All with change orders']].map(t=>'<button type="button" class="chg-chip'+(CHGV.rs===t[0]?' on':'')+'" data-chgrs="'+t[0]+'">'+t[1]+' <span>'+n(t[0])+'</span></button>').join('')
+    +'<span class="bo-sp" style="margin-left:auto">'+v.length+' commitment'+(v.length===1?'':'s')+' · approved '+chgM(tot('appr'))+' · pending '+chgM(tot('pend'))+(tot('draft')?' · draft '+chgM(tot('draft')):'')+'</span></div>'
+    +'<div class="cl-note" style="margin-top:0">Click a commitment for its change orders, as on Procore’s Commitments tool. CE columns are the approved and pending RFCs on the matching CE subcontract; CE RFC numbers are CE’s own sequence, not matched to the CCO numbers. '
+    +(asof?'Procore commitments as of '+esc(dt(asof.commitments))+', CE as of '+esc(dt(asof.ce))+', change orders as of '+esc(dt(CHG.generated_at))+'.':'')+'</div>';
+  const cols=[['job','Job'],['commitment','Commitment'],['appr','Approved COs',1],['pend','Pending COs',1],['draft','Draft COs',1],['ce_approved','CE approved',1],['ce_pending','CE pending',1],['state','CE sync']];
+  const st=s=>{ const k=ccoKind(s); return '<span class="bo-st '+(k==='approved'?'':(k==='pending'?'open':'part'))+'"'+(k==='approved'?' style="background:#e6f4ea;color:#1e6b34"':'')+'>'+esc(s||'—')+'</span>'; };
+  const body=v.map(y=>{ const key=y.job+'|'+y.commitment, open=CHGSUBOPEN.has(key), L=RECON_LBL[y.state]||[y.state,''];
+    const cs=(y.ccos||[]).slice().sort((a,b)=>String(b.number).localeCompare(String(a.number),undefined,{numeric:true}));
+    let r='<tr class="cl-first"><td><b>'+esc(y.job)+'</b><div class="bo-sp">'+esc(y.jobName)+'</div></td>'
+      +'<td><button type="button" class="cl-toggle chg-sub" data-sub="'+esc(key)+'" aria-expanded="'+open+'"><b>'+esc(y.commitment)+'</b></button><div class="bo-sp">'+esc(y.vendor)+' · '+cs.length+' CO'+(cs.length===1?'':'s')+'</div></td>'
+      +'<td class="num">'+chgM(y.appr)+'</td><td class="num">'+(y.pend?chgM(y.pend)+'<div class="bo-sp">'+y.nPend+' pending</div>':'&mdash;')+'</td><td class="num">'+(y.draft||y.nDraft?chgM(y.draft)+'<div class="bo-sp">'+y.nDraft+' draft</div>':'&mdash;')+'</td>'
+      +'<td class="num">'+chgM(y.ce_approved)+'</td><td class="num">'+(y.ce_pending?chgM(y.ce_pending)+(y.ce_pending_rfcs?'<div class="bo-sp">RFC '+esc(y.ce_pending_rfcs)+'</div>':''):'&mdash;')+'</td>'
+      +'<td><span class="bo-st '+L[1]+'">'+esc(L[0])+'</span>'+(y.fix&&y.action?'<div class="bo-sp" style="margin-top:4px;max-width:320px">'+esc(y.action)+'</div>':'')+'</td></tr>';
+    if(open) r+='<tr class="chg-det"><td colspan="8">'+(cs.length?'<table class="cl-table"><thead><tr><th>Change order</th><th>Status</th><th>Executed</th><th class="num">Approved</th><th class="num">Pending</th><th class="num">Draft</th><th>Date</th></tr></thead><tbody>'
+        +cs.map(c=>{ const k=ccoKind(c.status); return '<tr><td>CO #'+esc(c.number)+(c.title?': '+esc(c.title):'')+'</td><td>'+st(c.status)+'</td><td>'+esc(c.executed||'')+'</td>'
+          +'<td class="num">'+(k==='approved'?chgM(c.amount):'&mdash;')+'</td><td class="num">'+(k==='pending'?chgM(c.amount):'&mdash;')+'</td><td class="num">'+(k==='draft'?chgM(c.amount):'&mdash;')+'</td><td>'+esc(c.date||'')+'</td></tr>'; }).join('')
+        +'</tbody></table>':'<div class="cl-note">No change orders listed for this commitment'+(y.pc_approved?' (Procore shows '+chgM(y.pc_approved)+' approved on the commitment; the CO list was not read this run)':'')+'.</div>')+'</td></tr>';
+    return '<tbody>'+r+'</tbody>'; }).join('');
+  h+=v.length?'<table class="cl-table chg-recon">'+chgSortHead(cols,CHGV.rsort,CHGV.rdir,'data-chgrsort')+body+'</table>'
+    :'<div class="cl-note">'+(CHGV.rs==='attn'?'Every commitment with change orders agrees between Procore and CE.':CHGV.rs==='open'?'No pending or draft sub change orders on the jobs picked.':'Nothing matches.')+'</div>';
   return h;
 }
-function chgByJob(rows,haveChg){
-  const head='<thead><tr><th>Job</th><th class="num">PCCOs awaiting owner</th><th class="num">PCOs</th><th class="num">Sub COs pending</th><th class="num">CE sync to fix</th><th class="num">Open RFIs</th><th class="num">Open &gt; 30 days</th><th class="num">Change events</th></tr></thead>';
-  const dash='<span style="color:var(--bh-ink-muted)">&mdash;</span>';
-  const cell=(v,n)=>v==null?dash:(n?money(v)+' <span class="bo-sp" style="display:inline">('+n+')</span>':dash);
-  const q=CHGV.q.toLowerCase(); const rs=rows.filter(x=>!q||(x.job+' '+(x.r.project||'')).toLowerCase().includes(q));
-  const tb=rs.sort((a,b)=>(b.aged-a.aged)||((b.pcco||0)+(b.pco||0)-((a.pcco||0)+(a.pco||0)))).map(x=>{
-    const open=CHGOPEN.has(x.job), fix=(x.recon||[]).filter(y=>RECON_ATTN.includes(y.state)).length;
-    const main='<tr class="cl-first chg-row" data-job="'+esc(x.job)+'"><td><button type="button" class="cl-toggle chg-t" data-job="'+esc(x.job)+'" aria-expanded="'+open+'"><b>'+esc(x.job)+'</b></button><div style="color:var(--bh-ink-muted);font-size:12px">'+esc(x.r.project||'')+'</div></td>'
-      +'<td class="num">'+(haveChg?cell(x.pcco,x.pccoN):(x.pend?money(x.pend):dash))+'</td><td class="num">'+cell(x.pco,x.pcoN)+'</td><td class="num">'+cell(x.cco,x.ccoN)+'</td>'
-      +'<td class="num">'+(x.recon?(fix?'<span class="bo-st over">'+fix+'</span>':dash):dash)+'</td>'
-      +'<td class="num">'+(x.rf.length?x.rf.length+(x.rfOver?' <span class="bo-st over">'+x.rfOver+' overdue</span>':''):dash)+'</td>'
-      +'<td class="num">'+(x.aged?'<b>'+x.aged+'</b>':dash)+'</td>'
-      +'<td class="num bo-sp">'+(x.ceN?x.ceN+(x.ceUnl?' · '+x.ceUnl+' unlinked':''):dash)+'</td></tr>';
-    const its=x.items.filter(i=>i.kind!=='Change event');
-    const det=open?('<tr class="chg-det"><td colspan="8">'+(its.length?'<table class="cl-table"><thead><tr><th>Type</th><th>#</th><th>Title</th><th>Status</th><th>Ball in court</th><th class="num">Amount</th><th>Due</th><th class="num">Open</th></tr></thead><tbody>'
-        +its.slice().sort((a,b)=>(b.days_open||0)-(a.days_open||0)).map(i=>'<tr><td>'+esc(i.kind)+'</td><td>'+esc(i.number||'')+'</td><td>'+(i.link&&/^https:/.test(i.link)?'<a href="'+esc(i.link)+'" target="_blank" rel="noopener">'+esc(i.title||'')+'</a>':esc(i.title||''))+(i.contract?'<div class="bo-sp">'+esc(i.contract)+'</div>':'')+'</td>'
-          +'<td>'+esc(i.status||'')+'</td><td>'+esc(i.ball||'')+'</td><td class="num">'+(i.amount!=null?money(i.amount):'&mdash;')+'</td>'
-          +'<td>'+esc(i.due||'')+'</td><td class="num">'+chgAge(i.days_open)+'</td></tr>').join('')+'</tbody></table>':'<div class="cl-note">Nothing open on this job.</div>')
-        +(x.ceN?'<div class="cl-note">'+x.ceN+' open change event'+(x.ceN===1?'':'s')+' &mdash; see Items &rsaquo; Change events.</div>':'')+'</td></tr>'):'';
-    return '<tbody>'+main+det+'</tbody>';
-  }).join('');
-  return rs.length?'<table class="cl-table chg-table">'+head+tb+'</table>':'<div class="empty">No active jobs in view.</div>';
-}
 document.addEventListener('click', e=>{
-  const b=e.target.closest('.chg-t'); if(b){ const j=b.dataset.job; if(CHGOPEN.has(j)) CHGOPEN.delete(j); else CHGOPEN.add(j); renderChanges(); return; }
-  const cc=e.target.closest('[data-chgcard]'); if(cc){ const a=cc.dataset.chgcard; if(a==='recon'){ CHGV.view='recon'; CHGV.rs='attn'; } else { CHGV.view='items'; CHGV.type=(CHGV.type===a&&CHGV.view==='items')?'all':a; CHGV.status=''; } renderChanges(); return; }
+  const b=e.target.closest('.chg-sub'); if(b){ const j=b.dataset.sub; if(CHGSUBOPEN.has(j)) CHGSUBOPEN.delete(j); else CHGSUBOPEN.add(j); renderChanges(); return; }
+  const cc=e.target.closest('[data-chgcard]'); if(cc){ const a=cc.dataset.chgcard; if(a==='recon'){ CHGV.view='sub'; CHGV.rs='attn'; } else if(a==='subpend'){ CHGV.view='sub'; CHGV.rs='open'; } else { CHGV.view='items'; CHGV.type=(CHGV.type===a&&CHGV.view==='items')?'all':a; CHGV.status=''; } renderChanges(); return; }
   const v=e.target.closest('[data-chgview]'); if(v){ CHGV.view=v.dataset.chgview; renderChanges(); return; }
   const t=e.target.closest('[data-chgtype]'); if(t){ CHGV.view='items'; CHGV.type=t.dataset.chgtype; CHGV.status=''; CHGV.unl=false; renderChanges(); return; }
   const rs=e.target.closest('[data-chgrs]'); if(rs){ CHGV.rs=rs.dataset.chgrs; renderChanges(); return; }
   const s=e.target.closest('[data-chgsort]'); if(s){ const k=s.dataset.chgsort; if(CHGV.sort===k) CHGV.dir=-CHGV.dir; else { CHGV.sort=k; CHGV.dir=(k==='amount'||k==='days_open')?-1:1; } renderChanges(); return; }
-  const r=e.target.closest('[data-chgrsort]'); if(r){ const k=r.dataset.chgrsort; if(CHGV.rsort===k) CHGV.rdir=-CHGV.rdir; else { CHGV.rsort=k; CHGV.rdir=/pc_|ce_|diff/.test(k)?-1:1; } renderChanges(); return; }
+  const r=e.target.closest('[data-chgrsort]'); if(r){ const k=r.dataset.chgrsort; if(CHGV.rsort===k) CHGV.rdir=-CHGV.rdir; else { CHGV.rsort=k; CHGV.rdir=/appr|pend|draft|ce_/.test(k)?-1:1; } renderChanges(); return; }
 });
 document.addEventListener('change', e=>{
   if(e.target.id==='chgSt'){ CHGV.status=e.target.value; renderChanges(); }
