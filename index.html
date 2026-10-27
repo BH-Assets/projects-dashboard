@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://dashboard.baileyharris.com; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://*.sharepoint.com https://data.baileyharris.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org; default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self' https://login.microsoftonline.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://dashboard.baileyharris.com; font-src 'self' https://fonts.gstatic.com data:; frame-src https://login.microsoftonline.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Project Information</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="leaflet/leaflet.css">
 <style>
   :root{color-scheme:light}
   *{box-sizing:border-box}
-  body{margin:0;font-family:Figtree,Arial,sans-serif;background:#f5f7fa;color:#211E1E}
+  body{margin:0;font-family:'Montserrat',Arial,sans-serif;background:#f5f7fa;color:#211E1E}
   .bh-topbar{height:4px;background:#ED2B30;width:100%}
   .bh-banner{background:#fff;border-bottom:1px solid #E8E6E7;width:100%}
   .bh-banner-inner{max-width:1300px;margin:0 auto;padding:12px 20px 14px;display:flex;align-items:center;gap:18px}
@@ -182,335 +183,20 @@
   .vizbox .empty{margin:0;padding:22px 10px;text-align:center}
   @media (max-width:720px){ .vizgrid{grid-template-columns:1fr} .vizbox .cwrap{height:190px} }
   @media (max-width:420px){ .cards{grid-template-columns:1fr 1fr}.pgrid{grid-template-columns:1fr} }
-.bh-page .chg-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
-.bh-page .chg-seg{min-height:34px;padding:0 14px;font-size:12px}
-.bh-page .chg-seg.on{background:var(--bh-black)!important;color:#fff!important;border-color:var(--bh-black)}
-.bh-page .chg-q{min-height:34px;width:280px;max-width:100%;margin-left:auto;font-size:13px}
-.bh-page .chg-chip{border:1px solid var(--bh-hairline);background:#fff;padding:6px 10px;font:600 12px var(--bh-font,inherit);cursor:pointer;color:var(--bh-ink)}
-.bh-page .chg-chip span{color:var(--bh-ink-muted);font-weight:500;margin-left:2px}
-.bh-page .chg-chip.on{border-color:var(--bh-black);background:var(--bh-cream)}
-.bh-page .chg-ck{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin-left:8px}
-.bh-page .chg-bar select{min-height:34px;font-size:13px}
-.bh-page .chg-sort{border:0;background:none;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
-.bh-page .chg-lnk{border:0;background:none;padding:0;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;color:inherit}
-.bh-page .card.clk.sel{outline:2px solid var(--bh-black);outline-offset:-2px}
-@media (max-width:760px){ .bh-page .chg-items,.bh-page .chg-recon{display:block;overflow-x:auto} .bh-page .chg-q{margin-left:0;width:100%} }
 </style>
-<style>/* bh-shell.css, inlined for the preview */
-/* bh-shell.css — Bailey-Harris dashboard shell.
-   Shared by every page on dashboard.baileyharris.com. Link it AFTER a page's own styles.
-   Spec: claude/bh-ui-spec.md in the "BH Dashboards and Data" project. Look: "BH Dashboard UI" canvas.
-   Every class is prefixed bh- so it cannot collide with a desk's own CSS. */
-
-
-
-:root{
-  /* brand palette (Bailey-Harris brand guide) */
-  --bh-red:#ed2b30; --bh-maroon:#7f1b29; --bh-slate:#484b4d; --bh-black:#211e1e;
-  --bh-light-gray:#e8e6e7; --bh-cream:#f2ece1; --bh-white:#ffffff;
-  /* roles */
-  --bh-surface:var(--bh-white); --bh-surface-muted:var(--bh-light-gray); --bh-surface-warm:var(--bh-cream);
-  --bh-ink:var(--bh-black); --bh-ink-muted:var(--bh-slate); --bh-hairline:var(--bh-light-gray);
-  --bh-accent:var(--bh-red); --bh-focus:var(--bh-red);
-  /* status — DATA ONLY, never chrome */
-  --bh-ok-bg:#c6efce; --bh-ok-ink:#006100;
-  --bh-warn-bg:#ffeb9c; --bh-warn-ink:#9c6500;
-  --bh-bad-bg:#ffc7ce; --bh-bad-ink:#9c0006;
-  /* compliance tags — keep their own colors */
-  --bh-tag-global-bg:#ddebf7; --bh-tag-global-ink:#1f3864;
-  --bh-tag-warranty-bg:#ffe9c7; --bh-tag-warranty-ink:#8a5a00;
-  --bh-tag-inactive-bg:#e9ecf1; --bh-tag-inactive-ink:#6b7480;
-  --bh-font:Figtree,"Helvetica Neue",Arial,sans-serif;
-  --bh-side-w:240px; --bh-menu-breakpoint:960px; /* breakpoint is documentation; the media query below is the real value */
-}
-/* light-only by design: a dark OS must not pull the page off-brand */
-:root:not([data-theme="light"]){color-scheme:light}
-
-/* artifact-port shim: [hidden] must win over any display value */
-[hidden]:not([hidden=until-found i]){display:none!important}
-
-.bh-page{margin:0;background:var(--bh-surface);color:var(--bh-ink);font-family:var(--bh-font);font-variant-numeric:tabular-nums}
-.bh-page a{color:var(--bh-ink)} .bh-page a:hover{color:var(--bh-maroon)}
-
-/* ---------- header ---------- */
-.bh-topbar{height:8px;background:var(--bh-accent)}
-.bh-header{display:flex;flex-wrap:wrap;align-items:center;gap:18px;padding:18px 40px;border-bottom:1px solid var(--bh-hairline);background:var(--bh-surface)}
-.bh-header .bh-logo{width:56px;height:56px;display:block}
-.bh-desk-name{font-size:28px;font-weight:800;line-height:1;text-transform:uppercase;margin:0}
-.bh-desk-sub{font-size:13px;line-height:1.4;color:var(--bh-ink-muted);margin-top:4px}
-.bh-header-spacer{flex:1 1 20px}
-.bh-asof{text-align:right}
-.bh-asof .bh-label{display:block}
-.bh-asof strong{font-size:14px;font-weight:600}
-.bh-avatar{width:40px;height:40px;background:var(--bh-slate);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-
-/* ---------- layout: side menu + work ---------- */
-.bh-layout{display:flex;align-items:stretch;min-height:calc(100vh - 100px)}
-.bh-main{flex:1 1 auto;min-width:0}
-.bh-side{flex:0 0 var(--bh-side-w);background:var(--bh-black);color:#fff;padding:24px 0 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px}
-.bh-side-h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--bh-light-gray);padding:0 24px 10px}
-.bh-side-h:not(:first-child){margin-top:16px}
-.bh-side-item{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 24px;color:#fff!important;text-decoration:none;font-size:14px;font-weight:500;background:none;border:0;width:100%;text-align:left;font-family:inherit;cursor:pointer;box-sizing:border-box}
-.bh-side-item::before{content:"";width:10px;height:10px;flex:none}
-.bh-side-item:hover{background:var(--bh-slate)}
-.bh-side-item .bh-count{margin-left:auto;font-weight:600}
-.bh-side-item.is-on,.bh-side-item[aria-current]{background:#fff;color:var(--bh-black)!important;font-weight:600}
-.bh-side-item.is-on::before,.bh-side-item[aria-current]::before{background:var(--bh-accent)}
-.bh-side-divider{height:1px;background:var(--bh-slate);margin:20px 24px}
-.bh-menu-btn,.bh-side-close{display:none;width:44px;height:44px;align-items:center;justify-content:center;border:0;cursor:pointer;background:var(--bh-black);color:#fff}
-.bh-side-close{background:var(--bh-slate);align-self:flex-end;margin:0 16px 12px}
-.bh-scrim{display:none}
-
-/* below 960px the menu tucks away and slides out from the left — it never moves to the top */
-@media (max-width:960px){
-  .bh-header{padding:14px 20px}
-  .bh-menu-btn,.bh-side-close{display:flex}
-  .bh-side{position:fixed;top:0;left:0;bottom:0;width:280px;z-index:1000;overflow-y:auto;transform:translateX(-100%);transition:transform .2s ease}
-  body.bh-menu-open .bh-side{transform:none}
-  body.bh-menu-open .bh-scrim{display:block;position:fixed;inset:0;z-index:999;background:rgba(33,30,30,.55);border:0;padding:0}
-  .bh-asof{text-align:left}
-}
-@media (prefers-reduced-motion:reduce){.bh-side{transition:none}}
-
-/* ---------- KPI strip ---------- */
-.bh-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--bh-hairline);border-bottom:1px solid var(--bh-hairline)}
-.bh-kpi{background:#fff;padding:16px 40px}
-.bh-kpi-value{font-size:30px;font-weight:700;line-height:1.1}
-.bh-kpi-value.is-bad{color:var(--bh-bad-ink)} .bh-kpi-value.is-warn{color:var(--bh-warn-ink)}
-@media (max-width:960px){.bh-kpi{padding:12px 20px}.bh-kpi-value{font-size:24px}}
-
-/* ---------- type helpers ---------- */
-.bh-label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--bh-ink-muted)}
-.bh-section-title{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0}
-.bh-caption{font-size:13px;line-height:1.4;color:var(--bh-ink-muted)}
-
-/* ---------- buttons: never red, never green ---------- */
-.bh-btn,.bh-btn-outline{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;font:600 13px/1 var(--bh-font);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;cursor:pointer;border-radius:0}
-.bh-btn{background:var(--bh-black);color:#fff!important;border:0}
-.bh-btn:hover{background:var(--bh-slate)}
-.bh-btn-outline{background:#fff;color:var(--bh-black)!important;border:1px solid var(--bh-slate)}
-.bh-btn-outline:hover{background:var(--bh-cream)}
-
-/* ---------- chips: color only for status in the data ---------- */
-.bh-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;white-space:nowrap;background:var(--bh-light-gray);color:var(--bh-black)}
-.bh-chip.is-ok{background:var(--bh-ok-bg);color:var(--bh-ok-ink)}
-.bh-chip.is-warn{background:var(--bh-warn-bg);color:var(--bh-warn-ink)}
-.bh-chip.is-bad{background:var(--bh-bad-bg);color:var(--bh-bad-ink)}
-.bh-chip.tag-global{background:var(--bh-tag-global-bg);color:var(--bh-tag-global-ink)}
-.bh-chip.tag-warranty{background:var(--bh-tag-warranty-bg);color:var(--bh-tag-warranty-ink)}
-.bh-chip.tag-inactive{background:var(--bh-tag-inactive-bg);color:var(--bh-tag-inactive-ink)}
-
-/* ---------- tables ---------- */
-.bh-table-wrap{overflow-x:auto}
-.bh-table{width:100%;border-collapse:collapse}
-.bh-table th{background:var(--bh-slate);color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-align:left;padding:10px 12px;white-space:nowrap}
-.bh-table td{padding:11px 12px;border-bottom:1px solid var(--bh-hairline);font-size:13px}
-.bh-table tr.is-selected td{background:var(--bh-cream)}
-.bh-table .num{text-align:right}
-
-/* ---------- panels and inputs ---------- */
-.bh-panel{border-top:3px solid var(--bh-black);background:#fff}
-.bh-panel-muted{background:var(--bh-surface-muted);padding:20px 24px}
-.bh-input,.bh-select{min-height:44px;padding:0 12px;border:1px solid var(--bh-slate);border-radius:0;font:14px var(--bh-font);color:var(--bh-ink);background:#fff;box-sizing:border-box}
-
-/* ---------- focus: 2px red ring everywhere ---------- */
-.bh-page :focus-visible{outline:2px solid var(--bh-focus);outline-offset:2px}
-.bh-side :focus-visible{outline-offset:-2px}
-</style>
-<style>
-/* ===== Project Information on the BH shell: PREVIEW (claude/bh-ui-spec.md) =====
-   Restyle only. Every render function, filter, chart and export is unchanged. */
-body.bh-page{background:#fff}
-.bh-page .bh-header .bh-logo{width:auto;height:56px}
-.bh-page h1.bh-desk-name{color:var(--bh-ink);font-size:28px;margin:0}
-.bh-page .bh-side{min-height:calc(100vh - 100px)}
-.bh-page .bh-side-item{border-radius:0;box-shadow:none;justify-content:flex-start;font-family:var(--bh-font)}
-.bh-side-item.sub{min-height:38px;padding-left:44px;font-size:13px}
-.bh-page .wrap{max-width:none;margin:0;padding:24px 40px 40px}
-/* the page's own tab bars stay in the DOM (its code toggles them); the side menu drives them */
-.bh-page #content > .tabs,.bh-page #panProjNav > .tabs{display:none!important}
-.bh-page .banner{border-radius:0}
-.bh-page .fnote{border-radius:0;border:0;border-left:4px solid var(--bh-slate);background:var(--bh-surface-muted)!important;color:var(--bh-ink)}
-.bh-page #map{border-radius:0;box-shadow:none;border-color:var(--bh-hairline)}
-.bh-page .controls label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--bh-ink-muted)}
-.bh-page select,.bh-page input[type=text],.bh-page .ms-btn{border-radius:0!important;border:1px solid var(--bh-slate)!important;min-height:40px;font-family:var(--bh-font)!important}
-.bh-page .ms-panel{border-radius:0;box-shadow:none;border:1px solid var(--bh-slate)}
-.bh-page .ms-tools button{border-radius:0}
-/* KPI tiles -> the shell's KPI strip */
-.bh-page .cards{gap:1px;background:var(--bh-hairline);border:1px solid var(--bh-hairline)}
-.bh-page .card{border:0;border-radius:0;padding:16px 20px;background:#fff}
-.bh-page .card .n{font-size:26px;font-weight:700}
-.bh-page .card .l{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--bh-ink-muted)}
-.bh-page .card.total .n,.bh-page .card.co .n,.bh-page .card.rfi .n{color:var(--bh-black)}
-.bh-page .card.ok .n{color:var(--bh-ok-ink)} .bh-page .card.soon .n{color:var(--bh-warn-ink)} .bh-page .card.nc .n{color:var(--bh-bad-ink)}
-.bh-page .card.sel{outline:3px solid var(--bh-black);outline-offset:-3px}
-.bh-page .kpi3,.bh-page .kcard,.bh-page .dbox,.bh-page .vizbox,.bh-page .varbox,.bh-page .rwrap,.bh-page .pcard{border-radius:0!important;box-shadow:none}
-.bh-page .kpi3 .kt,.bh-page .kcard .kt{color:var(--bh-black)}
-.bh-page .kpi3.acc{border:2px solid var(--bh-black)}
-/* project cards: square, status on the left edge only */
-.bh-page .pcard{border-top-color:var(--bh-hairline);border-right-color:var(--bh-hairline);border-bottom-color:var(--bh-hairline)}
-.bh-page .pname a:hover{color:var(--bh-maroon)}
-.bh-page .chip,.bh-page .pill{border-radius:0}
-.bh-page .chip.stage{background:var(--bh-light-gray);color:var(--bh-black);border-color:var(--bh-light-gray)}
-.bh-page .srclinks a{border-radius:0;border-color:var(--bh-slate)}
-/* tables */
-.bh-page .wtable th,.bh-page .rtable th{background:var(--bh-slate);color:#fff;border-bottom:0;font-weight:600;letter-spacing:.04em}
-.bh-page .wtable tfoot td{border-top:2px solid var(--bh-black);color:var(--bh-black);background:#fafafa}
-.bh-page .wtable tbody tr:hover{background:var(--bh-cream)}
-.bh-page div[style*="border-radius:10px"]{border-radius:0!important}
-.bh-page button[style*="border-radius:8px"]{border-radius:0!important}
-.bh-page footer{border-top:1px solid var(--bh-hairline)}
-/* buyout: a job opens its commitments */
-.bh-page #buyWrap > div > table > thead tr{background:var(--bh-slate)!important}
-.bh-page #buyWrap > div > table > thead th{color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
-/* the Buyout table set its headings right-aligned inline but gave its number cells no
-   rule, so figures sat left under right-aligned headings */
-.bh-page #buyWrap > div > table > tbody > tr:not(.cl-row) > td{padding:8px 10px;vertical-align:top;border-top:1px solid var(--bh-hairline)}
-.bh-page #buyWrap td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-/* any heading with no alignment of its own reads left, like its data (browsers centre th) */
-.bh-page :where(th){text-align:left}
-.bh-page .cl-toggle{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
-.bh-page .cl-toggle b::after{content:" \25B8";font-size:10px;color:var(--bh-ink-muted)}
-.bh-page .cl-toggle[aria-expanded="true"] b::after{content:" \25BE"}
-.bh-page .cl-toggle .cl-hint{display:block;font-size:11px;font-weight:700;color:var(--bh-maroon);margin-top:2px}
-.bh-page .cl-toggle:hover .cl-hint{text-decoration:underline}
-.bh-page tr.cl-row > td{background:#fafafa;padding:0 10px 14px!important}
-.bh-page .cl-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border:1px solid var(--bh-hairline)}
-.bh-page .cl-table th{background:var(--bh-surface-muted);color:var(--bh-ink-muted);font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-align:left;padding:7px 10px}
-.bh-page .cl-table th.num,.bh-page .cl-table td.num{text-align:right}
-.bh-page .cl-table td{padding:8px 10px;border-top:1px solid var(--bh-hairline);vertical-align:top}
-.bh-page .cl-codes{display:grid;grid-template-columns:auto auto 1fr auto;gap:2px 10px;font-size:12px}
-/* codes in their own columns: rows inside one commitment get a hairline, a new commitment a full rule */
-.bh-page .cl-table td{border-top-color:#f1f0f0}
-.bh-page .cl-table tr.cl-first > td{border-top:1px solid var(--bh-hairline)}
-.bh-page .cl-table td.cc{font-weight:700;white-space:nowrap}
-.bh-page .cl-table .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap}
-.bh-page .cl-table .ctn{margin-left:6px;color:var(--bh-ink-muted);font-size:11px;white-space:nowrap}
-.bh-page .cl-table td.cn{color:var(--bh-ink-muted)}
-.bh-page .bo-table{margin-bottom:6px}
-.bh-page .by-table td.by-c{white-space:nowrap}
-.bh-page .by-table td.by-v{font-size:12px}
-.bh-page .by-table td.by-none{color:var(--bh-ink-muted);font-size:12px}
-.bh-page .by-table td.by-why{color:var(--bh-ink-muted);font-size:12px;background:#fafafa}
-.bh-page #dLines{display:none}
-.bh-page #panSum #finCards .card .n{font-size:clamp(17px,1.6vw,26px);white-space:nowrap}
-.bh-page .pf-h{display:flex;align-items:baseline;gap:14px;margin:26px 0 10px;padding-top:16px;border-top:3px solid var(--bh-black)}
-.bh-page .pf-h b{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-.bh-page .pf-h span{font-size:12px;color:var(--bh-ink-muted)}
-.bh-page .pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin:0 0 16px}
-.bh-page .pf-box{background:#fff;border:1px solid var(--bh-hairline);border-top:3px solid var(--bh-black);padding:12px 14px 14px}
-.bh-page .pf-t{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-.bh-page .pf-s{font-size:11.5px;color:var(--bh-ink-muted);margin:2px 0 10px}
-.bh-page .pf-empty{font-size:12.5px;color:var(--bh-ink-muted);padding:16px 0}
-.bh-page .pf-stale{margin-bottom:16px}
-.bh-page .jstrip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;margin:12px 0 4px;background:#fff;border:1px solid var(--bh-hairline)}
-.bh-page .jstrip .js-k{padding:9px 12px;border-right:1px solid var(--bh-hairline)}
-.bh-page .jstrip .js-k:last-child{border-right:0}
-.bh-page .jstrip span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted)}
-.bh-page .jstrip b{font-size:15px;font-weight:800}
-.bh-page #pfKpi{grid-template-columns:repeat(6,minmax(0,1fr))}
-.pf-team #pfKpi,.pf-team #pfBand{display:none!important}
-.bh-page #pfKpi .card{cursor:default;min-width:0}
-.bh-page #pfKpi .card .n{white-space:nowrap;font-size:21px}
-.bh-page .pf-g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
-.bh-page .bm{margin-top:3px;font-size:12.5px;font-weight:600}
-.bh-page .bm a.bm-name{color:var(--bh-ink,#211E1E);text-decoration:none;border-bottom:1px solid var(--bh-hairline)}
-.bh-page .bm a.bm-name:hover{color:var(--bh-red,#ED2B30);border-bottom-color:currentColor}
-.bh-page .bm-sub{font-size:11.5px;color:var(--bh-ink-muted);margin-top:3px;line-height:1.7}
-.bh-page a.cmp-a{text-decoration:none;white-space:nowrap}
-.bh-page a.cmp-a:hover{outline:1px solid currentColor}
-.bh-page .jinfo{background:#fff;border:1px solid var(--bh-hairline);border-top:3px solid var(--bh-black);margin:12px 0 0}
-.bh-page .ji-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bh-hairline)}
-.bh-page .ji-name{font-size:15px;font-weight:800;color:var(--bh-ink,#211E1E);text-decoration:none}
-.bh-page a.ji-name:hover{color:var(--bh-red,#ED2B30)}
-.bh-page .ji-num{font-size:12px;color:var(--bh-ink-muted);font-weight:700}
-.bh-page .ji-comp{margin-left:auto}
-.bh-page .ji-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
-.bh-page .ji-grid>div{padding:8px 12px;border-right:1px solid var(--bh-hairline);min-width:0}
-.bh-page .ji-grid>div:last-child{border-right:0}
-.bh-page .ji-grid span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted)}
-.bh-page .ji-grid b{font-size:13px;font-weight:700;overflow-wrap:anywhere}
-.bh-page .jinfo+.jstrip{margin-top:0;border-top:0}
-@media (max-width:1200px){.bh-page #pfKpi{grid-template-columns:repeat(4,minmax(0,1fr))}.bh-page .ji-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.bh-page .ji-grid>div{border-bottom:1px solid var(--bh-hairline)}}
-@media (max-width:960px){.bh-page .jstrip{grid-template-columns:repeat(3,minmax(0,1fr))}.bh-page .pf-grid,.bh-page .pf-g2{grid-template-columns:1fr}.bh-page #pfKpi{grid-template-columns:repeat(2,minmax(0,1fr))}.bh-page .ji-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.bh-page .chg-table tr.chg-det > td{background:#fafafa;padding:6px 10px 12px}
-.bh-page .by-filter{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 8px}
-.bh-page .by-filter input{font:inherit;font-size:13px;width:min(380px,100%);padding:7px 10px;border:1px solid var(--bh-slate);border-radius:0;background:#fff}
-.bh-page .by-filter select{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--bh-slate);border-radius:0;background:#fff}
-.bh-page .by-filter .by-count{font-size:12px;color:var(--bh-ink-muted)}
-.bh-page .by-table tbody.by-g + tbody.by-g tr.cl-first > td{border-top:1px solid var(--bh-hairline)}
-.bh-page .by-table tr.by-sec > td{background:var(--bh-surface-muted);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bh-ink-muted);padding:8px 10px}
-.bh-page .by-table tr.by-hit > td.cc,.bh-page .by-table tr.by-hit > td.cn{background:var(--bh-cream)}
-.bh-page .cl-views{display:flex;gap:0;padding:12px 0 0;border-bottom:1px solid var(--bh-hairline)}
-.bh-page .cl-views button{font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px 7px;color:var(--bh-ink-muted);cursor:pointer;margin-bottom:-1px}
-.bh-page .cl-views button[aria-selected="true"]{color:var(--bh-ink);border-bottom-color:var(--bh-red)}
-.bh-page .cl-views button:hover{color:var(--bh-ink)}
-.bh-page .bo-table tfoot td{font-weight:700;border-top:2px solid var(--bh-hairline);background:var(--bh-surface-muted)}
-.bh-page .bo-table tr.bo-openrow td{background:#fbf8f2}
-.bh-page .bo-table .bo-sp{font-size:11px;color:var(--bh-ink-muted)}
-.bh-page .bo-table .bo-who{font-size:11.5px;color:var(--bh-ink-muted)}
-.bh-page .bo-neg{color:var(--bh-maroon);font-weight:600}
-.bh-page .bo-st{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;white-space:nowrap;background:var(--bh-light-gray)}
-.bh-page .bo-st.open{background:var(--bh-cream);color:var(--bh-maroon)}
-.bh-page .bo-st.part{background:#fff;border:1px solid var(--bh-slate)}
-.bh-page .bo-st.over{background:#FFC7CE;color:#9C0006}
-.bh-page .cl-codes .cc{font-weight:700;white-space:nowrap}
-.bh-page .cl-codes .ct{font-weight:600;background:var(--bh-light-gray);padding:0 6px;white-space:nowrap;align-self:start}
-.bh-page .cl-codes .cn{color:var(--bh-ink-muted)}
-.bh-page .cl-codes .ca{text-align:right;white-space:nowrap}
-.bh-page .cl-note{font-size:12px;color:var(--bh-ink-muted);padding:10px 0}
-.bh-page .cl-head{display:flex;gap:16px;align-items:baseline;padding:12px 0 8px;font-size:12px;color:var(--bh-ink-muted)}
-.bh-page .cl-head b{color:var(--bh-ink);font-size:13px}
-.bh-page .cl-st{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--bh-light-gray);padding:2px 6px;white-space:nowrap}
-.bh-page .cl-st.appr{background:var(--bh-cream);color:var(--bh-maroon)}
-.bh-page .cl-st.out{background:#fff;border:1px solid var(--bh-slate)}
-@media (max-width:960px){.bh-page .wrap{padding:16px 20px 32px}.bh-page .bh-header>a.bh-btn-outline{display:none}.bh-page .card .n{font-size:19px}.bh-page .cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
-@media (max-width:1280px){.bh-page .card .n{font-size:22px}}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="msal-browser.min.js"></script>
+<script src="leaflet/leaflet.js"></script>
+<script src="chart.umd.min.js"></script>
 </head>
-<body class="bh-page">
+<body>
 <div class="bh-topbar"></div>
-<header class="bh-header">
-  <button class="bh-menu-btn" aria-label="Open menu" aria-expanded="false">&#9776;</button>
-  <a href="https://dashboard.baileyharris.com/" aria-label="All desks"><img class="bh-logo" src="data:image/png;base64,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" alt="Bailey-Harris"></a>
-  <div><h1 class="bh-desk-name">Project Information</h1><div class="bh-desk-sub">Every job: team, contract, financials, buyout and projections, from Procore, Billy and ComputerEase</div></div>
-  <div class="bh-header-spacer"></div>
-  <div class="bh-asof"><span class="bh-label">Data as of</span><strong id="asof">loading…</strong></div>
-  <a class="bh-btn-outline" href="https://dashboard.baileyharris.com/">All desks</a>
-  <div class="bh-avatar" id="bhAvatar">&ndash;</div>
-</header>
-<div class="bh-layout">
-  <nav class="bh-side" aria-label="Project Information sections">
-    <button class="bh-side-close" aria-label="Close menu">&#10005;</button>
-    <div class="bh-side-h">Views</div>
-    <button class="bh-side-item" data-tab="summary">Overview</button>
-    <button class="bh-side-item" data-tab="financials">Financials &amp; Buyout</button>
-    <button class="bh-side-item" data-tab="profitability">WIP</button>
-    <button class="bh-side-item" data-tab="projections">Projections</button>
-    <button class="bh-side-item sub" data-tab="projections" data-sub="forecast">Forecasting</button>
-    <button class="bh-side-item sub" data-tab="projections" data-sub="monthly">Monthly projections</button>
-    <button class="bh-side-item sub" data-tab="projections" data-sub="trends">Trends</button>
-    <button class="bh-side-item" data-tab="detail">Project Detail</button>
-    <button class="bh-side-item" data-tab="reconciliation">Sync</button>
-    <div class="bh-side-divider"></div>
-    <div class="bh-side-h">Other desks</div>
-    <a class="bh-side-item" href="https://dashboard.baileyharris.com/ap/">AP Desk</a>
-    <a class="bh-side-item" href="https://compliance.baileyharris.com">Compliance Desk</a>
-    <a class="bh-side-item" href="https://dashboard.baileyharris.com/precon/">Precon Desk</a>
-    <a class="bh-side-item" href="https://dashboard.baileyharris.com/prequal/">Prequal &amp; Sub Rating</a>
-  </nav>
-  <button class="bh-scrim" aria-label="Close menu"></button>
-  <main class="bh-main">
+<header class="bh-banner"><div class="bh-banner-inner"><img class="bh-logo" src="data:image/png;base64,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" alt="Bailey-Harris Construction">
+<div class="bh-titles"><div class="bh-title">Project Information</div><div class="bh-sub">Procore + Billy + Alabama &middot; <span id="asof">loading…</span></div></div><span class="bh-badge">&#9679; LIVE</span></div></header>
 <div class="wrap">
-  <div class="banner" style="background:var(--bh-surface-muted);border:0;border-left:4px solid var(--bh-slate);color:var(--bh-ink);margin-bottom:14px">Project data is pulled twice a day, at 5:00 AM and 3:00 PM Central. Refresh your browser and check the &ldquo;data as of&rdquo; time above for the latest pull.</div>
+  <div class="banner" style="background:#eef4ff;border-color:#c3d6f5;color:#1F3864;margin-bottom:14px">&#128260; Project data is pulled twice a day, at 5:00 AM and 3:00 PM Central. Refresh your browser and check the &ldquo;data as of&rdquo; time above for the latest pull.</div>
   <div id="banner" class="banner" style="display:none"></div>
   <div id="content"><div class="loading">Loading project data from SharePoint…</div></div>
   <footer id="foot"></footer>
-</div>
-  </main>
 </div>
 <script>
 const MSAL_CLIENT_ID='1825a1c0-1ce3-4078-aeb7-a4714562c422';   // BH Dashboards app (hosts the desks)
@@ -537,7 +223,7 @@ let CEHIST=null, ASOF='live';   // CE monthly history + as-of month for Financia
 const TARGET_MARGIN=10;   // target projected margin % (adjust to your goal) — drawn as a reference line
 let RECFILTER='all';      // Sync Reconciliation tile filter
 let TRMETRIC='billings', TRBASIS='avg', TRCHART=null;   // Trends tab: metric + basis + chart
-const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});
+const msalApp=new msal.PublicClientApplication({auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'localStorage'}});
 async function getToken(){ await msalApp.initialize(); const redir=await msalApp.handleRedirectPromise(); let acct=(redir&&redir.account)||msalApp.getAllAccounts()[0]; if(!acct){ await msalApp.loginRedirect({scopes:SCOPES}); return null;} msalApp.setActiveAccount(acct); try{const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct});return t.accessToken;}catch(e){await msalApp.acquireTokenRedirect({scopes:SCOPES});return null;} }
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
@@ -560,25 +246,7 @@ function projOf(r){
   return {contract,eac,cost,margin,marginPct:contract?margin/contract*100:null,pct:pct*100,revRec,remaining,months,monthly,compl};
 }
 function monthLabels(n){ const out=[]; const t=new Date(); for(let i=0;i<n;i++){ const d=new Date(t.getFullYear(),t.getMonth()+i,1); out.push(d.toLocaleString(undefined,{month:'short',year:'2-digit'})); } return out; }
-/* Project data comes through the Dashboard Worker (data.baileyharris.com), which sends
-   leadership every job and everyone else only the jobs whose Procore team lists them.
-   Direct Graph is the fallback only while the Worker is unreachable (before it is
-   deployed); once the files are locked down that fallback simply gets no access. */
-const DATA_API='https://data.baileyharris.com';
-let DATA_ME=null, DATA_VIA='', DATA_DOWN=false;
-async function idTok(force){ const acct=msalApp.getActiveAccount()||msalApp.getAllAccounts()[0]; if(!acct) return null;
-  try{ const t=await msalApp.acquireTokenSilent({scopes:SCOPES,account:acct,forceRefresh:!!force}); return t.idToken||null; }catch(e){ return null; } }
-async function apiGet(route){
-  for(let i=0;i<2;i++){ const t=await idTok(i>0); if(!t) return null;
-    if(DATA_DOWN) return null;
-    let r; try{ r=await fetch(DATA_API+route,{headers:{Authorization:'Bearer '+t},cache:'no-store'}); }catch(e){ DATA_DOWN=true; return null; }   // unreachable: stop trying this page load
-    if(r.status===401&&i===0) continue;   // stale ID token: refresh once
-    return r; }
-  return null;
-}
 async function fetchFile(token, path){
-  if(DATA_API){ const r=await apiGet('/file?path='+encodeURIComponent(path)); if(r){ DATA_VIA='worker'; return r; } }
-  DATA_VIA='graph';
   const H={Authorization:'Bearer '+token};
   try{ const s=await fetch('https://graph.microsoft.com/v1.0/sites/'+SITE_PATH,{headers:H});
     if(s.ok){ const sid=(await s.json()).id;
@@ -590,8 +258,7 @@ async function load(){
   try{
     const token=await getToken(); if(!token) return;
     const res=await fetchFile(token, PROJECTS_PATH);
-    if(res.status===403) throw new Error(DATA_VIA==='worker'?'Project financials are shown to leadership and to each job\u2019s Procore team. Your account is not on the team of any job. If that is wrong, ask the PM to add you to the job in Procore; access follows on the next project data pull.':'You do not have access to the project data.');
-    if(!res.ok) throw new Error('Data HTTP '+res.status+' (could not read projects_data.json)');
+    if(!res.ok) throw new Error('Graph HTTP '+res.status+' (need access to projects_data.json)');
     const data=await res.json();
     ROWS=(data.projects||[]).filter(r=>!/\bFY\s?\d{2,4}\b/i.test((r.project||'')+' '+(r.project_number||'')));  // drop internal FY-tracking projects
     GENERATED=data.generated_at||'';
@@ -615,7 +282,7 @@ async function load(){
     try{ computeGaps(); }catch(e){ console.error('gaps',e); }
     try{ const ch=await fetchFile(token, COSTHIST_PATH); if(ch.ok){ COSTHIST=await ch.json(); } }catch(e){ COSTHIST=null; }
     try{ const hr=await fetchFile(token, CEHIST_PATH); if(hr.ok){ CEHIST=await hr.json(); } }catch(e){ CEHIST=null; }
-    document.getElementById('asof').textContent=GENERATED?(new Date(GENERATED).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')):'';
+    document.getElementById('asof').textContent=GENERATED?('data as of '+new Date(GENERATED).toLocaleString()+(CE_GENERATED?' · CE '+new Date(CE_GENERATED).toLocaleString():'')):'';
     buildUI();
   }catch(e){ const b=document.getElementById('banner'); b.style.display='block'; b.className='banner err'; b.textContent='Sign-in or data load failed: '+(e&&e.message||e); document.getElementById('content').innerHTML=''; }
 }
@@ -865,7 +532,7 @@ function updateMsBtn(){
    lines import has re-run - it just shows the total, as before. */
 function contSplit(j){
   const cs=j&&j.contingency_cats;
-  if(!Array.isArray(cs)||!cs.length) return '';
+  if(!Array.isArray(cs)||cs.length<2) return '';
   const nm=c=>esc(c.name||((ROLLUP&&ROLLUP.contingency_phase)||'50')+'-'+c.cat);
   return '<div class="csplit">'+cs.filter(c=>c.eac||c.budget)
     .map(c=>nm(c)+' <b>'+money(c.eac)+'</b>').join(' &middot; ')+'</div>';
@@ -906,32 +573,30 @@ function renderBuyout(list){
   const due=sorted.filter(flag);
   const totalLeft=rows.reduce((a,j)=>a+(j.contingency_eac||0),0);
   const dueLeft=due.reduce((a,j)=>a+(j.contingency_eac||0),0);
-  const head='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#127919; <b>Buyout status &amp; potential fee.</b> '
+  const head='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#127919; <b>Buyout status &amp; contingency.</b> '
     +'Coverage is commitments &divide; budget excluding fee &mdash; a live stand-in for &ldquo;buyout complete&rdquo;, since no milestone date is pulled. '
-    +'Phase '+esc(String((ROLLUP&&ROLLUP.contingency_phase)||'50'))+' is Bailey-Harris&rsquo;s own reserve &mdash; 50-010 Potential Fee and 50-020 Buyout &mdash; not the owner&rsquo;s contingency or allowances (phase 00). '
-    +'While its <b>EAC</b> stays on budget it is projected as cost and is <b>not</b> in projected margin; releasing it moves it into margin. '
+    +'Contingency remaining is the phase '+esc(String((ROLLUP&&ROLLUP.contingency_phase)||'50'))+' <b>EAC</b>: still projected as cost, so it reaches profit only if released. '
     +'<b>'+due.length+' job'+(due.length===1?'':'s')+'</b> past '+BUYOUT_COVER_FLAG+'% bought out still '+(due.length===1?'holds':'hold')+' <b>'+money(dueLeft)+'</b> unreleased'
     +(rows.length>due.length?(' (portfolio total '+money(totalLeft)+')'):'')+'.</div>';
   const note=j=>{
     if(j.buyout_pct==null) return '<span style="color:#7a828f">no budget basis</span>';
     if(!j.contingency_eac) return (j.contingency_budget>0)
-      ? '<span style="color:#1a7f37">fully released &mdash; '+money(j.contingency_budget)+' now in projected margin</span>'
-      : '<span style="color:#7a828f">no phase 50 reserve carried</span>';
-    if(flag(j)) return '<b>'+j.buyout_pct.toFixed(1)+'% bought out with '+money(j.contingency_eac)+' still held</b> &mdash; due a release decision';
-    return j.buyout_pct.toFixed(1)+'% bought out &mdash; '+money(j.contingency_eac)+' held, not yet in margin';
+      ? '<span style="color:#1a7f37">fully released &mdash; '+money(j.contingency_budget)+' moved to profit</span>'
+      : '<span style="color:#7a828f">no contingency carried</span>';
+    if(flag(j)) return '<b>'+j.buyout_pct.toFixed(1)+'% bought out with '+money(j.contingency_eac)+' unreleased</b> &mdash; due a release decision';
+    return j.buyout_pct.toFixed(1)+'% bought out &mdash; '+money(j.contingency_eac)+' still held against risk';
   };
   const body=sorted.map(j=>{
     const rel=j.contingency_released||0;
     return '<tr'+(flag(j)?' style="background:#fffbf0"':'')+'>'
-      +'<td><button type="button" class="cl-toggle" aria-expanded="false" data-job="'+esc(j.job_no)+'" title="Show this job\u2019s commitments and the cost codes they are tied to"><b>'+esc(j.job_no)+'</b><span class="cl-hint">Commitments &amp; cost codes</span></button>'+buyMeta(j.job_no,j.job_name)+'</td>'
+      +'<td><b>'+esc(j.job_no)+'</b><div style="color:#7a828f;font-size:12px">'+esc(j.job_name||'')+'</div></td>'
       +'<td class="num">'+money(j.budget_ex_fee)+'</td>'
       +'<td class="num">'+money(j.committed)+'</td>'
       +'<td class="num">'+(j.buyout_pct==null?'&mdash;':(j.buyout_pct.toFixed(1)+'%'))+'</td>'
       +'<td class="num">'+money(j.contingency_budget)+'</td>'
       +'<td class="num">'+(rel?('<span style="color:#1a7f37">'+money(rel)+'</span>'):'&mdash;')+'</td>'
       +'<td class="num"><b>'+money(j.contingency_eac)+'</b>'+contSplit(j)+'</td>'
-      +'<td>'+note(j)+'</td></tr>'
-      +'<tr class="cl-row" data-job="'+esc(j.job_no)+'" hidden><td colspan="8"></td></tr>';
+      +'<td>'+note(j)+'</td></tr>';
   }).join('');
   out.innerHTML=head
     +'<div style="background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:0;margin-bottom:16px;overflow:auto">'
@@ -939,17 +604,15 @@ function renderBuyout(list){
     +'<thead><tr style="background:#f7f9fc;text-align:left">'
     +'<th style="padding:8px 10px">Job</th><th style="padding:8px 10px;text-align:right">Budget ex-fee</th>'
     +'<th style="padding:8px 10px;text-align:right" title="Procore commitments \u2014 subcontracts and purchase orders. This is contract VALUE, not cost incurred, which is why it does not match ComputerEase\u2019s committed figure.">Commitments</th><th style="padding:8px 10px;text-align:right">Bought out</th>'
-    +'<th style="padding:8px 10px;text-align:right" title="Phase 50: 50-010 Potential Fee and 50-020 Buyout. Bailey-Harris money inside the contract, not owner contingency.">Potential fee &amp; buyout reserve (50)</th><th style="padding:8px 10px;text-align:right">Released &rarr; in margin</th>'
-    +'<th style="padding:8px 10px;text-align:right">Still held (not in margin)</th><th style="padding:8px 10px">What it means</th>'
+    +'<th style="padding:8px 10px;text-align:right">Contingency</th><th style="padding:8px 10px;text-align:right">Released</th>'
+    +'<th style="padding:8px 10px;text-align:right">Remaining</th><th style="padding:8px 10px">What it means</th>'
     +'</tr></thead><tbody>'+body+'</tbody></table></div>'
     +'<div style="color:#7a828f;font-size:12px;margin:-8px 0 16px">Basis: '
     +esc(String((rows[0]&&(rows[0].basis_label||rows[0].basis))||''))
-    +'. Coverage is a proxy for buyout completion, not a milestone date. Click a job number to see its commitments and their cost codes.'
+    +'. Coverage is a proxy for buyout completion, not a milestone date.'
     +(rows.some(j=>Array.isArray(j.contingency_cats)&&j.contingency_cats.length)?''
-      :' Phase 50 is shown as a total &mdash; the split into Potential Fee and Buyout appears after the next Budget snapshot LINES import.')
+      :' Contingency is shown as a phase total &mdash; the per-category split (Potential Fee vs Buyout) appears after the next Budget snapshot LINES import.')
     +'</div>';
-  /* one job in view: open its commitments straight away rather than waiting for a click */
-  if(sorted.length===1){ const tg=out.querySelector('.cl-toggle'); if(tg&&tg.getAttribute('aria-expanded')!=='true') tg.click(); }
 }
 
 
@@ -2265,772 +1928,7 @@ function fcard(r){
     +'<div class="srclinks"><a href="'+esc(s.contract)+'" target="_blank">Prime contract / COs</a><a href="'+esc(s.budget)+'" target="_blank">Budget (Cost Projections)</a><a href="'+esc(s.project)+'" target="_blank">Procore project</a></div>'
     +'</div>';
 }
-/* ---- commitments with cost codes and types (Financials & Buyout) ----------------
-   commitment_lines.json is written by commitment_lines_pull.js beside projects_data.json:
-   per job, each subcontract and PO with its Procore line items rolled up by cost code and
-   cost type. Loaded once, on the first job opened. */
-const CL_PATH='Compliance Dashboard/commitment_lines.json';
-let CL=null, CLERR='', CLBUSY=null;
-async function clLoad(){
-  if(CL||CLERR) return;
-  if(CLBUSY) return CLBUSY;
-  CLBUSY=(async()=>{ try{ const token=await getToken(); if(!token){ CLERR='Not signed in.'; return; }
-      const res=await fetchFile(token, CL_PATH);
-      if(res.status===404){ CLERR='commitment_lines.json has not been published yet. The Commitment line items pull writes it; the first full read takes about two nights.'; return; }
-      if(!res.ok){ CLERR='Could not read commitment_lines.json (HTTP '+res.status+').'; return; }
-      CL=await res.json();
-    }catch(e){ CLERR='Could not read commitment_lines.json: '+((e&&e.message)||e); } })();
-  return CLBUSY;
-}
-function clStatus(c){
-  if(c.executed) return '<span class="cl-st">Executed</span>';
-  /* v2.0 lists write statuses in lower case and may use underscores (out_for_signature) */
-  if(/out[\s_-]*for[\s_-]*signature/i.test(c.status||'')) return '<span class="cl-st out">Out for signature</span>';
-  if(/approved/i.test(c.status||'')) return '<span class="cl-st appr">Approved, not executed</span>';
-  const st=String(c.status||'').replace(/_/g,' ');
-  return '<span class="cl-st">'+esc(st?st.charAt(0).toUpperCase()+st.slice(1):'\u2014')+'</span>';
-}
-function clHtml(job){
-  if(CLERR) return '<div class="cl-note">'+esc(CLERR)+'</div>';
-  const j=CL&&CL.projects&&CL.projects[String(job)];
-  if(!j) return '<div class="cl-note">No commitments for '+esc(job)+' in commitment_lines.json (it covers active and warranty jobs).</div>';
-  const list=(j.commitments||[]).slice().sort((a,b)=>String(a.number).localeCompare(String(b.number)));
-  const coded=list.filter(c=>Array.isArray(c.codes)).length;
-  /* One row per cost code + type. A commitment on several codes spans that many rows,
-     so codes, types and amounts sit in their own aligned columns. */
-  const rows=list.map(c=>{
-    const head=(span)=>{
-      const rs=span>1?' rowspan="'+span+'"':'';
-      return '<td'+rs+'><b>'+esc(c.number||'')+'</b><div style="color:var(--bh-ink-muted);font-size:11px">'+(c.kind==='PO'?'Purchase order':'Subcontract')+'</div></td>'
-        +'<td'+rs+'>'+esc(c.vendor||'')+'<div style="color:var(--bh-ink-muted);font-size:11px">'+esc(c.title||'')+'</div></td>'
-        +'<td'+rs+'>'+clStatus(c)+'</td><td class="num"'+rs+'>'+money(c.value)+'</td>';
-    };
-    if(!Array.isArray(c.codes)||!c.codes.length)
-      return '<tr class="cl-first">'+head(1)+'<td colspan="4"><span class="cl-note">'
-        +(!Array.isArray(c.codes)?'Line items not read yet; the next pull picks them up.':'No line items in Procore.')+'</span></td></tr>';
-    return c.codes.map((x,i)=>'<tr'+(i?'':' class="cl-first"')+'>'+(i?'':head(c.codes.length))
-      +'<td class="cc">'+esc(x.code||'(no code)')+'</td>'
-      +'<td><span class="ct" title="'+esc(x.type_name||'')+'">'+esc(x.type||'\u2014')+'</span>'+(x.type_name?'<span class="ctn">'+esc(x.type_name)+'</span>':'')+'</td>'
-      +'<td class="cn">'+esc(x.name||'')+'</td>'
-      +'<td class="num">'+money(x.amount)+'</td></tr>').join('');
-  }).join('');
-  return '<div class="cl-head"><b>'+list.length+' commitment'+(list.length===1?'':'s')+'</b>'
-    +'<span>'+coded+' with cost codes read</span>'
-    +(()=>{ const ne=list.filter(c=>!c.executed && !/draft|void|terminat/i.test(String(c.status||'')));
-            const amt=ne.reduce((t,c)=>t+(+c.value||0),0);
-            return ne.length?'<span><b style="font-size:12px;color:var(--bh-maroon)">'+ne.length+' not executed</b> &middot; '+money(amt)+' committed without a signed contract</span>':'<span>All executed</span>'; })()
-    +(j.list_error?'<span>'+esc(j.list_error)+'</span>':'')
-    +'<span style="margin-left:auto">As of '+esc(CL.generated_at?new Date(CL.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+'</span></div>'
-    +(list.length?'<table class="cl-table"><thead><tr><th>Commitment</th><th>Trade partner / title</th><th>Status</th><th class="num">Value</th><th>Cost code</th><th>Type</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'
-                 :'<div class="cl-note">No subcontracts or purchase orders on this job.</div>');
-}
-/* ---- buyout by cost code (Financials & Buyout) -------------------------------------
-   Budget vs committed per cost code, from the job's snapshot_lines file (Current = the live
-   budget). Left out: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)
-   and self-performed work - labor cost types, read from the cost-type split the snapshot
-   import writes on `current.types`. Until that split exists for a job, self-perform cannot
-   be separated and the table says so. */
-const BO_EXCL_PHASE={'00':'allowances','01':'general conditions','50':'contingency','90':'fee'};
-const BO_SP_TYPES=new Set(['L','T','P']);   // labor, temp labor, overtime labor = self-perform
-const BOF={}, BOBUSY={};
-async function boLoad(job){
-  if(BOF[job]!==undefined) return; if(BOBUSY[job]) return BOBUSY[job];
-  BOBUSY[job]=(async()=>{ try{ const token=await getToken(); if(!token){ BOF[job]={err:'Not signed in.'}; return; }
-      const res=await fetchFile(token, SNAPLINES_DIR+'/'+job+'.json');
-      BOF[job]= res.ok ? await res.json() : {err: res.status===404 ? 'No budget-code file for this job yet.' : 'Could not read the budget codes (HTTP '+res.status+').'};
-    }catch(e){ BOF[job]={err:'Could not read the budget codes: '+((e&&e.message)||e)}; } })();
-  return BOBUSY[job];
-}
-const boBase=k=>String(k).split(' - ')[0].trim();
-const boName=k=>{ const i=String(k).indexOf(' - '); return i>=0?String(k).slice(i+3).trim():''; };
-function boHtml(job){
-  const f=BOF[job];
-  if(!f) return '';
-  if(f.err) return '<div class="cl-note">Buyout by cost code: '+esc(f.err)+'</div>';
-  const cur=f.current; if(!cur||!cur.rows) return '<div class="cl-note">Buyout by cost code: the live budget has not been read for this job yet.</div>';
-  const types=cur.types||null;
-  /* which commitments sit on each code, from commitment_lines.json */
-  const byCode={}; const j=CL&&CL.projects&&CL.projects[String(job)];
-  for(const c of ((j&&j.commitments)||[])) for(const x of (c.codes||[])){ const k=String(x.code||''); (byCode[k]=byCode[k]||new Set()).add(c.number); }
-  const lines=[];
-  for(const key of Object.keys(cur.rows)){
-    const base=boBase(key), ph=base.split('-')[0];
-    if(!/^\d{2}-/.test(base) || BO_EXCL_PHASE[ph]) continue;
-    const v=cur.rows[key]||[0,0,0,0];
-    let budget=+v[0]||0, sp=0; const committed=+v[2]||0;
-    if(types&&types[key]) for(const t in types[key]) if(BO_SP_TYPES.has(t)) sp+=(+types[key][t][0]||0);
-    budget-=sp;
-    if(Math.abs(budget)<0.005 && Math.abs(committed)<0.005) continue;
-    let st;
-    if(committed<0.005) st=['open','Not bought out'];
-    else if(committed>budget+0.5) st=['over','Over budget'];
-    else if(committed<budget*0.95) st=['part','Partly bought out'];
-    else st=['done','Bought out'];
-    lines.push({base,name:boName(key),budget,committed,sp,st,who:Array.from(byCode[base]||[])});
-  }
-  lines.sort((a,b)=>a.base.localeCompare(b.base));
-  if(!lines.length) return '<div class="cl-note">Buyout by cost code: no subcontract or material scope on this job outside general conditions and self-perform.</div>';
-  const S=(arr,k)=>arr.reduce((a,x)=>a+x[k],0);
-  const tb=S(lines,'budget'), tc=S(lines,'committed');
-  /* savings only on codes that are fully bought out (or over): on a partly bought-out code
-     the remainder is scope still to buy, not money saved */
-  const done=lines.filter(x=>x.st[0]==='done'||x.st[0]==='over');
-  const savings=done.reduce((a,x)=>a+(x.budget-x.committed),0);
-  const open=lines.filter(x=>x.st[0]==='open'), part=lines.filter(x=>x.st[0]==='part');
-  const openAmt=S(open,'budget')+part.reduce((a,x)=>a+(x.budget-x.committed),0);
-  const pct=tb>0?(tc/tb*100):null;
-  const vcell=x=> x.committed<0.005 ? '<span style="color:var(--bh-ink-muted)">&mdash;</span>'
-      : x.st[0]==='part' ? '<span style="color:var(--bh-ink-muted)">'+money(x.budget-x.committed)+' to buy</span>'
-      : (x.budget-x.committed>=0 ? money(x.budget-x.committed) : '<span class="bo-neg">('+money(x.committed-x.budget)+')</span>');
-  const body=lines.map(x=>'<tr'+(x.st[0]==='open'?' class="bo-openrow"':'')+'>'
-      +'<td class="cc">'+esc(x.base)+'</td><td class="cn">'+esc(x.name)
-        +(x.sp>0.005?'<div class="bo-sp">'+money(x.sp)+' self-perform left out</div>':'')+'</td>'
-      +'<td class="num">'+money(x.budget)+'</td><td class="num">'+money(x.committed)+'</td><td class="num">'+vcell(x)+'</td>'
-      +'<td><span class="bo-st '+x.st[0]+'">'+x.st[1]+'</span></td>'
-      +'<td class="bo-who">'+(x.who.length?x.who.map(esc).join(', '):'')+'</td></tr>').join('');
-  return '<div class="cl-head"><b>Buyout by cost code</b>'
-      +'<span>'+(pct==null?'':pct.toFixed(1)+'% of '+money(tb)+' bought out')+'</span>'
-      +'<span>Savings on bought-out codes <b style="font-size:12px">'+(savings>=0?money(savings):'('+money(-savings)+')')+'</b></span>'
-      +'<span>'+((open.length||part.length)?'<b style="font-size:12px;color:var(--bh-maroon)">'+money(openAmt)+'</b> still to buy out'+(open.length?' &middot; '+open.length+' code'+(open.length===1?'':'s')+' with no commitment':''):'Every code has a commitment')+'</span></div>'
-    +'<table class="cl-table bo-table"><thead><tr><th>Cost code</th><th>Description</th><th class="num">Buyout budget</th><th class="num">Committed</th><th class="num">Savings / (overrun)</th><th>Status</th><th>Commitments</th></tr></thead><tbody>'+body+'</tbody>'
-    +'<tfoot><tr><td></td><td>Total &mdash; '+lines.length+' code'+(lines.length===1?'':'s')+'</td><td class="num">'+money(tb)+'</td><td class="num">'+money(tc)+'</td><td class="num">'+(savings>=0?money(savings):'<span class="bo-neg">('+money(-savings)+')</span>')+'</td><td colspan="2"></td></tr></tfoot></table>'
-    +'<div class="cl-note" style="padding-top:6px">Left out: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)'
-      +(types?' and self-performed labor.':'. <b>Self-performed labor is still included</b> &mdash; the cost-type split arrives with the next Budget snapshot LINES import.')
-      +' Savings counts only fully bought-out codes; anything not yet committed is scope still to buy, not savings.</div>';
-}
-/* Two views of one job's buyout, one at a time: by cost code (default) and by commitment.
-   The choice carries over to the next job opened in this visit. */
-let CLVIEW='code';
-/* Commitment-first buyout (Tiffany, 16 Oct): each subcontract / PO, then the cost codes it
-   is written against. "Amount" is the part of the commitment's value booked to that code (a
-   commitment split over several codes shows one line per code). Code budget and status are
-   the CODE's buyout position across every commitment on it, so a code shared by two
-   commitments shows the same budget on both - the tooltip says how many share it.
-   Codes nobody has committed to yet are listed after the commitments as open scope.
-   A filter box narrows the table to a cost code, trade partner or commitment number. */
-function buyHtml(job){
-  const f=BOF[job];
-  if(!f||f.err||!f.current||!f.current.rows) return (f&&f.err?'<div class="cl-note">Buyout by cost code: '+esc(f.err)+'</div>':'')+clHtml(job);
-  if(CLERR) return boHtml(job)+'<div class="cl-note">'+esc(CLERR)+'</div>';
-  const cur=f.current, types=cur.types||null;
-  const j=CL&&CL.projects&&CL.projects[String(job)];
-  const list=((j&&j.commitments)||[]).slice().sort((a,b)=>String(a.number).localeCompare(String(b.number)));
-  /* code-level buyout position */
-  const names={}, inTable=new Set(), onCode={};
-  for(const key of Object.keys(cur.rows)){ const b=boBase(key), ph=b.split('-')[0]; names[b]=key; if(/^\d{2}-/.test(b)&&!BO_EXCL_PHASE[ph]) inTable.add(b); }
-  for(const c of list) for(const x of (c.codes||[])){ const b=String(x.code||''); (onCode[b]=onCode[b]||new Set()).add(c); }
-  const pos={};
-  const codeOf=b=>{
-    if(pos[b]) return pos[b];
-    const key=names[b]; const v=key?cur.rows[key]:[0,0,0,0]; const ph=b.split('-')[0];
-    let budget=+v[0]||0, sp=0, committed=+v[2]||0;
-    if(!key){ committed=0; for(const c of (onCode[b]||[])) for(const x of (c.codes||[])) if(String(x.code)===b) committed+=(+x.amount||0); }
-    if(types&&key&&types[key]) for(const t in types[key]) if(BO_SP_TYPES.has(t)) sp+=(+types[key][t][0]||0);
-    budget-=sp;
-    const excluded=!/^\d{2}-/.test(b)||!!BO_EXCL_PHASE[ph];
-    let st;
-    if(excluded) st=['excl', BO_EXCL_PHASE[ph]?('Not in buyout ('+BO_EXCL_PHASE[ph]+')'):'Not in buyout'];
-    else if(committed<0.005) st=['open','Not bought out'];
-    else if(committed>budget+0.5) st=['over', key?'Over budget':'No budget line'];
-    else if(committed<budget*0.95) st=['part','Partly bought out'];
-    else st=['done','Bought out'];
-    return (pos[b]={base:b,name:key?boName(key):'(not in the budget)',budget,committed,sp,st,excluded,shared:(onCode[b]||new Set()).size});
-  };
-  const lines=[]; for(const b of new Set([...inTable, ...Object.keys(onCode)])){ const p=codeOf(b); if(p.excluded) continue;
-    if(Math.abs(p.budget)<0.005&&Math.abs(p.committed)<0.005&&!p.shared) continue; lines.push(p); }
-  /* summary, same rules as before */
-  const S=(arr,k)=>arr.reduce((a,x)=>a+x[k],0);
-  const tb=S(lines,'budget'), tc=S(lines,'committed');
-  const done=lines.filter(x=>x.st[0]==='done'||x.st[0]==='over');
-  const savings=done.reduce((a,x)=>a+(x.budget-x.committed),0);
-  const open=lines.filter(x=>x.st[0]==='open').sort((a,b)=>a.base.localeCompare(b.base)), part=lines.filter(x=>x.st[0]==='part');
-  const toBuy=S(open,'budget')+part.reduce((a,x)=>a+(x.budget-x.committed),0);
-  const ne=list.filter(c=>!c.executed && !/draft|void|terminat/i.test(String(c.status||'')));
-  const neAmt=ne.reduce((t,c)=>t+(+c.value||0),0);
-  const pct=tb>0?(tc/tb*100):null;
-  const sv=v=>v>=0?money(v):'<span class="bo-neg">('+money(-v)+')</span>';
-  const stCell=p=>{
-    const tip=p.excluded?'':(' title="'+esc('Code '+p.base+': buyout budget '+money(p.budget)+', committed '+money(p.committed)+' across '+p.shared+' commitment'+(p.shared===1?'':'s'))+'"');
-    const extra=p.st[0]==='part'?'<div class="bo-sp">'+money(p.budget-p.committed)+' still to buy</div>'
-      :(p.st[0]==='over'?'<div class="bo-sp bo-neg">'+money(p.committed-p.budget)+' over</div>'
-      :(p.st[0]==='done'&&p.budget-p.committed>0.5?'<div class="bo-sp">'+money(p.budget-p.committed)+' saved</div>':''));
-    return '<td'+tip+'><span class="bo-st '+p.st[0]+'">'+p.st[1]+'</span>'+extra+'</td>';
-  };
-  /* one tbody per commitment, so the filter can hide a whole commitment at once */
-  const groups=list.map(c=>{
-    const codes=Array.isArray(c.codes)?c.codes:null;
-    /* roll a commitment's lines up by code (a code can carry more than one cost type) */
-    const by={}; for(const x of (codes||[])){ const b=String(x.code||''); const e=by[b]||(by[b]={code:b,amt:0,types:new Set()}); e.amt+=(+x.amount||0); if(x.type) e.types.add(x.type); }
-    const cl=Object.values(by).sort((a,b)=>a.code.localeCompare(b.code));
-    const find=[c.number,c.vendor,c.title].concat(cl.map(e=>e.code+' '+codeOf(e.code).name)).join(' ').toLowerCase();
-    const n=Math.max(1,cl.length), rs=n>1?' rowspan="'+n+'"':'';
-    const head='<td'+rs+' class="by-c"><b>'+esc(c.number||'')+'</b><div class="bo-sp">'+(c.kind==='PO'?'Purchase order':'Subcontract')+'</div></td>'
-      +'<td'+rs+'>'+esc(c.vendor||'')+'<div class="bo-sp">'+esc(c.title||'')+'</div></td>'
-      +'<td'+rs+'>'+clStatus(c)+'</td><td class="num"'+rs+'>'+money(c.value)+'</td>';
-    let rows;
-    if(!cl.length) rows='<tr class="cl-first">'+head+'<td colspan="5" class="by-none">'+(!codes?'Line items not read yet; the next commitment pull picks them up.':'No line items in Procore.')+'</td></tr>';
-    else rows=cl.map((e,i)=>{ const p=codeOf(e.code);
-      return '<tr'+(i?'':' class="cl-first"')+' data-code="'+esc(e.code)+'" data-st="'+p.st[0]+'">'+(i?'':head)
-        +'<td class="cc">'+esc(e.code)+(e.types.size?' <span class="ct">'+esc([...e.types].join('/'))+'</span>':'')+'</td>'
-        +'<td class="cn">'+esc(p.name)+'</td><td class="num">'+money(e.amt)+'</td>'
-        +'<td class="num">'+(p.excluded?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':money(p.budget))+'</td>'+stCell(p)+'</tr>'; }).join('');
-    /* same buckets clStatus() labels: executed / approved, not executed / out for signature / other */
-    const signed=c.executed?'exec':(/out[\s_-]*for[\s_-]*signature/i.test(c.status||'')?'out':(/approved/i.test(c.status||'')?'appr':'other'));
-    const sts=[...new Set(cl.map(e=>codeOf(e.code).st[0]))].join(' ');
-    return '<tbody class="by-g" data-find="'+esc(find)+'" data-signed="'+signed+'" data-st="'+esc(sts)+'">'+rows+'</tbody>';
-  }).join('');
-  const openBody=open.length?('<tbody class="by-open"><tr class="by-sec"><td colspan="9">Not bought out yet &mdash; '+open.length+' code'+(open.length===1?'':'s')+', '+money(S(open,'budget'))+'</td></tr>'
-      +open.map(p=>'<tr class="bo-openrow by-g1" data-find="'+esc((p.base+' '+p.name).toLowerCase())+'"><td colspan="4" class="by-none">No commitment</td>'
-        +'<td class="cc">'+esc(p.base)+'</td><td class="cn">'+esc(p.name)+(p.sp>0.005?'<div class="bo-sp">'+money(p.sp)+' self-perform left out</div>':'')+'</td>'
-        +'<td class="num">&mdash;</td><td class="num">'+money(p.budget)+'</td>'+stCell(p)+'</tr>').join('')+'</tbody>'):'';
-  const codeOpts=[...new Set(lines.map(p=>p.base))].sort().map(b=>'<option value="'+esc(b)+'">'+esc(b+' '+codeOf(b).name)+'</option>').join('');
-  return '<div class="cl-head"><b>Buyout</b>'
-      +'<span>'+(pct==null?'':pct.toFixed(1)+'% of '+money(tb)+' bought out')+'</span>'
-      +'<span>Savings on bought-out codes <b style="font-size:12px">'+(savings>=0?money(savings):'('+money(-savings)+')')+'</b></span>'
-      +'<span>'+((open.length||part.length)?'<b style="font-size:12px;color:var(--bh-maroon)">'+money(toBuy)+'</b> still to buy out':'Every code has a commitment')+'</span>'
-      +'<span>'+(ne.length?'<b style="font-size:12px;color:var(--bh-maroon)">'+ne.length+' not signed</b> &middot; '+money(neAmt):'All commitments signed')+'</span>'
-      +'<span style="margin-left:auto">Commitments as of '+esc(CL&&CL.generated_at?new Date(CL.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+'</span></div>'
-    +'<div class="by-filter"><input type="search" class="by-q" list="byc-'+esc(job)+'" placeholder="Filter by cost code, trade partner or commitment #" aria-label="Filter buyout">'
-      +'<datalist id="byc-'+esc(job)+'">'+codeOpts+'</datalist>'
-      +'<select class="by-st" aria-label="Buyout status"><option value="">Any buyout status</option><option value="open">Not bought out</option><option value="part">Partly bought out</option><option value="done">Bought out</option><option value="over">Over budget</option><option value="excl">Not in buyout (GC / reserve)</option></select>'
-      +'<select class="by-sg" aria-label="Commitment status"><option value="">Any commitment status</option><option value="exec">Executed</option><option value="appr">Approved, not executed</option><option value="out">Out for signature</option><option value="other">Draft / other</option></select>'
-      +'<span class="by-count"></span></div>'
-    +'<table class="cl-table bo-table by-table"><thead><tr><th>Commitment</th><th>Trade partner / title</th><th>Commitment status</th><th class="num">Value</th>'
-      +'<th>Cost code</th><th>Description</th><th class="num" title="Part of this commitment’s value booked to this cost code">Amount</th><th class="num" title="The code’s buyout budget (self-perform left out)">Code budget</th><th>Buyout status</th></tr></thead>'
-      +groups+openBody+'</table>'
-    +'<div class="cl-note" style="padding-top:6px">Amount is the part of a commitment booked to that code; a commitment on several codes shows one line per code. '
-      +'Code budget and buyout status are for the whole code across every commitment on it; hover the status for the code&rsquo;s totals. '
-      +'Not in buyout: allowances (00), general conditions (01), potential fee &amp; buyout reserve (50), fee (90)'
-      +(types?' and self-performed labor.':'. <b>Self-performed labor is still included</b> &mdash; the cost-type split arrives with the next Budget snapshot LINES import.')+'</div>';
-}
-function byFilter(box){
-  const term=(box.querySelector('.by-q')||{}).value; const q=String(term||'').trim().toLowerCase();
-  const st=(box.querySelector('.by-st')||{}).value||'', sg=(box.querySelector('.by-sg')||{}).value||'';
-  let shown=0, total=0;
-  box.querySelectorAll('tbody.by-g').forEach(g=>{ total++;
-    const hit=(!q||g.dataset.find.includes(q)) && (!sg||g.dataset.signed===sg) && (!st||(' '+g.dataset.st+' ').includes(' '+st+' '));
-    g.hidden=!hit; if(hit) shown++;
-    g.querySelectorAll('tr[data-code]').forEach(r=>r.classList.toggle('by-hit', hit && ((!!q && r.dataset.code.toLowerCase().startsWith(q)) || (!!st && r.dataset.st===st)))); });
-  /* open scope has no commitment, so it only belongs in an unsigned-agnostic view */
-  box.querySelectorAll('tr.by-g1').forEach(r=>{ r.hidden=(!!q && !r.dataset.find.includes(q)) || (!!st && st!=='open') || !!sg; });
-  const sec=box.querySelector('tr.by-sec'); if(sec) sec.hidden=!box.querySelector('tr.by-g1:not([hidden])');
-  const c=box.querySelector('.by-count'); if(c) c.textContent=(q||st||sg)?(shown+' of '+total+' commitments'):'';
-}
-document.addEventListener('input', e=>{ const t=e.target.closest('.by-q,.by-st,.by-sg'); if(t) byFilter(t.closest('td')); });
-document.addEventListener('change', e=>{ const t=e.target.closest('.by-st,.by-sg'); if(t) byFilter(t.closest('td')); });
-function clViews(job){
-  const tab=(k,label)=>'<button type="button" role="tab" data-clview="'+k+'" aria-selected="'+(CLVIEW===k)+'">'+label+'</button>';
-  return '<div class="cl-views" role="tablist" aria-label="Buyout view">'+tab('code','By cost code')+tab('cmt','By commitment')+'</div>'
-    +'<div class="cl-pane" data-pane="code"'+(CLVIEW==='code'?'':' hidden')+'>'+boHtml(job)+'</div>'
-    +'<div class="cl-pane" data-pane="cmt"'+(CLVIEW==='cmt'?'':' hidden')+'>'+clHtml(job)+'</div>';
-}
-document.addEventListener('click', e=>{
-  const t=e.target.closest('[data-clview]'); if(!t) return;
-  const box=t.closest('td'); if(!box) return;
-  CLVIEW=t.dataset.clview;
-  box.querySelectorAll('[data-clview]').forEach(b=>b.setAttribute('aria-selected', String(b===t)));
-  box.querySelectorAll('.cl-pane').forEach(p=>{ p.hidden = p.dataset.pane!==CLVIEW; });
-});
-document.addEventListener('click', async e=>{
-  const b=e.target.closest('.cl-toggle'); if(!b) return;
-  const job=b.dataset.job, row=document.querySelector('tr.cl-row[data-job="'+CSS.escape(job)+'"]'); if(!row) return;
-  const open=b.getAttribute('aria-expanded')!=='true';
-  b.setAttribute('aria-expanded', open?'true':'false'); row.hidden=!open;
-  if(!open) return;
-  row.firstElementChild.innerHTML='<div class="cl-note">Loading buyout and commitments&hellip;</div>';
-  await Promise.all([clLoad(), boLoad(job)]);
-  row.firstElementChild.innerHTML=jobStrip(job)+buyHtml(job);
-});
-
-/* ---- side menu drives the existing tabs (preview) ---- */
-function syncNav(){
-  document.querySelectorAll('.bh-side-item[data-tab]').forEach(b=>{
-    const on = b.dataset.tab===TAB && (!b.dataset.sub || b.dataset.sub===PROJSUB);
-    if(on && !(b.dataset.tab==='projections' && !b.dataset.sub)) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
-    if(b.classList.contains('sub')) b.hidden = TAB!=='projections';
-  });
-}
-document.querySelectorAll('.bh-side-item[data-tab]').forEach(b=>b.addEventListener('click',()=>{
-  if(!document.getElementById('tabSum')) return;
-  if(b.dataset.sub) setProjSub(b.dataset.sub); else setTab(b.dataset.tab);
-}));
-const __setTab=setTab; setTab=function(){ const r=__setTab.apply(this,arguments); syncNav(); return r; };
-const __buildUI=buildUI; buildUI=function(){ const r=__buildUI.apply(this,arguments); syncNav();
-  try{ const a=(typeof msalApp!=='undefined'&&msalApp)?(msalApp.getActiveAccount()||msalApp.getAllAccounts()[0]):null;
-       const n=(a&&a.name)||''; document.getElementById('bhAvatar').textContent=n.split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'\u2013';
-       document.getElementById('bhAvatar').title=n; }catch(_){}
-  return r; };
-/* ===================== Restructure (16 Oct 2026) =====================================
-   Tabs become: Portfolio (VP) · Buyout · Changes & Open Items · WIP · Projections · Sync.
-   - Portfolio = the old Overview (map, summary cards, project cards) + the company
-     financial cards + a chart band + the old Project Detail as a job drill-down at the
-     bottom (its cost-code table hidden - that data lives in Buyout and in Projections).
-   - Buyout = the old Financials & Buyout tab without the company cards and the per-job
-     financial cards; each opened job gets a one-line strip of its own figures instead.
-   - Changes & Open Items = change events, PCOs, PCCOs awaiting the owner, pending sub COs
-     and open RFIs per job, from changes_data.json (changes_pull.js) with a fallback to the
-     pending-CO total and RFI list already in projects_data.json.
-   Nothing here changes how any figure is calculated; it moves panels and adds views. */
-const CHG_PATH='Compliance Dashboard/changes_data.json';
-let CHG=null, CHGERR='', CHGBUSY=null, PFCHARTS={}, CHGOPEN=new Set();
-async function chgLoad(){
-  if(CHG||CHGERR) return; if(CHGBUSY) return CHGBUSY;
-  CHGBUSY=(async()=>{ try{ const token=await getToken(); if(!token){ CHGERR='Not signed in.'; return; }
-      const res=await fetchFile(token, CHG_PATH);
-      if(res.status===404){ CHGERR='notyet'; return; }
-      if(!res.ok){ CHGERR='Could not read changes_data.json (HTTP '+res.status+').'; return; }
-      CHG=await res.json();
-    }catch(e){ CHGERR='Could not read changes_data.json: '+((e&&e.message)||e); } })();
-  return CHGBUSY;
-}
-function restructure(){
-  const sum=document.getElementById('panSum'), fin=document.getElementById('panFin'), det=document.getElementById('panDetail');
-  if(!sum||!fin||sum.dataset.rs) return; sum.dataset.rs='1';
-  /* Portfolio: company financial cards first, then the operations cards, the chart band,
-     the project cards, and the job drill-down */
-  const fc=document.getElementById('finCards'); if(fc) sum.insertBefore(fc, sum.firstChild);
-  const band=document.createElement('div'); band.id='pfBand';
-  const sc=document.getElementById('sumCards'); if(sc&&sc.nextSibling) sum.insertBefore(band, sc.nextSibling); else sum.appendChild(band);
-  /* executive view: one KPI row replaces the financial + operations cards; the per-job
-     overview tiles moved to Buyout (project facts above each job's buyout) */
-  const kp=document.createElement('div'); kp.id='pfKpi'; kp.className='cards'; sum.insertBefore(kp, sum.firstChild);
-  [fc, sc, document.getElementById('sumList')].forEach(el=>{ if(el) el.style.display='none'; });
-  if(det){ const h=document.createElement('div'); h.className='pf-h'; h.id='pfDetH'; h.innerHTML='<b>Job detail</b><span>Pick one job in <b>Projects</b> at the top.</span>';
-    /* one job filter, not two: the detail follows the Projects picker at the top, and its
-       As of selector sits beside that picker */
-    const dc=det.querySelector('.controls'), ds=document.getElementById('dSel'), msb=document.getElementById('msBtn');
-    const top=msb&&msb.closest('.controls');
-    if(dc&&top){ const w=document.createElement('span'); w.id='pfAsof'; w.style.cssText='display:inline-flex;align-items:center;gap:8px;margin-left:8px';
-      ['dAsof','dAsofNote'].forEach(id=>{ const el=document.getElementById(id); if(el){ const lb=el.previousSibling; if(id==='dAsof'&&lb&&lb.nodeName==='LABEL'){ lb.style.marginLeft='0'; w.appendChild(lb); } w.appendChild(el); } });
-      top.appendChild(w); }
-    if(dc) dc.style.display='none';
-    sum.appendChild(h); det.classList.remove('panel'); det.classList.add('pf-detail'); sum.appendChild(det); }
-  /* Buyout: the per-job financial cards are replaced by the strip inside each opened job */
-  const fl=document.getElementById('finList'); if(fl) fl.style.display='none';
-  /* Changes & Open Items panel */
-  const pc=document.createElement('div'); pc.id='panChg'; pc.className='panel';
-  pc.innerHTML='<div class="fnote" style="background:#f4f7ff;border-color:#ccd8f5">&#128221; <b>Changes &amp; open items</b> &mdash; money that may change the contract or the cost but is not approved yet, so it is <b>not</b> in contract, EAC or projected margin. '
-    +'Revenue side: potential change orders (PCOs) and prime change orders waiting on the owner (PCCOs). Cost side: change events still being priced and subs&rsquo; pending change orders. Open RFIs are the early warning.</div>'
-    +'<div class="cards" id="chgCards"></div><div id="chgBody"></div>';
-  fin.parentNode.insertBefore(pc, fin.nextSibling);
-  /* side menu: Overview -> Portfolio, Financials & Buyout -> Buyout, Project Detail folded into Portfolio */
-  const side=document.querySelectorAll('.bh-side-item[data-tab]');
-  side.forEach(b=>{
-    if(b.dataset.tab==='summary') b.textContent='Portfolio';
-    if(b.dataset.tab==='financials'){ b.textContent='Buyout';
-      const n=document.createElement('button'); n.type='button'; n.className='bh-side-item'; n.dataset.tab='changes'; n.textContent='Changes & Open Items';
-      n.addEventListener('click',()=>setTab('changes')); b.parentNode.insertBefore(n, b.nextSibling); }
-    if(b.dataset.tab==='detail') b.remove();
-  });
-  const ts=document.getElementById('tabSum'); if(ts) ts.textContent='Portfolio';
-  const tf=document.getElementById('tabFin'); if(tf) tf.textContent='Buyout';
-  applyAccess();
-  /* the first render ran before the band existed */
-  setTimeout(()=>{ if(TAB==='summary'){ renderPortfolio(); chgLoad().then(()=>{ if(TAB==='summary') renderPortfolio(); }); } try{ syncNav(); }catch(e){} },0);
-}
-
-/* ---------- who is looking: leadership sees Portfolio, everyone else their own jobs ---------- */
-async function applyAccess(){
-  if(DATA_VIA!=='worker') return;            // direct Graph: SharePoint decides, nothing to tailor
-  const r=await apiGet('/me'); if(!r||!r.ok) return;
-  try{ DATA_ME=await r.json(); }catch(e){ return; }
-  if(DATA_ME.full) return;
-  document.body.classList.add('pf-team');
-  document.querySelectorAll('.bh-side-item[data-tab="summary"]').forEach(b=>b.textContent='Job detail');
-  const ts=document.getElementById('tabSum'); if(ts) ts.textContent='Job detail';
-  const sum=document.getElementById('panSum');
-  if(sum&&!document.getElementById('pfTeamNote')){ const n=document.createElement('div'); n.id='pfTeamNote'; n.className='fnote';
-    n.innerHTML='&#128274; Showing the <b>'+DATA_ME.jobs.length+' job'+(DATA_ME.jobs.length===1?'':'s')+'</b> where you are on the Procore team. Company-wide figures are for leadership.';
-    sum.insertBefore(n, sum.firstChild); }
-}
-
-/* ---------- Portfolio chart band ---------- */
-const PF_BLUE='#2a78d6', PF_ORANGE='#eb6834', PF_RED='#b3261e';
-function pfBar(id, labels, values, colors, fmt){
-  const el=document.getElementById(id); if(!el||typeof Chart==='undefined') return;
-  try{ if(PFCHARTS[id]) PFCHARTS[id].destroy(); }catch(e){}
-  PFCHARTS[id]=new Chart(el.getContext('2d'),{type:'bar',
-    data:{labels, datasets:[{data:values, backgroundColor:colors, borderRadius:0, maxBarThickness:16}]},
-    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmt(c.parsed.x)}}},
-      scales:{x:{ticks:{callback:v=>fmt(v), font:{size:10}}, grid:{color:'#eef0f3'}}, y:{ticks:{font:{size:10}, autoSkip:false}, grid:{display:false}}}}});
-}
-function pfBox(id, title, sub, n, empty){
-  const h=Math.min(560, Math.max(140, n*17+40));
-  return '<div class="pf-box"><div class="pf-t">'+title+'</div><div class="pf-s">'+sub+'</div>'
-    +(empty?'<div class="pf-empty">'+empty+'</div>':'<div style="height:'+h+'px;position:relative"><canvas id="'+id+'"></canvas></div>')+'</div>';
-}
-function renderPortfolio(){
-  const band=document.getElementById('pfBand'); if(!band) return;
-  if(TAB!=='summary') return;
-  const list=finView().filter(r=>r.group==='active'||String(r.stage||'').toLowerCase().includes('construction'));
-  const lab=r=>String(r.project_number||'');
-  const now=new Date(), todayMs=now.getTime();
-  const inView=new Set(list.map(r=>String(r.project_number)));
-  const roll=((ROLLUP&&ROLLUP.jobs)||[]).filter(j=>inView.has(String(j.job_no)));
-  const rollOf={}; roll.forEach(j=>{ rollOf[String(j.job_no)]=j; });
-  const chgOf=r=>CHG&&CHG.projects&&CHG.projects[String(r.project_number)];
-  /* backlog per job: ComputerEase when matched (cost-to-cost % complete), else Procore cost to date / EAC */
-  const pj=r=>{ const p=projOf(r); if(p) return Object.assign({src:'CE'},p);
-    const contract=num(r.revised_contract||r.contract_amount), eac=num(r.projected_cost), cost=num(r.cost_to_date);
-    if(!contract) return null; const pct=eac?Math.min(1,cost/eac):0; const remaining=contract*(1-pct);
-    let months=null; const compl=r.completion_date?new Date(r.completion_date):null;
-    if(compl&&!isNaN(compl.getTime())) months=Math.max(0,(compl.getFullYear()-now.getFullYear())*12+(compl.getMonth()-now.getMonth()));
-    return {src:'Procore',contract,remaining,months,monthly:months!=null?remaining/(months+1):null,pct:pct*100,compl}; };
-  const P=list.map(r=>({r,p:pj(r)}));
-
-  /* ---- headline numbers ---- */
-  const totC=list.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0);
-  const withEac=list.filter(r=>num(r.projected_cost)>0);
-  const mC=withEac.reduce((a,r)=>a+num(r.revised_contract||r.contract_amount),0), mM=withEac.reduce((a,r)=>a+num(r.projected_margin),0);
-  const mPct=mC?mM/mC*100:null;
-  const backlog=P.reduce((a,x)=>a+(x.p?num(x.p.remaining):0),0);
-  const held=roll.reduce((a,j)=>a+num(j.contingency_eac),0);
-  const boB=roll.reduce((a,j)=>a+num(j.budget_ex_fee),0), boC=roll.reduce((a,j)=>a+num(j.committed),0);
-  const ce=list.filter(r=>r.ce&&r.ce.ce_over_under_billed!=null);
-  const ou=ce.reduce((a,r)=>a+num(r.ce.ce_over_under_billed),0);
-  const pend=list.reduce((a,r)=>{ const c=chgOf(r); return a+(c?chgSum(c.pcco):num(r.pending_cos)); },0);
-  const below=withEac.filter(r=>r.projected_margin_pct!=null&&r.projected_margin_pct<TARGET_MARGIN);
-  const loss=withEac.filter(r=>num(r.projected_margin)<0);
-  const ncJobs=list.filter(r=>r.compliance&&r.compliance.noncompliant>0).length;
-  const rfis=list.reduce((a,r)=>a+(r.rfis_open||0),0);
-  const in90=list.filter(r=>{ const t=Date.parse(r.completion_date||''); return t&&t>=todayMs-864e5&&t<=todayMs+90*864e5; });
-  const constr=list.filter(r=>/^construction$/i.test(String(r.stage||''))).length;
-  const cm=v=>{ v=num(v); const a=Math.abs(v); return (v<0?'-':'')+(a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e4?'$'+Math.round(a/1e3)+'K':money(a)); };
-  const ex=v=>' — '+money(v);
-  const kpi=document.getElementById('pfKpi');
-  if(kpi) kpi.innerHTML=
-     card('total',list.length,'Active jobs',null,constr+' in construction')
-    +card('total',cm(totC),'Contract value (rev.)',null,'Revised contract: original plus approved prime change orders'+ex(totC))
-    +card('co',cm(backlog),'Backlog to earn',null,'Contract not yet earned: ComputerEase % complete where the job is in CE, otherwise Procore cost to date ÷ EAC'+ex(backlog))
-    +card(mPct!=null&&mPct<TARGET_MARGIN?'nc':'ok',cm(mM)+(mPct!=null?' &middot; '+mPct.toFixed(1)+'%':''),'Projected margin',null,'Contract minus Procore EAC (fee held out), jobs with a projection. Target '+TARGET_MARGIN+'%'+ex(mM))
-    +card('soon',cm(held),'Phase 50 still held',null,'Potential fee & buyout reserve not yet released into margin — upside if buyout holds'+ex(held))
-    +card('rfi',boB?(boC/boB*100).toFixed(0)+'%':'—','Bought out',null,'Commitments ÷ budget without fee, across the jobs in view')
-    +card(ou<0?'nc':'co',ce.length?cm(ou):'—','Net over / (under) billed',null,'ComputerEase: billed minus earned. Negative = earned but not billed'+ex(ou))
-    +card('co',cm(pend),'COs awaiting owner',null,(CHG?'Prime change orders submitted and not yet approved (changes pull)':'Pending prime change orders (project pull)')+ex(pend))
-    +card(below.length?'nc':'ok',below.length+(loss.length?' <small style="font-size:12px;font-weight:600">('+loss.length+' loss)</small>':''),'Below '+TARGET_MARGIN+'% margin',null,'Active jobs projected under the target margin; in brackets, jobs projected to lose money')
-    +card(ncJobs?'nc':'ok',ncJobs,'Jobs with non-compliant subs',null,'Billy compliance rollup')
-    +card('rfi',rfis,'Open RFIs',null,'Open RFIs across the jobs in view')
-    +card('soon',in90.length,'Completing in 90 days',null,'Scheduled completion within the next 90 days');
-
-  /* ---- series ---- */
-  const H=12, months=monthLabels(H);
-  const secs=[...new Set(P.map(x=>x.r.sector||'Unclassified'))].sort();
-  const runway=secs.map(s=>months.map((m,i)=>P.reduce((a,x)=>a+(((x.r.sector||'Unclassified')===s)&&x.p&&x.p.months!=null&&x.p.remaining>1&&i<=x.p.months?x.p.monthly:0),0)));
-  const runwayOk=runway.some(a=>a.some(v=>v>0));
-  const secTot=secs.map(s=>P.reduce((a,x)=>a+((x.r.sector||'Unclassified')===s&&x.p?num(x.p.remaining):0),0));
-  const mg=withEac.filter(r=>r.projected_margin_pct!=null&&isFinite(r.projected_margin_pct)).sort((a,b)=>a.projected_margin_pct-b.projected_margin_pct);
-  const fee=withEac.map(r=>({r,m:num(r.projected_margin),h:num((rollOf[String(r.project_number)]||{}).contingency_eac)})).filter(x=>Math.abs(x.m)+x.h>0.5).sort((a,b)=>(b.m+b.h)-(a.m+a.h));
-  const bo=roll.filter(j=>j.buyout_pct!=null).sort((a,b)=>a.buyout_pct-b.buyout_pct);
-  const ob=ce.filter(r=>Math.abs(num(r.ce.ce_over_under_billed))>0.5).sort((a,b)=>num(a.ce.ce_over_under_billed)-num(b.ce.ce_over_under_billed));
-  const pe=list.map(r=>{ const c=chgOf(r); return {r,v:c?chgSum(c.pcco):num(r.pending_cos)}; }).filter(x=>Math.abs(x.v)>0.5).sort((a,b)=>b.v-a.v);
-  /* completions by quarter, next 6 quarters */
-  const q0=Math.floor(now.getMonth()/3), qs=[...Array(6)].map((_,i)=>{ const y=now.getFullYear()+Math.floor((q0+i)/4), q=(q0+i)%4; return {y,q,l:'Q'+(q+1)+" '"+String(y).slice(2),v:0,n:0}; });
-  list.forEach(r=>{ const d=new Date(r.completion_date||''); if(isNaN(d.getTime())) return;
-    const k=(d.getFullYear()-qs[0].y)*4+Math.floor(d.getMonth()/3)-qs[0].q; if(k>=0&&k<6){ qs[k].v+=num(r.revised_contract||r.contract_amount); qs[k].n++; } });
-  /* largest jobs */
-  const big=list.slice().sort((a,b)=>num(b.revised_contract||b.contract_amount)-num(a.revised_contract||a.contract_amount)).slice(0,10);
-  /* forecast freshness (unchanged) */
-  const idx={}; ((SNAPIDX&&SNAPIDX.projects)||[]).forEach(p=>{ idx[String(p.job_no)]=p; });
-  const stale=list.map(r=>{ const p=idx[String(r.project_number)]; const s=p&&p.snapshots&&p.snapshots.length?p.snapshots[p.snapshots.length-1]:null;
-      const t=s?Date.parse(s.created||''):0; return {r, s, days:t?Math.floor((todayMs-t)/86400000):null}; })
-    .filter(x=>x.days==null||x.days>35).sort((a,b)=>(b.days==null?1e9:b.days)-(a.days==null?1e9:a.days));
-  const pbox=(id,t,s,h,empty)=>'<div class="pf-box"><div class="pf-t">'+t+'</div><div class="pf-s">'+s+'</div>'+(empty?'<div class="pf-empty">'+empty+'</div>':'<div style="height:'+h+'px;position:relative"><canvas id="'+id+'"></canvas></div>')+'</div>';
-  const hh=n=>Math.min(520,Math.max(150,n*17+40));
-  const pcLink=r=>r.procore_id?'<a href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||r.project_number)+'</a>':esc(r.project||'');
-
-  band.innerHTML='<div class="pf-h"><b>Revenue &amp; backlog</b><span>What is left to earn, when it lands, and where it comes from.</span></div>'
-    +'<div class="pf-grid pf-g2">'
-    +pbox('pfRun','Revenue runway &mdash; next 12 months','Backlog spread straight-line to each job&rsquo;s completion date, by sector. A planning view, not a billing schedule.',260, runwayOk?null:'No jobs with backlog and a completion date.')
-    +pbox('pfMix','Backlog by sector','Contract still to earn on the jobs in view.',260, secTot.some(v=>v>0)?null:'No backlog figures.')
-    +'</div>'
-    +'<div class="pf-h"><b>Margin &amp; fee</b><span>Projected margin against the '+TARGET_MARGIN+'% target, and the reserve still sitting in cost.</span></div>'
-    +'<div class="pf-grid">'
-    +pbox('pfMargin','Projected margin % by job','Contract &minus; Procore EAC (fee held out), worst first. Red = loss, orange = under '+TARGET_MARGIN+'%, blue = at or above.', hh(mg.length), mg.length?null:'No active jobs with a projection.')
-    +pbox('pfFee','Fee picture by job','Blue = projected margin in the forecast. Grey = phase 50 still held &mdash; becomes margin if it is released.', hh(fee.length), fee.length?null:'No margin or phase 50 figures.')
-    +'</div>'
-    +'<div class="pf-h"><b>Buyout, billing &amp; change</b><span>Risk still open on the jobs in view.</span></div>'
-    +'<div class="pf-grid">'
-    +pbox('pfBuy','Bought out by job','Committed &divide; budget without fee. Low = scope still to buy.', hh(bo.length), bo.length?null:'Needs the Budget snapshot LINES import.')
-    +pbox('pfBill','Over / under billed by job','ComputerEase. Blue = billed ahead of earned; orange = earned but not billed.', hh(ob.length), ob.length?null:'No ComputerEase billing figures for these jobs.')
-    +pbox('pfPend','Change orders awaiting the owner', CHG?'Prime change orders (PCCOs) submitted and not yet approved, from the changes pull.':'Pending prime change orders from the project pull.', hh(pe.length), pe.length?null:'Nothing pending on the jobs in view.')
-    +pbox('pfQtr','Completions by quarter','Contract value of jobs scheduled to finish each quarter (job count in the tooltip).', 220, qs.some(q=>q.n)?null:'No completion dates in the next six quarters.')
-    +'</div>'
-    +'<div class="pf-box pf-stale"><div class="pf-t">Largest jobs</div><div class="pf-s">Top ten by revised contract. Job name opens Procore.</div>'
-    +(big.length?'<div style="overflow:auto"><table class="cl-table"><thead><tr><th>Job</th><th>Owner</th><th>Stage</th><th class="num">Contract</th><th class="num">% complete</th><th class="num">Margin</th><th class="num">Bought out</th><th>Completion</th></tr></thead><tbody>'
-      +big.map(r=>{ const p=pj(r), j=rollOf[String(r.project_number)], mp=r.projected_margin_pct;
-        return '<tr><td><b>'+esc(r.project_number)+'</b> '+pcLink(r)+'</td><td>'+esc(r.owner||'—')+'</td><td>'+esc(r.stage||'')+'</td>'
-          +'<td class="num">'+money(r.revised_contract||r.contract_amount)+'</td><td class="num">'+(p&&p.pct!=null?p.pct.toFixed(0)+'%':'&mdash;')+'</td>'
-          +'<td class="num">'+(mp!=null&&num(r.projected_cost)>0?'<span class="'+(mp<0?'bo-neg':'')+'">'+mp.toFixed(1)+'%</span>':'&mdash;')+'</td>'
-          +'<td class="num">'+(j&&j.buyout_pct!=null?j.buyout_pct.toFixed(0)+'%':'&mdash;')+'</td><td>'+esc(r.completion_date||'—')+'</td></tr>'; }).join('')+'</tbody></table></div>'
-      :'<div class="pf-empty">No active jobs in view.</div>')+'</div>'
-    +'<div class="pf-box pf-stale"><div class="pf-t">Forecast freshness</div><div class="pf-s">Active jobs whose latest projection snapshot in Procore is more than 35 days old, or that have none. A strong margin on an old projection is not a strong margin.</div>'
-    +(stale.length?'<table class="cl-table"><thead><tr><th>Job</th><th>Latest projection snapshot</th><th class="num">Days old</th><th class="num">Projected margin</th></tr></thead><tbody>'
-      +stale.map(x=>'<tr><td><b>'+esc(x.r.project_number)+'</b> <span style="color:var(--bh-ink-muted)">'+esc(x.r.project||'')+'</span></td><td>'+(x.s?esc(x.s.label||'')+' &middot; '+esc(x.s.created||''):'<span class="bo-neg">none</span>')+'</td>'
-        +'<td class="num">'+(x.days==null?'&mdash;':x.days)+'</td><td class="num">'+(x.r.projected_margin_pct!=null?x.r.projected_margin_pct.toFixed(1)+'%':'&mdash;')+'</td></tr>').join('')+'</tbody></table>'
-      :'<div class="pf-empty">Every active job in view has a projection snapshot from the last 35 days.</div>')+'</div>';
-
-  const pct=v=>(+v).toFixed(1)+'%';
-  const kfmt=v=>{ v=+v; const a=Math.abs(v); return (v<0?'-':'')+'$'+(a>=1e6?(a/1e6).toFixed(1)+'M':a>=1e3?Math.round(a/1e3)+'K':Math.round(a)); };
-  const SEC_COL=['#211E1E','#ED2B30','#2a78d6','#8a92a1','#eb6834','#6b2737','#4f9d69','#c9a227'];
-  const mk=(id,cfg)=>{ const el=document.getElementById(id); if(!el||typeof Chart==='undefined') return; try{ if(PFCHARTS[id]) PFCHARTS[id].destroy(); }catch(e){} PFCHARTS[id]=new Chart(el.getContext('2d'),cfg); };
-  const grid={color:'#eef0f3'}, f10={size:10};
-  if(runwayOk) mk('pfRun',{type:'bar',data:{labels:months,datasets:secs.map((s,i)=>({label:s,data:runway[i].map(v=>Math.round(v)),backgroundColor:SEC_COL[i%SEC_COL.length],borderRadius:0,maxBarThickness:34}))},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.y),footer:it=>'Month total '+money(it.reduce((a,c)=>a+c.parsed.y,0))}}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{font:f10}},y:{stacked:true,grid,ticks:{callback:kfmt,font:f10}}}}});
-  if(secTot.some(v=>v>0)) mk('pfMix',{type:'doughnut',data:{labels:secs,datasets:[{data:secTot.map(Math.round),backgroundColor:secs.map((s,i)=>SEC_COL[i%SEC_COL.length]),borderWidth:1}]},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'58%',plugins:{legend:{position:'right',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.label+': '+money(c.parsed)+' ('+(backlog?(c.parsed/backlog*100).toFixed(0):0)+'%)'}}}}});
-  pfBar('pfMargin', mg.map(lab), mg.map(r=>+r.projected_margin_pct.toFixed(1)), mg.map(r=>r.projected_margin_pct<0?PF_RED:(r.projected_margin_pct<TARGET_MARGIN?PF_ORANGE:PF_BLUE)), pct);
-  if(fee.length) mk('pfFee',{type:'bar',data:{labels:fee.map(x=>lab(x.r)),datasets:[{label:'Projected margin',data:fee.map(x=>Math.round(x.m)),backgroundColor:fee.map(x=>x.m<0?PF_RED:PF_BLUE),maxBarThickness:16},{label:'Phase 50 still held',data:fee.map(x=>Math.round(x.h)),backgroundColor:'#c3c8d1',maxBarThickness:16}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:f10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.parsed.x)}}},
-      scales:{x:{stacked:true,grid,ticks:{callback:kfmt,font:f10}},y:{stacked:true,grid:{display:false},ticks:{font:f10,autoSkip:false}}}}});
-  pfBar('pfBuy', bo.map(j=>String(j.job_no)), bo.map(j=>j.buyout_pct), bo.map(j=>j.buyout_pct<50?PF_ORANGE:PF_BLUE), pct);
-  pfBar('pfBill', ob.map(lab), ob.map(r=>Math.round(num(r.ce.ce_over_under_billed))), ob.map(r=>num(r.ce.ce_over_under_billed)>=0?PF_BLUE:PF_ORANGE), money);
-  pfBar('pfPend', pe.map(x=>lab(x.r)), pe.map(x=>Math.round(x.v)), pe.map(()=>PF_BLUE), money);
-  if(qs.some(q=>q.n)) mk('pfQtr',{type:'bar',data:{labels:qs.map(q=>q.l),datasets:[{data:qs.map(q=>Math.round(q.v)),backgroundColor:'#211E1E',maxBarThickness:40}]},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.parsed.y)+' · '+qs[c.dataIndex].n+' job'+(qs[c.dataIndex].n===1?'':'s')}}},
-      scales:{x:{grid:{display:false},ticks:{font:f10}},y:{grid,ticks:{callback:kfmt,font:f10}}}}});
-}
-
-
-/* ---------- project facts for the Buyout tab (moved off the Portfolio job tiles) ---------- */
-const COMP_URL=job=>'https://compliance.baileyharris.com/?job='+encodeURIComponent(String(job||''));
-function compLink(r){
-  const c=r&&r.compliance, cls=compClass(r||{});
-  const t=!c?'No compliance data':(cls==='r'?c.noncompliant+' non-compliant':(cls==='y'?(c.expiring+' expiring'):(cls==='g'?'Compliant':'Compliance')));
-  const tip=c?(c.compliant+' of '+c.vendors+' vendors compliant'+(c.gcl_gaps?' · '+c.gcl_gaps+' GC licence gap'+(c.gcl_gaps===1?'':'s'):'')+' — open the Compliance dashboard for this job'):'Open the Compliance dashboard for this job';
-  return '<a class="pill '+cls+' cmp-a" href="'+esc(COMP_URL(r.project_number))+'" target="_blank" rel="noopener" title="'+esc(tip)+'">'+esc(t)+'</a>';
-}
-function teamPick(r, re, roleRe){ const t=(r.team||[]).find(x=>x&&x.name&&re.test(String(x.title||''))&&(!roleRe||roleRe.test(String(x.role||'')))); return t?t.name:''; }
-function fmtDate(d){ const t=new Date(String(d||'')+(String(d||'').length===10?'T12:00:00':'')); return isNaN(t.getTime())?'':t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
-function buyMeta(jobNo, jobName){
-  const r=ROWS.find(x=>String(x.project_number)===String(jobNo));
-  if(!r) return '<div style="color:#7a828f;font-size:12px">'+esc(jobName||'')+'</div>';
-  const nm=r.procore_id?'<a class="bm-name" href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||jobName||'')+'</a>':esc(r.project||jobName||'');
-  const bits=[r.owner?esc(r.owner):'', r.completion_date?'Completes '+esc(fmtDate(r.completion_date)):''].filter(Boolean).join(' &middot; ');
-  return '<div class="bm">'+nm+'</div><div class="bm-sub">'+(bits?bits+' ':'')+compLink(r)+'</div>';
-}
-function jobInfo(r){
-  const pm=teamPick(r,/project manager/i,/project management/i)||teamPick(r,/project manager/i);
-  const sup=teamPick(r,/superintendent/i);
-  const a0=String(r.address||''); const addr=[a0].concat([r.city,r.state].filter(x=>x&&!a0.toLowerCase().includes(String(x).toLowerCase()))).filter(Boolean).join(', ');
-  const k=(l,v)=>'<div><span>'+l+'</span><b>'+(v||'&mdash;')+'</b></div>';
-  return '<div class="jinfo"><div class="ji-h">'
-    +(r.procore_id?'<a class="ji-name" href="'+esc(pcOverview(r.procore_id))+'" target="_blank" rel="noopener" title="Open in Procore">'+esc(r.project||'')+' &#8599;</a>':'<b class="ji-name">'+esc(r.project||'')+'</b>')
-    +'<span class="ji-num">'+esc(r.project_number||'')+'</span>'
-    +(r.stage?'<span class="chip stage">'+esc(r.stage)+'</span>':'')+(r.sector?'<span class="chip sect">'+esc(r.sector)+'</span>':'')
-    +'<span class="ji-comp">'+compLink(r)+'</span></div>'
-    +'<div class="ji-grid">'
-    +k('Owner',esc(r.owner||''))+k('Architect',esc(r.architect||''))
-    +k('Completion',esc(fmtDate(r.completion_date)))+k('Address',esc(addr))
-    +k('Project manager',esc(pm))+k('Superintendent',esc(sup))
-    +k('Open RFIs',(r.rfis_open||0)?(r.rfis_open+(r.procore_id?' <a href="'+esc(pcBase(r.procore_id)+'/tools/rfis')+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:600">view</a>':'')):'0')
-    +'</div></div>';
-}
-
-/* ---------- Buyout: one strip of the job's own figures above its buyout table ---------- */
-function jobStrip(job){
-  const r=ROWS.find(x=>String(x.project_number)===String(job)); if(!r) return '';
-  const contract=r.revised_contract||r.contract_amount;
-  const m=r.projected_margin, mp=r.projected_margin_pct;
-  const k=(l,v,t)=>'<div class="js-k" title="'+esc(t)+'"><span>'+l+'</span><b>'+v+'</b></div>';
-  return jobInfo(r)+'<div class="jstrip">'
-    +k('Contract (rev.)',money(contract),'Original contract plus approved prime change orders')
-    +k('Projected cost (EAC)',money(r.projected_cost),'Procore estimate at completion, fee held out')
-    +k('Projected margin','<span'+(m<0?' class="bo-neg"':'')+'>'+money(m)+(mp!=null?' &middot; '+mp.toFixed(1)+'%':'')+'</span>','Contract minus EAC')
-    +k('Committed',money(r.committed),'Subcontracts and purchase orders written')
-    +k('Cost to date',money(r.cost_to_date),'Job-to-date cost in Procore')
-    +k('% complete',r.pct_complete!=null?r.pct_complete.toFixed(0)+'%':'&mdash;','Cost to date divided by EAC')
-    +'</div>';
-}
-
-/* ---------- Changes & Open Items (rebuilt 21 Oct 2026) ----------
-   Three views over the jobs picked at the top:
-     Items    - one flat list, filtered by type / status / age / search, sortable by any column.
-                Change events are kept out of "All" (they are early pricing, not commitments)
-                and get their own filter, which can narrow to events carried into nothing.
-     By job   - the per-job totals table (the previous layout), click a job for its list.
-     CE sync  - per commitment, Procore approved / pending sub change orders against CE's
-                approved and pending RFCs (changes_pull.js `recon`, joined from APData).
-   No figure on any other tab changes. */
-const chgSum=a=>(a||[]).reduce((t,x)=>t+(+x.amount||0),0);
-const chgCost=a=>(a||[]).reduce((t,x)=>t+(+((x.cost!=null)?x.cost:0)||0),0);
-const chgM=n=>n==null||isNaN(n)?'&mdash;':(n<0?'-$':'$')+Math.abs(+n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const CHGV={view:'items',type:'all',status:'',aged:false,unl:false,q:'',sort:'days_open',dir:-1,rs:'open',rsort:'job',rdir:1};
-const CHGSUBOPEN=new Set();
-/* Sub PCOs (PCOs on a commitment) are not listed: on this company's Procore a commitment PCO is the
-   same record as its commitment CO (25AU003 probe, 16 Oct: the PCO id equals the CCO id), so they
-   only repeated the Sub COs. */
-const CHG_TYPES=[['all','All'],['PCCO','PCCOs'],['PCO','PCOs'],['Sub CO','Sub COs'],['RFI','RFIs'],['Change event','Change events']];
-const RECON_ATTN=['approve_in_ce','enter_in_ce','ce_short','not_in_ce','ce_ahead','ce_pending_extra'];
-const RECON_LBL={approve_in_ce:['Approve in CE','over'],enter_in_ce:['Enter in CE','over'],ce_short:['CE short','over'],not_in_ce:['Not in CE','over'],ce_ahead:['CE ahead','open'],ce_pending_extra:['Pending only in CE','open'],pending:['Pending','part'],match:['In sync',''],ce_unavailable:['No CE data','']};
-function chgAge(d){ return d==null?'<span style="color:var(--bh-ink-muted)">&mdash;</span>':(d>60?'<span class="bo-st over">'+d+' d</span>':(d>30?'<span class="bo-st open">'+d+' d</span>':d+' d')); }
-function chgRows(){
-  const list=finView().filter(r=>r.group==='active');
-  const today=new Date().toISOString().slice(0,10);
-  return list.map(r=>{
-    const job=String(r.project_number), c=CHG&&CHG.projects&&CHG.projects[job];
-    const rf=(r.rfis_open_list||[]); const rfOver=rf.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
-    const items=[]; const add=(kind,side,a)=>(a||[]).forEach(x=>items.push(Object.assign({kind,side,job,jobName:r.project||''},x)));
-    if(c){ add('PCCO','Revenue',c.pcco); add('PCO','Revenue',c.pco); add('Sub CO','Cost',c.cco); add('Change event','Both',c.ce); }
-    rf.forEach(x=>items.push({kind:'RFI',side:'—',job,jobName:r.project||'',number:x.number,title:x.subject,status:x.status,ball:x.ball,due:x.due?String(x.due).slice(0,10):'',days_open:null,link:x.link}));
-    const ceL=c?(c.ce||[]):[];
-    return {r,job,c,rf,rfOver,items,aged:items.filter(x=>x.kind!=='Change event'&&x.days_open!=null&&x.days_open>30).length,
-      pcco:c?chgSum(c.pcco):null, pccoN:c?(c.pcco||[]).length:0, pco:c?chgSum(c.pco):null, pcoN:c?(c.pco||[]).length:0,
-      cco:c?chgSum(c.cco):null, ccoN:c?(c.cco||[]).length:0, ce:c?chgSum(c.ce):null, ceN:ceL.length,
-      ceUnl:ceL.filter(x=>Array.isArray(x.links)&&!x.links.length).length, recon:(c&&c.recon)||null, pend:num(r.pending_cos)};
-  });
-}
-/* change-event linkage is only claimed when the pull saw link keys on line items */
-function chgLinkKnown(rows){
-  if(CHG&&CHG.summary&&Array.isArray(CHG.summary.ce_link_keys)) return CHG.summary.ce_link_keys.length>0;
-  return rows.some(x=>x.c&&(x.c.ce||[]).some(e=>Array.isArray(e.links)&&e.links.length));
-}
-async function renderChanges(){
-  const cards=document.getElementById('chgCards'), body=document.getElementById('chgBody'); if(!body) return;
-  if(!CHG&&!CHGERR){ body.innerHTML='<div class="loading">Loading changes&hellip;</div>'; await chgLoad(); }
-  if(TAB!=='changes') return;
-  const rows=chgRows(), haveChg=!!CHG, linkKnown=chgLinkKnown(rows);
-  const T=k=>rows.reduce((t,x)=>t+(+x[k]||0),0);
-  const recon=rows.flatMap(x=>(x.recon||[]).map(y=>Object.assign({job:x.job,jobName:x.r.project||''},y)));
-  const haveRecon=rows.some(x=>x.recon);
-  const attn=recon.filter(y=>RECON_ATTN.includes(y.state));
-  const ck=(n,label,tip,act,sel)=>'<div class="card clk'+(sel?' sel':'')+'" data-chgcard="'+act+'" title="'+esc(tip)+'"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
-  const isT=t=>CHGV.view==='items'&&CHGV.type===t;
-  cards.innerHTML=ck(money(haveChg?T('pcco'):T('pend'))+' <span class="bo-sp" style="display:inline">('+T('pccoN')+')</span>','PCCOs awaiting owner','Prime change orders submitted to the owner and not yet approved','PCCO',isT('PCCO'))
-    +ck(haveChg?money(T('pco'))+' <span class="bo-sp" style="display:inline">('+T('pcoN')+')</span>':'&mdash;','Pending PCOs','Potential change orders on the prime contract not yet approved. Shown apart from PCCOs because a PCO can sit inside one','PCO',isT('PCO'))
-    +ck(money(haveChg?T('cco'):0)+' <span class="bo-sp" style="display:inline">('+T('ccoN')+')</span>','Sub COs pending approval','Commitment change orders not yet approved in Procore - opens Sub COs by commitment','subpend',CHGV.view==='sub'&&CHGV.rs==='open')
-    +ck(haveRecon?attn.length:'&mdash;','CE sync to fix','Commitments whose approved / pending change orders in Procore and CE do not agree','recon',CHGV.view==='sub'&&CHGV.rs==='attn')
-    +ck(rows.reduce((t,x)=>t+x.rf.length,0)+(T('rfOver')?' <span class="bo-st over">'+T('rfOver')+' overdue</span>':''),'Open RFIs','Open RFIs across the jobs in view','RFI',isT('RFI'));
-  const note = CHGERR==='notyet' ? '<div class="cl-note">Itemized change events, PCOs, PCCOs and sub COs appear once the <b>Changes and open items pull</b> has run. Until then this tab shows the pending prime CO total and open RFIs from the project pull.</div>'
-    : (CHGERR?'<div class="cl-note">'+esc(CHGERR)+'</div>':'<div class="cl-note">Changes as of '+esc(new Date(CHG.generated_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'. PCO and PCCO totals are not added together, because a PCO can sit inside a PCCO.</div>');
-  const seg=(v,l)=>'<button type="button" class="bh-btn-outline chg-seg'+(CHGV.view===v?' on':'')+'" data-chgview="'+v+'" aria-pressed="'+(CHGV.view===v)+'">'+l+'</button>';
-  let h=note+'<div class="chg-bar">'+seg('items','Items')+seg('sub','Sub COs by commitment'+(haveRecon&&attn.length?' · '+attn.length+' CE to fix':''))
-    +'<input class="bh-input chg-q" id="chgQ" type="search" placeholder="Search number, title, vendor, job" value="'+esc(CHGV.q)+'"></div>';
-  if(CHGV.view==='sub') h+=chgSubs(recon,haveRecon);
-  else h+=chgItems(rows,linkKnown);
-  body.innerHTML=h;
-}
-function chgSortHead(cols,cur,dir,attr){
-  return '<thead><tr>'+cols.map(c=>'<th'+(c[2]?' class="num"':'')+'><button type="button" class="chg-sort" '+attr+'="'+c[0]+'">'+c[1]+(cur===c[0]?(dir>0?' &#9650;':' &#9660;'):'')+'</button></th>').join('')+'</tr></thead>';
-}
-function chgCmp(k,dir){ return (a,b)=>{ let x=a[k],y=b[k]; if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
-  if(typeof x==='number'&&typeof y==='number') return (x-y)*dir; return String(x).localeCompare(String(y),undefined,{numeric:true})*dir; }; }
-function chgItems(rows,linkKnown){
-  const all=rows.flatMap(x=>x.items);
-  const ceAll=all.filter(i=>i.kind==='Change event'), ceUnl=ceAll.filter(i=>Array.isArray(i.links)&&!i.links.length);
-  let v=CHGV.type==='all'?all.filter(i=>i.kind!=='Change event'):all.filter(i=>i.kind===CHGV.type);
-  const statuses=[...new Set(v.map(i=>i.status||'').filter(Boolean))].sort();
-  if(CHGV.status&&!statuses.includes(CHGV.status)) CHGV.status='';
-  if(CHGV.status) v=v.filter(i=>(i.status||'')===CHGV.status);
-  if(CHGV.aged) v=v.filter(i=>i.days_open!=null&&i.days_open>30);
-  if(CHGV.type==='Change event'&&CHGV.unl) v=v.filter(i=>Array.isArray(i.links)&&!i.links.length);
-  const q=CHGV.q.toLowerCase(); if(q) v=v.filter(i=>[i.job,i.jobName,i.kind,i.number,i.title,i.contract,i.status,i.ball].join(' ').toLowerCase().includes(q));
-  v.sort(chgCmp(CHGV.sort,CHGV.dir));
-  const cnt=t=>t==='all'?all.filter(i=>i.kind!=='Change event').length:all.filter(i=>i.kind===t).length;
-  let h='<div class="chg-bar">'+CHG_TYPES.map(t=>'<button type="button" class="chg-chip'+(CHGV.type===t[0]?' on':'')+'" data-chgtype="'+esc(t[0])+'">'+t[1]+' <span>'+cnt(t[0])+'</span></button>').join('')+'</div>'
-    +'<div class="chg-bar"><label class="bh-label" for="chgSt">Status</label><select class="bh-select" id="chgSt"><option value="">Any</option>'+statuses.map(s=>'<option'+(s===CHGV.status?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>'
-    +'<label class="chg-ck"><input type="checkbox" id="chgAged"'+(CHGV.aged?' checked':'')+'> Open more than 30 days</label>'
-    +(CHGV.type==='Change event'&&linkKnown?'<label class="chg-ck"><input type="checkbox" id="chgUnl"'+(CHGV.unl?' checked':'')+'> Not on a PCO, PCCO or budget change ('+ceUnl.length+')</label>':'')
-    +'<span class="bo-sp" style="margin-left:auto">'+v.length+' item'+(v.length===1?'':'s')+' · '+money(v.reduce((t,i)=>t+(+i.amount||0),0))+'</span></div>';
-  if(CHGV.type==='all'&&ceAll.length) h+='<div class="cl-note" style="margin-top:0">'+ceAll.length+' open change event'+(ceAll.length===1?'':'s')+' left out of All'+(linkKnown?' &mdash; <b>'+ceUnl.length+'</b> not carried into a PCO, PCCO or budget change':'')+'. <button type="button" class="chg-lnk" data-chgtype="Change event">Show change events</button></div>';
-  if(CHGV.type==='Change event'&&!linkKnown) h+='<div class="cl-note" style="margin-top:0">Whether a change event is on a PCO, PCCO or budget change shows once the changes pull has run with the link check (21 Oct). If Procore carries no link field on change event line items, this stays unknown rather than calling every event unlinked.</div>';
-  const cols=[['job','Job'],['kind','Type'],['number','#'],['title','Title'],['status','Status'],['ball','Ball in court'],['amount','Amount',1],['due','Due'],['days_open','Open',1]];
-  const lk=i=>{ if(i.kind!=='Change event'||!Array.isArray(i.links)) return ''; if(!linkKnown) return '';
-    return i.links.length?'<div class="bo-sp">on '+i.links.map(k=>({pco:'PCO',pcco:'PCCO',sub:'sub CO',budget:'budget change'})[k]||k).join(', ')+'</div>':'<div><span class="bo-st open">not on a PCO / PCCO / budget change</span></div>'; };
-  h+=v.length?'<table class="cl-table chg-items">'+chgSortHead(cols,CHGV.sort,CHGV.dir,'data-chgsort')+'<tbody>'+v.map(i=>'<tr><td><b>'+esc(i.job)+'</b><div class="bo-sp">'+esc(i.jobName)+'</div></td><td>'+esc(i.kind)+'</td><td>'+esc(i.number||'')+'</td>'
-      +'<td>'+(i.link&&/^https:/.test(i.link)?'<a href="'+esc(i.link)+'" target="_blank" rel="noopener">'+esc(i.title||'')+'</a>':esc(i.title||''))+(i.contract?'<div class="bo-sp">'+esc(i.contract)+'</div>':'')+lk(i)+'</td>'
-      +'<td>'+esc(i.status||'')+'</td><td>'+esc(i.ball||'')+'</td><td class="num">'+(i.amount!=null?money(i.amount):'&mdash;')+(i.cost!=null?'<div class="bo-sp">cost '+money(i.cost)+'</div>':'')+'</td>'
-      +'<td>'+esc(i.due||'')+'</td><td class="num">'+chgAge(i.days_open)+'</td></tr>').join('')+'</tbody></table>'
-    :'<div class="cl-note">Nothing matches.</div>';
-  return h;
-}
-/* Sub COs by commitment: Procore's commitment list with its change orders underneath (as on the
-   Commitments tool), plus CE's approved / pending RFCs on the matching subcontract. Built from
-   changes_pull.js `recon`, which carries every non-void CCO of every commitment with change activity. */
-const ccoKind=st=>/void|delet/i.test(st)?'void':/approved|executed/i.test(st)?'approved':/draft/i.test(st)?'draft':'pending';
-function chgSubs(recon,haveRecon){
-  if(!haveRecon){ const e=CHG&&CHG.summary&&CHG.summary.recon_error;
-    return '<div class="cl-note">Sub COs by commitment appear once the changes pull has run with the commitment check (added 21 Oct).'+(e?' Last run: '+esc(e)+'.':'')+'</div>'; }
-  const asof=CHG.summary&&CHG.summary.recon_as_of, dt=x=>x?new Date(x).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
-  const R=recon.map(y=>{ const cs=(y.ccos||[]), sum=k=>cs.filter(c=>ccoKind(c.status)===k).reduce((t,c)=>t+(+c.amount||0),0);
-    const has=cs.length>0;
-    return Object.assign({},y,{appr:has?sum('approved'):y.pc_approved, pend:has?sum('pending'):y.pc_pending, draft:has?sum('draft'):0,
-      nPend:cs.filter(c=>ccoKind(c.status)==='pending').length, nDraft:cs.filter(c=>ccoKind(c.status)==='draft').length,
-      diff:(y.ce_approved==null?null:Math.round((y.pc_approved-y.ce_approved)*100)/100), fix:RECON_ATTN.includes(y.state)}); });
-  const F={open:y=>y.pend>0.005||y.draft>0.005||y.nPend||y.nDraft, attn:y=>y.fix, all:()=>true};
-  let v=R.filter(F[CHGV.rs]||F.all);
-  const q=CHGV.q.toLowerCase(); if(q) v=v.filter(y=>[y.job,y.jobName,y.commitment,y.vendor,y.ce_pending_rfcs,(y.ccos||[]).map(c=>c.number+' '+c.title).join(' ')].join(' ').toLowerCase().includes(q));
-  v.sort(chgCmp(CHGV.rsort,CHGV.rdir));
-  const n=k=>R.filter(F[k]).length, tot=k=>v.reduce((t,y)=>t+(+y[k]||0),0);
-  let h='<div class="chg-bar">'+[['open','Pending or draft COs'],['attn','CE sync to fix'],['all','All with change orders']].map(t=>'<button type="button" class="chg-chip'+(CHGV.rs===t[0]?' on':'')+'" data-chgrs="'+t[0]+'">'+t[1]+' <span>'+n(t[0])+'</span></button>').join('')
-    +'<span class="bo-sp" style="margin-left:auto">'+v.length+' commitment'+(v.length===1?'':'s')+' · approved '+chgM(tot('appr'))+' · pending '+chgM(tot('pend'))+(tot('draft')?' · draft '+chgM(tot('draft')):'')+'</span></div>'
-    +'<div class="cl-note" style="margin-top:0">Click a commitment for its change orders, as on Procore’s Commitments tool. CE columns are the approved and pending RFCs on the matching CE subcontract; CE RFC numbers are CE’s own sequence, not matched to the CCO numbers. '
-    +(asof?'Procore commitments as of '+esc(dt(asof.commitments))+', CE as of '+esc(dt(asof.ce))+', change orders as of '+esc(dt(CHG.generated_at))+'.':'')+'</div>';
-  const cols=[['job','Job'],['commitment','Commitment'],['appr','Approved COs',1],['pend','Pending COs',1],['draft','Draft COs',1],['ce_approved','CE approved',1],['ce_pending','CE pending',1],['state','CE sync']];
-  const st=s=>{ const k=ccoKind(s); return '<span class="bo-st '+(k==='approved'?'':(k==='pending'?'open':'part'))+'"'+(k==='approved'?' style="background:#e6f4ea;color:#1e6b34"':'')+'>'+esc(s||'—')+'</span>'; };
-  const body=v.map(y=>{ const key=y.job+'|'+y.commitment, open=CHGSUBOPEN.has(key), L=RECON_LBL[y.state]||[y.state,''];
-    const cs=(y.ccos||[]).slice().sort((a,b)=>String(b.number).localeCompare(String(a.number),undefined,{numeric:true}));
-    let r='<tr class="cl-first"><td><b>'+esc(y.job)+'</b><div class="bo-sp">'+esc(y.jobName)+'</div></td>'
-      +'<td><button type="button" class="cl-toggle chg-sub" data-sub="'+esc(key)+'" aria-expanded="'+open+'"><b>'+esc(y.commitment)+'</b></button><div class="bo-sp">'+esc(y.vendor)+' · '+cs.length+' CO'+(cs.length===1?'':'s')+'</div></td>'
-      +'<td class="num">'+chgM(y.appr)+'</td><td class="num">'+(y.pend?chgM(y.pend)+'<div class="bo-sp">'+y.nPend+' pending</div>':'&mdash;')+'</td><td class="num">'+(y.draft||y.nDraft?chgM(y.draft)+'<div class="bo-sp">'+y.nDraft+' draft</div>':'&mdash;')+'</td>'
-      +'<td class="num">'+chgM(y.ce_approved)+'</td><td class="num">'+(y.ce_pending?chgM(y.ce_pending)+(y.ce_pending_rfcs?'<div class="bo-sp">RFC '+esc(y.ce_pending_rfcs)+'</div>':''):'&mdash;')+'</td>'
-      +'<td><span class="bo-st '+L[1]+'">'+esc(L[0])+'</span>'+(y.fix&&y.action?'<div class="bo-sp" style="margin-top:4px;max-width:320px">'+esc(y.action)+'</div>':'')+'</td></tr>';
-    if(open) r+='<tr class="chg-det"><td colspan="8">'+(cs.length?'<table class="cl-table"><thead><tr><th>Change order</th><th>Status</th><th>Executed</th><th class="num">Approved</th><th class="num">Pending</th><th class="num">Draft</th><th>Date</th></tr></thead><tbody>'
-        +cs.map(c=>{ const k=ccoKind(c.status); return '<tr><td>CO #'+esc(c.number)+(c.title?': '+esc(c.title):'')+'</td><td>'+st(c.status)+'</td><td>'+esc(c.executed||'')+'</td>'
-          +'<td class="num">'+(k==='approved'?chgM(c.amount):'&mdash;')+'</td><td class="num">'+(k==='pending'?chgM(c.amount):'&mdash;')+'</td><td class="num">'+(k==='draft'?chgM(c.amount):'&mdash;')+'</td><td>'+esc(c.date||'')+'</td></tr>'; }).join('')
-        +'</tbody></table>':'<div class="cl-note">No change orders listed for this commitment'+(y.pc_approved?' (Procore shows '+chgM(y.pc_approved)+' approved on the commitment; the CO list was not read this run)':'')+'.</div>')+'</td></tr>';
-    return '<tbody>'+r+'</tbody>'; }).join('');
-  h+=v.length?'<table class="cl-table chg-recon">'+chgSortHead(cols,CHGV.rsort,CHGV.rdir,'data-chgrsort')+body+'</table>'
-    :'<div class="cl-note">'+(CHGV.rs==='attn'?'Every commitment with change orders agrees between Procore and CE.':CHGV.rs==='open'?'No pending or draft sub change orders on the jobs picked.':'Nothing matches.')+'</div>';
-  return h;
-}
-document.addEventListener('click', e=>{
-  const b=e.target.closest('.chg-sub'); if(b){ const j=b.dataset.sub; if(CHGSUBOPEN.has(j)) CHGSUBOPEN.delete(j); else CHGSUBOPEN.add(j); renderChanges(); return; }
-  const cc=e.target.closest('[data-chgcard]'); if(cc){ const a=cc.dataset.chgcard; if(a==='recon'){ CHGV.view='sub'; CHGV.rs='attn'; } else if(a==='subpend'){ CHGV.view='sub'; CHGV.rs='open'; } else { CHGV.view='items'; CHGV.type=(CHGV.type===a&&CHGV.view==='items')?'all':a; CHGV.status=''; } renderChanges(); return; }
-  const v=e.target.closest('[data-chgview]'); if(v){ CHGV.view=v.dataset.chgview; renderChanges(); return; }
-  const t=e.target.closest('[data-chgtype]'); if(t){ CHGV.view='items'; CHGV.type=t.dataset.chgtype; CHGV.status=''; CHGV.unl=false; renderChanges(); return; }
-  const rs=e.target.closest('[data-chgrs]'); if(rs){ CHGV.rs=rs.dataset.chgrs; renderChanges(); return; }
-  const s=e.target.closest('[data-chgsort]'); if(s){ const k=s.dataset.chgsort; if(CHGV.sort===k) CHGV.dir=-CHGV.dir; else { CHGV.sort=k; CHGV.dir=(k==='amount'||k==='days_open')?-1:1; } renderChanges(); return; }
-  const r=e.target.closest('[data-chgrsort]'); if(r){ const k=r.dataset.chgrsort; if(CHGV.rsort===k) CHGV.rdir=-CHGV.rdir; else { CHGV.rsort=k; CHGV.rdir=/appr|pend|draft|ce_/.test(k)?-1:1; } renderChanges(); return; }
-});
-document.addEventListener('change', e=>{
-  if(e.target.id==='chgSt'){ CHGV.status=e.target.value; renderChanges(); }
-  if(e.target.id==='chgAged'){ CHGV.aged=e.target.checked; renderChanges(); }
-  if(e.target.id==='chgUnl'){ CHGV.unl=e.target.checked; renderChanges(); }
-});
-document.addEventListener('input', e=>{ if(e.target.id==='chgQ'){ CHGV.q=e.target.value; clearTimeout(renderChanges.t);
-  renderChanges.t=setTimeout(()=>{ renderChanges().then(()=>{ const q=document.getElementById('chgQ'); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } }); },200); } });
-
-/* wire it in: after the UI is built, and on every tab change */
-{ const __b=buildUI; buildUI=function(){ const r=__b.apply(this,arguments); try{ restructure(); }catch(e){ console.error('restructure',e); } return r; }; }
-{ const __s=setTab; setTab=function(t){ if(t==='detail') t='summary';
-    const r=__s.call(this,t);
-    const pc=document.getElementById('panChg');
-    if(pc){ pc.classList.toggle('active',t==='changes'); if(t==='changes'){ TAB='changes'; renderChanges(); } }
-    if(t==='summary'){ chgLoad().then(()=>{ if(TAB==='summary') renderPortfolio(); }); renderPortfolio(); }
-    { const pa=document.getElementById('pfAsof'); if(pa) pa.style.display=(t==='summary')?'inline-flex':'none'; }
-    try{ syncNav(); }catch(e){}
-    return r; }; }
-{ const __d=renderDetail; renderDetail=function(){
-    const body=document.getElementById('dBody'); if(!body) return;
-    const one=(SELECTED&&SELECTED.size===1)?[...SELECTED][0]:null;
-    const r1=one!=null?ROWS.find(x=>String(x.procore_id)===String(one)):null;
-    const h=document.getElementById('pfDetH');
-    if(!r1){ Object.keys(DCHARTS).forEach(k=>{ try{ DCHARTS[k].destroy(); }catch(e){} }); DCHARTS={};
-      if(h) h.innerHTML='<b>Job detail</b><span>Pick one job in <b>Projects</b> at the top.</span>';
-      body.innerHTML='<div class="pf-empty" style="background:#fff;border:1px solid var(--bh-hairline);padding:18px">Select a single job in the <b>Projects</b> filter at the top to see its original and revised estimate, current projection, prime contract, cost position, billing and CE forecast. <b>As of</b> beside the filter sets the month.</div>';
-      return; }
-    if(h) h.innerHTML='<b>Job detail &mdash; '+esc(r1.project_number)+'</b><span>'+esc(r1.project||'')+'</span>';
-    if(String(DETAIL_ID)!==String(r1.procore_id)){ DETAIL_ID=String(r1.procore_id); DFILE=null; }
-    return __d.apply(this,arguments); }; }
-openDetail=function(id){ const r=ROWS.find(x=>String(x.procore_id)===String(id)); if(!r) return;
-  SELECTED=new Set([r.procore_id]); msRebuild(); updateMsBtn(); setTab('summary'); render();
-  setTimeout(()=>{ const h=document.getElementById('pfDetH'); if(h) h.scrollIntoView({behavior:'smooth',block:'start'}); },50); };
-{ const __r=render; render=function(){ const r=__r.apply(this,arguments); try{ if(TAB==='summary') renderPortfolio(); if(TAB==='changes') renderChanges(); }catch(e){ console.error(e); } return r; }; }
-
 load();
 </script>
-<script src="https://dashboard.baileyharris.com/bh-shell.js" defer></script>
 </body>
 </html>
