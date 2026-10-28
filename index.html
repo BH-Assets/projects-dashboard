@@ -465,6 +465,8 @@ body.bh-page{background:#fff}
 .bh-page .cl-st{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--bh-light-gray);padding:2px 6px;white-space:nowrap}
 .bh-page .cl-st.appr{background:var(--bh-cream);color:var(--bh-maroon)}
 .bh-page .cl-st.out{background:#fff;border:1px solid var(--bh-slate)}
+.bh-page .cl-sig{display:block;font-size:11px;color:var(--bh-ink-muted);margin-top:3px;text-decoration:none;white-space:nowrap}
+.bh-page a.cl-sig:hover{text-decoration:underline;color:var(--bh-maroon)}
 @media (max-width:960px){.bh-page .wrap{padding:16px 20px 32px}.bh-page .bh-header>a.bh-btn-outline{display:none}.bh-page .card .n{font-size:19px}.bh-page .cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
 @media (max-width:1280px){.bh-page .card .n{font-size:22px}}
 </style>
@@ -2271,6 +2273,21 @@ function fcard(r){
    per job, each subcontract and PO with its Procore line items rolled up by cost code and
    cost type. Loaded once, on the first job opened. */
 const CL_PATH='Compliance Dashboard/commitment_lines.json';
+const SQ_PATH='Compliance Dashboard/signature_queue.json';
+let SQ=null;
+/* The DocuSign envelope out for signature against this commitment, matched on the commitment
+   number only (change orders excluded - they carry the number of the contract they amend). */
+function sigOf(c){
+  if(!SQ||!Array.isArray(SQ.all)) return null;
+  const n=String(c.number||'').trim(); if(!n) return null;
+  return SQ.all.find(x=>String(x.commitment||'').trim()===n && x.with_side!=='nobody' && !/change\s*order/i.test(x.doc_type||''))||null;
+}
+function sigNote(c){
+  const x=sigOf(c); if(!x) return '';
+  const who=x.with_side==='us'?'waiting on BH':x.with_side==='subcontractor'?'waiting on sub':'waiting on both';
+  const tip=(x.with_names&&x.with_names.length?'With '+x.with_names.join(', '):who)+(x.days_waiting!=null?' · sent '+x.days_waiting+' day'+(x.days_waiting===1?'':'s')+' ago':'');
+  return '<a class="cl-sig" href="'+esc(x.url||'#')+'" target="_blank" rel="noopener" title="'+esc(tip)+'">'+who+(x.days_waiting!=null?' · '+x.days_waiting+'d':'')+'</a>';
+}
 let CL=null, CLERR='', CLBUSY=null;
 async function clLoad(){
   if(CL||CLERR) return;
@@ -2280,13 +2297,16 @@ async function clLoad(){
       if(res.status===404){ CLERR='commitment_lines.json has not been published yet. The Commitment line items pull writes it; the first full read takes about two nights.'; return; }
       if(!res.ok){ CLERR='Could not read commitment_lines.json (HTTP '+res.status+').'; return; }
       CL=await res.json();
+      /* whose turn it is to sign (DocuSign pull, signature_queue.json) - moved here from the
+         Compliance dashboard on 28 Oct 2026. Optional: the buyout view works without it. */
+      try{ const sq=await fetchFile(token, SQ_PATH); if(sq.ok) SQ=await sq.json(); }catch(e){ SQ=null; }
     }catch(e){ CLERR='Could not read commitment_lines.json: '+((e&&e.message)||e); } })();
   return CLBUSY;
 }
 function clStatus(c){
   if(c.executed) return '<span class="cl-st">Executed</span>';
   /* v2.0 lists write statuses in lower case and may use underscores (out_for_signature) */
-  if(/out[\s_-]*for[\s_-]*signature/i.test(c.status||'')) return '<span class="cl-st out">Out for signature</span>';
+  if(/out[\s_-]*for[\s_-]*signature/i.test(c.status||'')) return '<span class="cl-st out">Out for signature</span>'+sigNote(c);
   if(/approved/i.test(c.status||'')) return '<span class="cl-st appr">Approved, not executed</span>';
   const st=String(c.status||'').replace(/_/g,' ');
   return '<span class="cl-st">'+esc(st?st.charAt(0).toUpperCase()+st.slice(1):'\u2014')+'</span>';
